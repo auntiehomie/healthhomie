@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "healthhomie",
+    "slug": "healthhomie",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "healthhomie",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.auntiehomie.healthhomie",
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "Healthhomie reads Apple Health activity, weight, and sleep data to personalize calorie and macro goals.",
+        "NSHealthUpdateUsageDescription": "Healthhomie can write nutrition totals to Apple Health when you choose to sync your food journal.",
+        "NSCameraUsageDescription": "Healthhomie uses the camera to scan food barcodes."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-web-browser",
+      "expo-sqlite",
+      "expo-camera",
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Healthhomie reads Apple Health activity, weight, and sleep data to personalize calorie and macro goals.",
+          "NSHealthUpdateUsageDescription": "Healthhomie can write nutrition totals to Apple Health when you choose to sync your food journal."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

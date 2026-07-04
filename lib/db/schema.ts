@@ -1,0 +1,65 @@
+export const schemaStatements = [
+  `CREATE TABLE IF NOT EXISTS food_items (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    brand TEXT,
+    barcode TEXT,
+    servingSize REAL NOT NULL,
+    servingUnit TEXT NOT NULL,
+    source TEXT NOT NULL,
+    sourceId TEXT,
+    calories REAL NOT NULL DEFAULT 0,
+    proteinG REAL NOT NULL DEFAULT 0,
+    carbsG REAL NOT NULL DEFAULT 0,
+    fatG REAL NOT NULL DEFAULT 0,
+    fiberG REAL,
+    sugarG REAL,
+    sodiumMg REAL,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS food_items_name_idx ON food_items(name);`,
+  `CREATE INDEX IF NOT EXISTS food_items_barcode_idx ON food_items(barcode);`,
+  `CREATE TABLE IF NOT EXISTS meal_entries (
+    id TEXT PRIMARY KEY NOT NULL,
+    foodItemId TEXT NOT NULL,
+    mealType TEXT NOT NULL,
+    date TEXT NOT NULL,
+    servings REAL NOT NULL DEFAULT 1,
+    notes TEXT,
+    createdAt TEXT NOT NULL,
+    FOREIGN KEY(foodItemId) REFERENCES food_items(id)
+  );`,
+  `CREATE INDEX IF NOT EXISTS meal_entries_date_idx ON meal_entries(date);`,
+  `CREATE TABLE IF NOT EXISTS user_profile (
+    id TEXT PRIMARY KEY NOT NULL,
+    age INTEGER,
+    sex TEXT,
+    heightCm REAL,
+    currentWeightKg REAL,
+    targetWeightKg REAL,
+    goalType TEXT NOT NULL,
+    activityMultiplier REAL NOT NULL DEFAULT 1.2,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  );`,
+  `CREATE TABLE IF NOT EXISTS health_snapshots (
+    date TEXT PRIMARY KEY NOT NULL,
+    steps INTEGER,
+    activeEnergyKcal REAL,
+    weightKg REAL,
+    sleepMinutes INTEGER,
+    workouts INTEGER
+  );`,
+  `CREATE TABLE IF NOT EXISTS weekly_check_ins (
+    id TEXT PRIMARY KEY NOT NULL,
+    weekStart TEXT NOT NULL,
+    averageCalories REAL NOT NULL,
+    averageProteinG REAL NOT NULL,
+    averageWeightKg REAL,
+    adherencePct REAL NOT NULL,
+    recommendedCalorieDelta REAL NOT NULL,
+    insight TEXT NOT NULL,
+    createdAt TEXT NOT NULL
+  );`,
+] as const;
