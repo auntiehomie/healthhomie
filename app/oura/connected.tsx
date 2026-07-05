@@ -1,19 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { persistOuraTokens } from '@/lib/services/ouraClient';
 
 export default function OuraConnectedScreen() {
-  const params = useLocalSearchParams<{ access_token?: string; refresh_token?: string; expires_in?: string; error?: string }>();
-  const [message, setMessage] = useState('Finishing Oura connection...');
+  const params = useLocalSearchParams<{ connected?: string; error?: string }>();
+  const message = params.error
+    ? `Oura connection failed (${params.error}).`
+    : params.connected === 'true'
+      ? 'Oura connected! Redirecting...'
+      : 'Oura connection did not complete.';
 
   useEffect(() => {
-    persistOuraTokens(params).then((result) => {
-      setMessage(result.connected ? 'Oura connected! Redirecting...' : result.reason ?? 'Oura connection failed.');
-      if (result.connected) setTimeout(() => router.replace('/(tabs)/settings'), 800);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.access_token, params.refresh_token, params.expires_in, params.error]);
+    if (params.connected !== 'true') return;
+    const timeout = setTimeout(() => router.replace('/(tabs)/settings'), 800);
+    return () => clearTimeout(timeout);
+  }, [params.connected]);
 
   return (
     <View style={styles.container}>

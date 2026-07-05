@@ -15,12 +15,13 @@ healthhomie is not a medical device and does not provide medical advice, diagnos
 ## Information we collect
 
 ### Information you provide directly
+- Account credentials: an email address and a password (stored only as a salted cryptographic hash, never in plain text).
 - Food journal entries, custom foods, meal logs, and serving sizes.
 - Profile information: age, sex, height, current/target weight, activity level, and goal type.
 
 ### Information from connected health services (only if you choose to connect them)
-- Apple HealthKit (iOS only): steps, active energy, body mass, sleep analysis, and workouts, read directly on your device through Apple's HealthKit framework. This data stays on-device; healthhomie does not transmit it to our servers.
-- Oura Ring (via OAuth2, optional): if you connect an Oura account, we request access to daily activity, sleep, and readiness data through the Oura API. This is sensitive health data under GDPR and CCPA/CPRA, and connecting it is always an explicit, opt-in action you take in Settings.
+- Apple HealthKit (iOS only): steps, active energy, body mass, sleep analysis, and workouts, read directly on your device through Apple's HealthKit framework. This data stays on-device; healthhomie does not currently transmit it to our servers or sync it to your account.
+- Oura Ring (via OAuth2, optional): if you connect an Oura account, we request access to daily activity, sleep, and readiness data through the Oura API. This is sensitive health data under GDPR and CCPA/CPRA, and connecting it is always an explicit, opt-in action you take in Settings. The Oura access and refresh tokens are stored server-side, associated with your account, and are never sent to or stored on your device.
 
 ### Automatically collected technical information
 - Standard web server/request logs (such as IP address, browser type, and timestamps) may be recorded by our hosting provider for security and reliability purposes.
@@ -38,17 +39,18 @@ We do not use your health or nutrition data for advertising, profiling for marke
 
 ## Where information is stored
 
-- Local-first architecture: your food journal, meal entries, profile, and goals are stored in a local database on your own device and are not synced to any server we operate.
-- Oura OAuth tokens and synced Oura daily metrics are currently stored locally on your device in that same local database, not on our servers. The OAuth token exchange briefly passes through our serverless API function (to keep the Oura client secret off your device), but is not persisted there.
-- Requests to USDA FoodData Central and Open Food Facts are proxied through serverless functions that do not persist your queries after the request completes.
-- healthhomie does not currently require or create a centralized account, username, or password.
+- Account-based, cross-platform storage: your food journal, meal entries, profile, goals, and connected-service status are stored in a Postgres database associated with your account, so the same data appears whether you use the web app, iOS, or Android. This replaced an earlier, purely on-device design; nothing about that change is used for any purpose beyond letting your own data follow you across devices.
+- Passwords are stored only as a bcrypt hash, never in plain text or in a reversible form.
+- Oura OAuth tokens are stored server-side, associated with your account, and are never transmitted to or stored on your device.
+- Requests to USDA FoodData Central and Open Food Facts are proxied through serverless functions that do not persist your search queries beyond the request itself.
+- Apple HealthKit data (iOS only) currently stays on-device and is not synced to your account; see above.
 
 ## Who we share information with
 
 - Oura Health, Inc. — only the data needed to complete the OAuth connection and fetch the daily metrics you've authorized. Review Oura's own privacy policy before connecting.
 - USDA FoodData Central and Open Food Facts — only the search term or barcode needed to return a result.
 - Apple — HealthKit reads/writes on iOS are governed by Apple's own platform rules, not by healthhomie.
-- Our hosting/infrastructure provider, for running the web app and API routes.
+- Our hosting and database infrastructure providers (Vercel and its Postgres/Neon storage integration), for running the app, the API, and storing your account's data.
 
 We do not sell personal information, and we do not share personal information with third parties for cross-context behavioral advertising.
 
@@ -61,7 +63,7 @@ You may withdraw consent at any time by disconnecting a health data source in Se
 
 ## Your rights under GDPR/UK GDPR (EU/UK/EEA residents)
 
-You have the right to access, rectify, erase, restrict, or object to processing of your personal data, the right to data portability, and the right to withdraw consent at any time. Because most of your data lives on your own device, you can exercise access, correction, deletion, and portability rights directly in the app: view, edit, or delete entries, and disconnect Oura or Apple Health to stop future syncing and remove locally stored tokens. For anything you believe we hold outside your device, contact us using the details below. You also have the right to lodge a complaint with your local data protection supervisory authority.
+You have the right to access, rectify, erase, restrict, or object to processing of your personal data, the right to data portability, and the right to withdraw consent at any time. You can exercise access, correction, and deletion rights directly in the app for your journal entries and profile, and disconnect Oura in Settings to revoke and delete its stored tokens. For full account deletion, a data export, or anything else, contact us using the details below. You also have the right to lodge a complaint with your local data protection supervisory authority.
 
 ## Your rights under CCPA/CPRA (California residents)
 
@@ -81,15 +83,15 @@ healthhomie is not directed at children under 13 (or the applicable minimum age 
 
 ## Data retention
 
-On-device data persists until you delete it or uninstall the app. OAuth tokens for connected services persist locally until you disconnect the service, revoke access with the provider, or the tokens expire.
+Account and journal data persists until you delete it or ask us to delete your account. OAuth tokens for connected services persist until you disconnect the service, revoke access with the provider, or the tokens expire. Your session token (which keeps you logged in) is stored on your device and can be cleared by logging out.
 
 ## Security
 
-We use HTTPS/TLS for network requests, keep OAuth client secrets only in server-side environment variables (never bundled into the app), and rely on your device's own storage protections for locally held data. No method of transmission or storage is completely secure, and we cannot guarantee absolute security.
+We use HTTPS/TLS for network requests, keep OAuth client secrets and the session-signing secret only in server-side environment variables (never bundled into the app), hash passwords with bcrypt, and store your session token using your device's secure storage (Keychain/Keystore on native, browser storage on web). No method of transmission or storage is completely secure, and we cannot guarantee absolute security.
 
 ## International data transfers
 
-Because most of your data stays on your device, cross-border transfer exposure is minimal. Where our infrastructure or integration providers process data outside your country, they do so subject to their own applicable safeguards.
+Our hosting and database infrastructure may process or store data outside your country. Where it does, it does so subject to that provider's own applicable safeguards.
 
 ## Changes to this policy
 

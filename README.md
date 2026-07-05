@@ -5,11 +5,11 @@ Health tracking at a multi-dimensional level: daily food journal, calorie/macro 
 ## MVP
 
 - Expo React Native app with TypeScript
-- Local-first SQLite food journal
+- Account-based food journal backed by Postgres — the same data syncs across web, iOS, and Android
 - Today dashboard for calories/macros
 - Goal engine for calories/protein/carbs/fat
-- Apple HealthKit permission boundary
-- USDA FoodData Central + Open Food Facts API route scaffolds
+- Apple HealthKit permission boundary (native iOS only, not synced to the account yet)
+- USDA FoodData Central + Open Food Facts search, Oura wearables integration
 
 ## Development
 
@@ -26,12 +26,22 @@ HealthKit requires an iOS custom dev build on a real iPhone; Expo Go is not enou
 
 Do not commit `.env` files. Add secrets in Vercel:
 
+- `DATABASE_URL` (or `POSTGRES_URL`) — set automatically when you add a Postgres store in the Vercel dashboard (Storage tab → Create Database → Postgres, Neon-backed)
+- `AUTH_JWT_SECRET` — any long random string; signs login sessions and the short-lived Oura OAuth state
+- `SIGNUP_SECRET` — a code you pick; required to register an account (and to call the migration endpoint), so randoms can't self-register
 - `USDA_FDC_API_KEY`
 - `OURA_CLIENT_ID`
 - `OURA_CLIENT_SECRET`
 - `OURA_REDIRECT_URI` — `https://<your-vercel-domain>/api/oura/callback`, must match the redirect URI registered on the Oura OAuth app exactly
 
-For native (iOS/Android) builds only, also set `EXPO_PUBLIC_API_BASE_URL` (e.g. `https://healthhomie.vercel.app`) so the app knows where to reach the Oura API routes — web builds infer this from `window.location.origin`.
+For native (iOS/Android) builds only, also set `EXPO_PUBLIC_API_BASE_URL` (e.g. `https://healthhomie.vercel.app`) so the app knows where to reach the API — web builds infer this from `window.location.origin`.
+
+### First-time database setup
+
+1. Add a Postgres store to the Vercel project (Storage tab → Create Database → Postgres).
+2. Set `AUTH_JWT_SECRET` and `SIGNUP_SECRET` env vars, redeploy.
+3. Run the schema migration once: `POST /api/admin/migrate` with header `x-migrate-secret: <SIGNUP_SECRET>`.
+4. Register your account from the app's login screen using the `SIGNUP_SECRET` as the signup code.
 
 ## Legal
 

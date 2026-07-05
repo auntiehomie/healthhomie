@@ -1,19 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { requestHealthPermissions } from '@/lib/services/healthkit';
-import { connectOura, syncOura } from '@/lib/services/ouraClient';
-import { getHealthConnection } from '@/lib/db/database';
+import { connectOura, getOuraStatus, syncOura } from '@/lib/services/ouraClient';
+import { logout } from '@/lib/services/authClient';
 
 export default function SettingsScreen() {
   const [healthStatus, setHealthStatus] = useState('Not requested yet');
   const [ouraStatus, setOuraStatus] = useState('Not connected');
 
   useEffect(() => {
-    getHealthConnection('oura').then((connection) => {
-      if (connection?.status === 'connected') setOuraStatus(connection.lastSyncedAt ? `Connected, last synced ${connection.lastSyncedAt}` : 'Connected, not synced yet');
+    getOuraStatus().then((status) => {
+      if (status.connected) setOuraStatus(status.lastSyncedAt ? `Connected, last synced ${status.lastSyncedAt}` : 'Connected, not synced yet');
     });
   }, []);
+
+  async function handleLogout() {
+    await logout();
+    router.replace('/login');
+  }
 
   async function connectHealth() {
     const result = await requestHealthPermissions();
@@ -35,7 +40,14 @@ export default function SettingsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Settings</Text>
-      <Text style={styles.subtitle}>Privacy-first defaults: local journal storage, explicit HealthKit permissions, no secrets committed.</Text>
+      <Text style={styles.subtitle}>Your journal and profile sync across web, iOS, and Android through your account.</Text>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Account</Text>
+        <Pressable style={styles.button} onPress={handleLogout}>
+          <Text style={styles.buttonText}>Log out</Text>
+        </Pressable>
+      </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Apple Health</Text>
