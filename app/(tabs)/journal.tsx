@@ -1,6 +1,7 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { LogFoodModal } from '@/components/health/LogFoodModal';
 import { addMealEntry, createId, listFoodItems, listMealEntries, upsertFoodItem } from '@/lib/db/database';
 import { summarizeDay, todayKey } from '@/lib/domain/nutrition';
 import { searchUsdaFoods } from '@/lib/services/nutritionApi';
@@ -12,7 +13,7 @@ export default function JournalScreen() {
   const [foods, setFoods] = useState<FoodItem[]>([]);
   const [entries, setEntries] = useState<MealEntry[]>([]);
   const [selectedMeal, setSelectedMeal] = useState<MealType>('breakfast');
-  const [servings, setServings] = useState('1');
+  const [activeFood, setActiveFood] = useState<FoodItem | null>(null);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodItem[]>([]);
   const [searching, setSearching] = useState(false);
@@ -27,12 +28,10 @@ export default function JournalScreen() {
   useFocusEffect(useCallback(() => { load().catch(console.warn); }, [load]));
   const summary = useMemo(() => summarizeDay(todayKey(), entries, foods), [entries, foods]);
 
-  async function logFood(food: FoodItem) {
-    const parsedServings = Number(servings);
-    if (!Number.isFinite(parsedServings) || parsedServings <= 0) return Alert.alert('Check servings', 'Servings must be greater than zero.');
+  async function logFood(food: FoodItem, servings: number) {
     await upsertFoodItem(food);
-    await addMealEntry({ id: createId('entry'), foodItemId: food.id, mealType: selectedMeal, date: todayKey(), servings: parsedServings, createdAt: new Date().toISOString() });
-    setServings('1');
+    await addMealEntry({ id: createId('entry'), foodItemId: food.id, mealType: selectedMeal, date: todayKey(), servings, createdAt: new Date().toISOString() });
+    setActiveFood(null);
     setResults([]);
     setQuery('');
     await load();
@@ -68,9 +67,6 @@ export default function JournalScreen() {
         </Pressable>
       ))}</View>
 
-      <Text style={styles.label}>Servings</Text>
-      <TextInput value={servings} onChangeText={setServings} keyboardType="decimal-pad" style={styles.input} />
-
       <Text style={styles.label}>Search foods</Text>
       <View style={styles.searchRow}>
         <TextInput
@@ -87,7 +83,7 @@ export default function JournalScreen() {
       </View>
       {searchError && <Text style={styles.error}>{searchError}</Text>}
       {results.map((food) => (
-        <Pressable key={food.id} onPress={() => logFood(food)} style={styles.foodRow}>
+        <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
           <View>
             <Text style={styles.foodName}>{food.name}</Text>
             <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.source}</Text>
@@ -98,7 +94,7 @@ export default function JournalScreen() {
 
       <Text style={styles.label}>Your foods</Text>
       {foods.map((food) => (
-        <Pressable key={food.id} onPress={() => logFood(food)} style={styles.foodRow}>
+        <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
           <View>
             <Text style={styles.foodName}>{food.name}</Text>
             <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.source}</Text>
@@ -112,6 +108,8 @@ export default function JournalScreen() {
         const food = foods.find((item) => item.id === entry.foodItemId);
         return <Text key={entry.id} style={styles.entry}>• {entry.mealType}: {food?.name ?? 'Food'} × {entry.servings}</Text>;
       })}
+
+      <LogFoodModal key={activeFood?.id} food={activeFood} onClose={() => setActiveFood(null)} onConfirm={logFood} />
     </ScrollView>
   );
 }
