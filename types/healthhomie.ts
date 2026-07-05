@@ -74,6 +74,40 @@ export type HealthSnapshot = {
   workouts?: number;
 };
 
+export type HealthProvider = 'apple-health' | 'oura' | 'manual';
+
+export type HealthConnectionStatus = 'connected' | 'expired' | 'revoked' | 'error';
+
+export type HealthConnection = {
+  id: string;
+  provider: HealthProvider;
+  providerUserId?: string;
+  status: HealthConnectionStatus;
+  scopes?: string;
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: string;
+  lastSyncedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type HealthMetricsDaily = {
+  date: string;
+  provider: HealthProvider;
+  steps?: number;
+  activeEnergyKcal?: number;
+  totalEnergyKcal?: number;
+  weightKg?: number;
+  sleepMinutes?: number;
+  sleepScore?: number;
+  readinessScore?: number;
+  restingHeartRate?: number;
+  hrvMs?: number;
+  spo2Pct?: number;
+  workouts?: number;
+};
+
 export type WeeklyCheckIn = {
   id: string;
   weekStart: string;

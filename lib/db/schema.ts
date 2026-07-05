@@ -51,6 +51,36 @@ export const schemaStatements = [
     sleepMinutes INTEGER,
     workouts INTEGER
   );`,
+  `CREATE TABLE IF NOT EXISTS health_connections (
+    id TEXT PRIMARY KEY NOT NULL,
+    provider TEXT NOT NULL,
+    providerUserId TEXT,
+    status TEXT NOT NULL,
+    scopes TEXT,
+    accessToken TEXT,
+    refreshToken TEXT,
+    expiresAt TEXT,
+    lastSyncedAt TEXT,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  );`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS health_connections_provider_idx ON health_connections(provider);`,
+  `CREATE TABLE IF NOT EXISTS health_metrics_daily (
+    date TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    steps INTEGER,
+    activeEnergyKcal REAL,
+    totalEnergyKcal REAL,
+    weightKg REAL,
+    sleepMinutes INTEGER,
+    sleepScore REAL,
+    readinessScore REAL,
+    restingHeartRate REAL,
+    hrvMs REAL,
+    spo2Pct REAL,
+    workouts INTEGER,
+    PRIMARY KEY (date, provider)
+  );`,
   `CREATE TABLE IF NOT EXISTS weekly_check_ins (
     id TEXT PRIMARY KEY NOT NULL,
     weekStart TEXT NOT NULL,
