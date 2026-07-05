@@ -40,5 +40,13 @@ healthhomie is an iOS-first, local-first calorie/macro journal with Apple Health
 ## Required env vars
 
 - `USDA_FDC_API_KEY` — Vercel env var for USDA FoodData Central.
+- `OURA_CLIENT_ID` / `OURA_CLIENT_SECRET` / `OURA_REDIRECT_URI` — Oura OAuth2 app credentials (see `docs/WEB_AND_WEARABLES_STRATEGY.md`).
+- `EXPO_PUBLIC_API_BASE_URL` — native builds only, points the app at the deployed Vercel API.
 
 Open Food Facts does not require an API key for normal lookup usage.
+
+## Wearables
+
+- Oura is wired end to end: OAuth connect/callback/refresh/sync routes under `api/oura/`, normalized storage in the local `health_connections` / `health_metrics_daily` SQLite tables, and a Settings card to connect/sync. See `docs/WEB_AND_WEARABLES_STRATEGY.md` for the data model and the current storage tradeoff (tokens are handed to the client and stored locally since there's no cloud datastore yet — revisit once one exists).
+- Apple HealthKit remains the native iOS adapter (`lib/services/healthkit.ts`), still a permission boundary with reads unwired.
+- Open Wearables (self-hosted) was explored but blocked on VPS SSH access from the sandboxed dev environment; Oura became the first working provider instead.

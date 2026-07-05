@@ -1,13 +1,34 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { requestHealthPermissions } from '@/lib/services/healthkit';
+import { connectOura, syncOura } from '@/lib/services/ouraClient';
+import { getHealthConnection } from '@/lib/db/database';
 
 export default function SettingsScreen() {
   const [healthStatus, setHealthStatus] = useState('Not requested yet');
+  const [ouraStatus, setOuraStatus] = useState('Not connected');
+
+  useEffect(() => {
+    getHealthConnection('oura').then((connection) => {
+      if (connection?.status === 'connected') setOuraStatus(connection.lastSyncedAt ? `Connected, last synced ${connection.lastSyncedAt}` : 'Connected, not synced yet');
+    });
+  }, []);
 
   async function connectHealth() {
     const result = await requestHealthPermissions();
     setHealthStatus(result.granted ? 'Apple Health connected' : result.reason ?? 'Apple Health unavailable');
+  }
+
+  async function handleConnectOura() {
+    setOuraStatus('Connecting...');
+    const result = await connectOura();
+    if (result.reason) setOuraStatus(result.reason);
+  }
+
+  async function handleSyncOura() {
+    setOuraStatus('Syncing...');
+    const result = await syncOura();
+    setOuraStatus(result.reason ?? `Synced ${result.synced} days of Oura data.`);
   }
 
   return (
@@ -22,6 +43,18 @@ export default function SettingsScreen() {
           <Text style={styles.buttonText}>{Platform.OS === 'ios' ? 'Connect Apple Health' : 'HealthKit is iOS-only'}</Text>
         </Pressable>
         <Text style={styles.status}>{healthStatus}</Text>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Oura</Text>
+        <Text style={styles.cardText}>Sleep, readiness, and activity for web + mobile. Works without HealthKit.</Text>
+        <Pressable style={styles.button} onPress={handleConnectOura}>
+          <Text style={styles.buttonText}>Connect Oura</Text>
+        </Pressable>
+        <Pressable style={styles.button} onPress={handleSyncOura}>
+          <Text style={styles.buttonText}>Sync Oura data</Text>
+        </Pressable>
+        <Text style={styles.status}>{ouraStatus}</Text>
       </View>
 
       <View style={styles.card}>

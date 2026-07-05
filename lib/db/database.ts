@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { schemaStatements } from './schema';
-import type { FoodItem, MealEntry, UserProfile } from '@/types/healthhomie';
+import type { FoodItem, HealthConnection, HealthMetricsDaily, MealEntry, UserProfile } from '@/types/healthhomie';
 
 const db = SQLite.openDatabaseSync('healthhomie.db');
 
@@ -73,6 +73,43 @@ export async function getUserProfile(): Promise<UserProfile> {
   };
   await saveUserProfile(starter);
   return starter;
+}
+
+export async function upsertHealthConnection(connection: HealthConnection): Promise<void> {
+  await db.runAsync(
+    `INSERT OR REPLACE INTO health_connections
+      (id, provider, providerUserId, status, scopes, accessToken, refreshToken, expiresAt, lastSyncedAt, createdAt, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    connection.id, connection.provider, connection.providerUserId ?? null, connection.status, connection.scopes ?? null,
+    connection.accessToken ?? null, connection.refreshToken ?? null, connection.expiresAt ?? null, connection.lastSyncedAt ?? null,
+    connection.createdAt, connection.updatedAt,
+  );
+}
+
+export async function getHealthConnection(provider: HealthConnection['provider']): Promise<HealthConnection | null> {
+  return db.getFirstAsync<HealthConnection>('SELECT * FROM health_connections WHERE provider = ?', provider);
+}
+
+export async function upsertHealthMetricsDaily(metrics: HealthMetricsDaily[]): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    for (const metric of metrics) {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO health_metrics_daily
+          (date, provider, steps, activeEnergyKcal, totalEnergyKcal, weightKg, sleepMinutes, sleepScore, readinessScore, restingHeartRate, hrvMs, spo2Pct, workouts)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        metric.date, metric.provider, metric.steps ?? null, metric.activeEnergyKcal ?? null, metric.totalEnergyKcal ?? null,
+        metric.weightKg ?? null, metric.sleepMinutes ?? null, metric.sleepScore ?? null, metric.readinessScore ?? null,
+        metric.restingHeartRate ?? null, metric.hrvMs ?? null, metric.spo2Pct ?? null, metric.workouts ?? null,
+      );
+    }
+  });
+}
+
+export async function listHealthMetricsDaily(start: string, end: string): Promise<HealthMetricsDaily[]> {
+  return db.getAllAsync<HealthMetricsDaily>(
+    'SELECT * FROM health_metrics_daily WHERE date BETWEEN ? AND ? ORDER BY date DESC',
+    start, end,
+  );
 }
 
 export function createId(prefix: string): string {
