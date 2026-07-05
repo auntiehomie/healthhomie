@@ -2,17 +2,39 @@ import * as SQLite from 'expo-sqlite';
 import { schemaStatements } from './schema';
 import type { FoodItem, HealthConnection, HealthMetricsDaily, MealEntry, UserProfile } from '@/types/healthhomie';
 
-const db = SQLite.openDatabaseSync('healthhomie.db');
+let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
-export async function initializeDatabase(): Promise<void> {
+/**
+ * openDatabaseAsync, not openDatabaseSync: the sync API needs SharedArrayBuffer for its
+ * cross-thread bridge to the web worker, which requires COOP/COEP headers we don't control
+ * on Vercel's static hosting. Without it, SharedArrayBuffer is undefined and the app crashes
+ * on load. The async API doesn't need it and works the same on native.
+ *
+ * Schema creation lives here rather than in a separate initializeDatabase() call: screens
+ * query the database as soon as they mount, independent of the root layout's effect order,
+ * so any caller reaching the db must be guaranteed the schema already exists.
+ */
+function getDb(): Promise<SQLite.SQLiteDatabase> {
+  if (!dbPromise) dbPromise = openAndInitialize();
+  return dbPromise;
+}
+
+async function openAndInitialize(): Promise<SQLite.SQLiteDatabase> {
+  const db = await SQLite.openDatabaseAsync('healthhomie.db');
   await db.withTransactionAsync(async () => {
     for (const statement of schemaStatements) {
       await db.execAsync(statement);
     }
   });
+  return db;
+}
+
+export async function initializeDatabase(): Promise<void> {
+  await getDb();
 }
 
 export async function seedDemoData(): Promise<void> {
+  const db = await getDb();
   const existing = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM food_items');
   if ((existing?.count ?? 0) > 0) return;
   const now = new Date().toISOString();
@@ -25,6 +47,7 @@ export async function seedDemoData(): Promise<void> {
 }
 
 export async function upsertFoodItem(food: FoodItem): Promise<void> {
+  const db = await getDb();
   await db.runAsync(
     `INSERT OR REPLACE INTO food_items
       (id, name, brand, barcode, servingSize, servingUnit, source, sourceId, calories, proteinG, carbsG, fatG, fiberG, sugarG, sodiumMg, createdAt, updatedAt)
@@ -35,10 +58,12 @@ export async function upsertFoodItem(food: FoodItem): Promise<void> {
 }
 
 export async function listFoodItems(): Promise<FoodItem[]> {
+  const db = await getDb();
   return db.getAllAsync<FoodItem>('SELECT * FROM food_items ORDER BY updatedAt DESC, name ASC');
 }
 
 export async function addMealEntry(entry: MealEntry): Promise<void> {
+  const db = await getDb();
   await db.runAsync(
     `INSERT INTO meal_entries (id, foodItemId, mealType, date, servings, notes, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     entry.id, entry.foodItemId, entry.mealType, entry.date, entry.servings, entry.notes ?? null, entry.createdAt,
@@ -46,11 +71,13 @@ export async function addMealEntry(entry: MealEntry): Promise<void> {
 }
 
 export async function listMealEntries(date?: string): Promise<MealEntry[]> {
+  const db = await getDb();
   if (date) return db.getAllAsync<MealEntry>('SELECT * FROM meal_entries WHERE date = ? ORDER BY createdAt DESC', date);
   return db.getAllAsync<MealEntry>('SELECT * FROM meal_entries ORDER BY date DESC, createdAt DESC LIMIT 200');
 }
 
 export async function saveUserProfile(profile: UserProfile): Promise<void> {
+  const db = await getDb();
   await db.runAsync(
     `INSERT OR REPLACE INTO user_profile
       (id, age, sex, heightCm, currentWeightKg, targetWeightKg, goalType, activityMultiplier, createdAt, updatedAt)
@@ -61,6 +88,7 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
 }
 
 export async function getUserProfile(): Promise<UserProfile> {
+  const db = await getDb();
   const profile = await db.getFirstAsync<UserProfile>('SELECT * FROM user_profile LIMIT 1');
   if (profile) return profile;
   const now = new Date().toISOString();
@@ -76,6 +104,7 @@ export async function getUserProfile(): Promise<UserProfile> {
 }
 
 export async function upsertHealthConnection(connection: HealthConnection): Promise<void> {
+  const db = await getDb();
   await db.runAsync(
     `INSERT OR REPLACE INTO health_connections
       (id, provider, providerUserId, status, scopes, accessToken, refreshToken, expiresAt, lastSyncedAt, createdAt, updatedAt)
@@ -87,10 +116,12 @@ export async function upsertHealthConnection(connection: HealthConnection): Prom
 }
 
 export async function getHealthConnection(provider: HealthConnection['provider']): Promise<HealthConnection | null> {
+  const db = await getDb();
   return db.getFirstAsync<HealthConnection>('SELECT * FROM health_connections WHERE provider = ?', provider);
 }
 
 export async function upsertHealthMetricsDaily(metrics: HealthMetricsDaily[]): Promise<void> {
+  const db = await getDb();
   await db.withTransactionAsync(async () => {
     for (const metric of metrics) {
       await db.runAsync(
@@ -106,6 +137,7 @@ export async function upsertHealthMetricsDaily(metrics: HealthMetricsDaily[]): P
 }
 
 export async function listHealthMetricsDaily(start: string, end: string): Promise<HealthMetricsDaily[]> {
+  const db = await getDb();
   return db.getAllAsync<HealthMetricsDaily>(
     'SELECT * FROM health_metrics_daily WHERE date BETWEEN ? AND ? ORDER BY date DESC',
     start, end,
