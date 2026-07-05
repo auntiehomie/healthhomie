@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Link } from 'expo-router';
 import { requestHealthPermissions } from '@/lib/services/healthkit';
 import { connectOura, syncOura } from '@/lib/services/ouraClient';
 import { getHealthConnection } from '@/lib/db/database';
@@ -61,6 +62,12 @@ export default function SettingsScreen() {
         <Text style={styles.cardTitle}>API keys</Text>
         <Text style={styles.cardText}>USDA FoodData Central key belongs in Vercel env vars as USDA_FDC_API_KEY. Do not commit .env files.</Text>
       </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Legal</Text>
+        <Link href="/legal/privacy" style={styles.link}>Privacy Policy</Link>
+        <Link href="/legal/terms" style={styles.link}>Terms of Service</Link>
+      </View>
     </ScrollView>
   );
 }
@@ -76,4 +83,5 @@ const styles = StyleSheet.create({
   buttonDisabled: { backgroundColor: '#b9b1a7' },
   buttonText: { color: '#fffaf2', fontWeight: '800' },
   status: { color: '#443d34', fontWeight: '700' },
+  link: { color: '#4f7c59', fontWeight: '700', textDecorationLine: 'underline' },
 });
