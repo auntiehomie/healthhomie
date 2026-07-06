@@ -22,9 +22,9 @@ healthhomie is not a medical device and does not provide medical advice, diagnos
 
 Always consult a qualified physician or registered dietitian before making changes to your diet, exercise routine, or health regimen, particularly if you have a medical condition, are pregnant or nursing, or have a history of disordered eating. Do not use the App in a medical emergency; contact your local emergency number instead.
 
-## Your use of the app and connected services
+## Your account and connected services
 
-The App does not require you to create a healthhomie account. Certain features (Apple Health, Oura) require you to authenticate directly with that third party, and your use of those integrations is also governed by that third party's own terms of service. You are responsible for keeping your device, passcode, and any third-party credentials used to access the App confidential.
+Using the App requires creating an account with an email address and password, gated by an invite-style signup code rather than open public registration. You are responsible for keeping your account credentials, device, passcode, and any third-party credentials used to access the App confidential, and for all activity under your account. Certain features (Apple Health, Oura) additionally require you to authenticate directly with that third party, and your use of those integrations is also governed by that third party's own terms of service.
 
 ## Acceptable use
 
@@ -50,7 +50,7 @@ The App's code, design, and branding belong to the developer of healthhomie or i
 
 ## Your content
 
-You retain ownership of the food journal entries, custom foods, and profile information you create. Because most of this data is stored locally on your device, you are responsible for backing it up. We are not responsible for data loss due to device loss, damage, or app uninstallation.
+You retain ownership of the food journal entries, custom foods, and profile information you create. This data is stored in our database associated with your account so it stays available across your devices, but we do not warrant against data loss, and you are responsible for maintaining any backup you consider necessary.
 
 ## Disclaimer of warranties
 
@@ -66,7 +66,7 @@ You agree to indemnify and hold harmless healthhomie and its developer from any 
 
 ## Termination
 
-You may stop using the App at any time by deleting it from your device and disconnecting any linked third-party services. We may suspend or terminate your access to any server-side functionality at any time, for any reason, including a violation of these Terms.
+You may stop using the App at any time by logging out, disconnecting any linked third-party services, and contacting us to delete your account and its data. We may suspend or terminate your account or access to any server-side functionality at any time, for any reason, including a violation of these Terms.
 
 ## Governing law and disputes
 

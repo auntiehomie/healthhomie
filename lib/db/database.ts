@@ -1,147 +1,48 @@
-import * as SQLite from 'expo-sqlite';
-import { schemaStatements } from './schema';
-import type { FoodItem, HealthConnection, HealthMetricsDaily, MealEntry, UserProfile } from '@/types/healthhomie';
+import { apiUrl, getToken } from '@/lib/services/authClient';
+import type { FoodItem, MealEntry, UserProfile } from '@/types/healthhomie';
 
-let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
-
-/**
- * openDatabaseAsync, not openDatabaseSync: the sync API needs SharedArrayBuffer for its
- * cross-thread bridge to the web worker, which requires COOP/COEP headers we don't control
- * on Vercel's static hosting. Without it, SharedArrayBuffer is undefined and the app crashes
- * on load. The async API doesn't need it and works the same on native.
- *
- * Schema creation lives here rather than in a separate initializeDatabase() call: screens
- * query the database as soon as they mount, independent of the root layout's effect order,
- * so any caller reaching the db must be guaranteed the schema already exists.
- */
-function getDb(): Promise<SQLite.SQLiteDatabase> {
-  if (!dbPromise) dbPromise = openAndInitialize();
-  return dbPromise;
-}
-
-async function openAndInitialize(): Promise<SQLite.SQLiteDatabase> {
-  const db = await SQLite.openDatabaseAsync('healthhomie.db');
-  await db.withTransactionAsync(async () => {
-    for (const statement of schemaStatements) {
-      await db.execAsync(statement);
-    }
+async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
+  const token = await getToken();
+  if (!token) throw new Error('Not logged in.');
+  const response = await fetch(apiUrl(path), {
+    ...options,
+    headers: { ...(options.headers ?? {}), authorization: `Bearer ${token}`, 'content-type': 'application/json' },
   });
-  return db;
-}
-
-export async function initializeDatabase(): Promise<void> {
-  await getDb();
-}
-
-export async function seedDemoData(): Promise<void> {
-  const db = await getDb();
-  const existing = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM food_items');
-  if ((existing?.count ?? 0) > 0) return;
-  const now = new Date().toISOString();
-  const foods: FoodItem[] = [
-    { id: 'demo-greek-yogurt', name: 'Greek yogurt', brand: 'Demo', servingSize: 170, servingUnit: 'g', source: 'manual', calories: 100, proteinG: 17, carbsG: 6, fatG: 0, createdAt: now, updatedAt: now },
-    { id: 'demo-oats', name: 'Rolled oats', brand: 'Demo', servingSize: 40, servingUnit: 'g', source: 'manual', calories: 150, proteinG: 5, carbsG: 27, fatG: 3, fiberG: 4, createdAt: now, updatedAt: now },
-    { id: 'demo-chicken-rice', name: 'Chicken + rice bowl', brand: 'Homie meal', servingSize: 1, servingUnit: 'bowl', source: 'custom', calories: 520, proteinG: 42, carbsG: 58, fatG: 12, createdAt: now, updatedAt: now },
-  ];
-  for (const food of foods) await upsertFoodItem(food);
-}
-
-export async function upsertFoodItem(food: FoodItem): Promise<void> {
-  const db = await getDb();
-  await db.runAsync(
-    `INSERT OR REPLACE INTO food_items
-      (id, name, brand, barcode, servingSize, servingUnit, source, sourceId, calories, proteinG, carbsG, fatG, fiberG, sugarG, sodiumMg, createdAt, updatedAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    food.id, food.name, food.brand ?? null, food.barcode ?? null, food.servingSize, food.servingUnit, food.source, food.sourceId ?? null,
-    food.calories, food.proteinG, food.carbsG, food.fatG, food.fiberG ?? null, food.sugarG ?? null, food.sodiumMg ?? null, food.createdAt, food.updatedAt,
-  );
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error ?? `Request failed (${response.status}).`);
+  }
+  return response;
 }
 
 export async function listFoodItems(): Promise<FoodItem[]> {
-  const db = await getDb();
-  return db.getAllAsync<FoodItem>('SELECT * FROM food_items ORDER BY updatedAt DESC, name ASC');
+  const response = await apiFetch('/api/data/foods');
+  const payload = await response.json();
+  return payload.foods;
 }
 
-export async function addMealEntry(entry: MealEntry): Promise<void> {
-  const db = await getDb();
-  await db.runAsync(
-    `INSERT INTO meal_entries (id, foodItemId, mealType, date, servings, notes, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    entry.id, entry.foodItemId, entry.mealType, entry.date, entry.servings, entry.notes ?? null, entry.createdAt,
-  );
+export async function upsertFoodItem(food: FoodItem): Promise<void> {
+  await apiFetch('/api/data/foods', { method: 'POST', body: JSON.stringify(food) });
 }
 
 export async function listMealEntries(date?: string): Promise<MealEntry[]> {
-  const db = await getDb();
-  if (date) return db.getAllAsync<MealEntry>('SELECT * FROM meal_entries WHERE date = ? ORDER BY createdAt DESC', date);
-  return db.getAllAsync<MealEntry>('SELECT * FROM meal_entries ORDER BY date DESC, createdAt DESC LIMIT 200');
+  const query = date ? `?date=${encodeURIComponent(date)}` : '';
+  const response = await apiFetch(`/api/data/meal-entries${query}`);
+  const payload = await response.json();
+  return payload.entries;
 }
 
-export async function saveUserProfile(profile: UserProfile): Promise<void> {
-  const db = await getDb();
-  await db.runAsync(
-    `INSERT OR REPLACE INTO user_profile
-      (id, age, sex, heightCm, currentWeightKg, targetWeightKg, goalType, activityMultiplier, createdAt, updatedAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    profile.id, profile.age ?? null, profile.sex ?? null, profile.heightCm ?? null, profile.currentWeightKg ?? null, profile.targetWeightKg ?? null,
-    profile.goalType, profile.activityMultiplier, profile.createdAt, profile.updatedAt,
-  );
+export async function addMealEntry(entry: MealEntry): Promise<void> {
+  await apiFetch('/api/data/meal-entries', { method: 'POST', body: JSON.stringify(entry) });
 }
 
 export async function getUserProfile(): Promise<UserProfile> {
-  const db = await getDb();
-  const profile = await db.getFirstAsync<UserProfile>('SELECT * FROM user_profile LIMIT 1');
-  if (profile) return profile;
-  const now = new Date().toISOString();
-  const starter: UserProfile = {
-    id: 'local-user',
-    goalType: 'improve-consistency',
-    activityMultiplier: 1.2,
-    createdAt: now,
-    updatedAt: now,
-  };
-  await saveUserProfile(starter);
-  return starter;
+  const response = await apiFetch('/api/data/profile');
+  return response.json();
 }
 
-export async function upsertHealthConnection(connection: HealthConnection): Promise<void> {
-  const db = await getDb();
-  await db.runAsync(
-    `INSERT OR REPLACE INTO health_connections
-      (id, provider, providerUserId, status, scopes, accessToken, refreshToken, expiresAt, lastSyncedAt, createdAt, updatedAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    connection.id, connection.provider, connection.providerUserId ?? null, connection.status, connection.scopes ?? null,
-    connection.accessToken ?? null, connection.refreshToken ?? null, connection.expiresAt ?? null, connection.lastSyncedAt ?? null,
-    connection.createdAt, connection.updatedAt,
-  );
-}
-
-export async function getHealthConnection(provider: HealthConnection['provider']): Promise<HealthConnection | null> {
-  const db = await getDb();
-  return db.getFirstAsync<HealthConnection>('SELECT * FROM health_connections WHERE provider = ?', provider);
-}
-
-export async function upsertHealthMetricsDaily(metrics: HealthMetricsDaily[]): Promise<void> {
-  const db = await getDb();
-  await db.withTransactionAsync(async () => {
-    for (const metric of metrics) {
-      await db.runAsync(
-        `INSERT OR REPLACE INTO health_metrics_daily
-          (date, provider, steps, activeEnergyKcal, totalEnergyKcal, weightKg, sleepMinutes, sleepScore, readinessScore, restingHeartRate, hrvMs, spo2Pct, workouts)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        metric.date, metric.provider, metric.steps ?? null, metric.activeEnergyKcal ?? null, metric.totalEnergyKcal ?? null,
-        metric.weightKg ?? null, metric.sleepMinutes ?? null, metric.sleepScore ?? null, metric.readinessScore ?? null,
-        metric.restingHeartRate ?? null, metric.hrvMs ?? null, metric.spo2Pct ?? null, metric.workouts ?? null,
-      );
-    }
-  });
-}
-
-export async function listHealthMetricsDaily(start: string, end: string): Promise<HealthMetricsDaily[]> {
-  const db = await getDb();
-  return db.getAllAsync<HealthMetricsDaily>(
-    'SELECT * FROM health_metrics_daily WHERE date BETWEEN ? AND ? ORDER BY date DESC',
-    start, end,
-  );
+export async function saveUserProfile(profile: UserProfile): Promise<void> {
+  await apiFetch('/api/data/profile', { method: 'PUT', body: JSON.stringify(profile) });
 }
 
 export function createId(prefix: string): string {

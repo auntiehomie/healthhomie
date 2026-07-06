@@ -177,20 +177,16 @@ The app should show source-aware UI:
 
 ## Immediate engineering next steps
 
-1. Add `build:web` script and Vercel config.
-2. Fix/verify Expo web export in CI/local.
-3. Add normalized health connection/metric types and SQLite schema.
-4. Add Oura provider service with OAuth route scaffolds.
-5. Add Settings UI card for Oura connection.
-6. Add web-safe fallback dashboard that shows Oura/manual metrics when HealthKit is unavailable.
-7. Add cloud persistence decision before real OAuth token storage:
-   - cheapest dev option: Vercel KV/Postgres free tier if available;
-   - alternative: Supabase free tier;
-   - avoid storing tokens in local app storage for web OAuth.
+1. ~~Add `build:web` script and Vercel config.~~ Done.
+2. ~~Fix/verify Expo web export in CI/local.~~ Done.
+3. ~~Add normalized health connection/metric types and cloud schema.~~ Done — `health_connections` / `health_metrics_daily` now live in Postgres, not local SQLite (see `docs/ARCHITECTURE.md`).
+4. ~~Add Oura provider service with OAuth route scaffolds.~~ Done, and tokens are stored server-side per account rather than handed to the client.
+5. ~~Add Settings UI card for Oura connection.~~ Done.
+6. Add web-safe fallback dashboard that shows Oura/manual metrics when HealthKit is unavailable — still open; `health_metrics_daily` is populated by sync but nothing in the UI reads it back yet.
+7. ~~Add cloud persistence decision before real OAuth token storage.~~ Resolved: Vercel Postgres (Neon), gated behind a lightweight email/password + JWT account system. See `docs/ARCHITECTURE.md`.
 
 ## Open questions
 
 - Does Amanda personally have/want an Oura Ring for first-party testing?
-- Should web login be required now, or can web remain local-only until Oura OAuth is implemented?
-- Which cloud datastore should hold OAuth tokens and synced daily metrics?
-- Do we want to support manual weight/sleep/activity entry before Oura?
+- Do we want to support manual weight/sleep/activity entry before building the dashboard that reads `health_metrics_daily`?
+- Should Apple HealthKit reads join the synced account data, or stay a native-only, on-device-only source?
