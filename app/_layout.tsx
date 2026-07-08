@@ -9,12 +9,19 @@ export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
 
+  // Re-checks on every navigation, not just app boot: login.tsx writes the token to storage
+  // then navigates directly, and this is the only way this layout learns the token now
+  // exists instead of fighting that navigation with a stale "not authed" redirect below.
   useEffect(() => {
+    let active = true;
     getToken()
-      .then((token) => setAuthed(!!token))
-      .catch(() => setAuthed(false))
-      .finally(() => setAuthChecked(true));
-  }, []);
+      .then((token) => { if (active) setAuthed(!!token); })
+      .catch(() => { if (active) setAuthed(false); })
+      .finally(() => { if (active) setAuthChecked(true); });
+    return () => {
+      active = false;
+    };
+  }, [segments]);
 
   useEffect(() => {
     if (!authChecked) return;
