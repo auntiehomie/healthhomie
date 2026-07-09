@@ -52,11 +52,6 @@ export default function TodayScreen() {
           <MacroRing label="Fat" actual={summary.fatG} target={goal.fatG} color="#7a6ee6" />
         </View>
       </View>
-
-      <View style={styles.note}>
-        <Text style={styles.noteTitle}>Next smart build</Text>
-        <Text style={styles.noteText}>Manual logging is local-first. USDA search, barcode lookup, HealthKit reads, and weekly goal adjustments are isolated behind service boundaries so we can add them without rewriting screens.</Text>
-      </View>
     </ScrollView>
   );
 }
@@ -71,7 +66,4 @@ const styles = StyleSheet.create({
   section: { backgroundColor: '#ffffff', borderRadius: 24, padding: 18, gap: 16 },
   sectionTitle: { fontSize: 20, fontWeight: '800', color: '#211d18' },
   macroRow: { flexDirection: 'row', gap: 12 },
-  note: { padding: 18, backgroundColor: '#edf5ee', borderRadius: 24, gap: 8 },
-  noteTitle: { fontSize: 18, fontWeight: '800', color: '#234229' },
-  noteText: { color: '#38513d', lineHeight: 20 },
 });
