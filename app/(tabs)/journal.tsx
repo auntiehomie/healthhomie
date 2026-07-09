@@ -92,17 +92,6 @@ export default function JournalScreen() {
         </Pressable>
       ))}
 
-      <Text style={styles.label}>Your foods</Text>
-      {foods.map((food) => (
-        <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
-          <View>
-            <Text style={styles.foodName}>{food.name}</Text>
-            <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.source}</Text>
-          </View>
-          <Text style={styles.foodMacros}>{Math.round(food.calories)} kcal</Text>
-        </Pressable>
-      ))}
-
       <Text style={styles.label}>Today’s entries</Text>
       {entries.length === 0 ? <Text style={styles.empty}>Nothing logged yet. Tap a food above to start.</Text> : entries.map((entry) => {
         const food = foods.find((item) => item.id === entry.foodItemId);

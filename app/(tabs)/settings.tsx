@@ -71,11 +71,6 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>API keys</Text>
-        <Text style={styles.cardText}>USDA FoodData Central key belongs in Vercel env vars as USDA_FDC_API_KEY. Do not commit .env files.</Text>
-      </View>
-
-      <View style={styles.card}>
         <Text style={styles.cardTitle}>Legal</Text>
         <Link href="/legal/privacy" style={styles.link}>Privacy Policy</Link>
         <Link href="/legal/terms" style={styles.link}>Terms of Service</Link>
