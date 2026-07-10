@@ -36,6 +36,10 @@ export async function addMealEntry(entry: MealEntry): Promise<void> {
   await apiFetch('/api/data/meal-entries', { method: 'POST', body: JSON.stringify(entry) });
 }
 
+export async function deleteMealEntry(entryId: string): Promise<void> {
+  await apiFetch(`/api/data/meal-entries?id=${encodeURIComponent(entryId)}`, { method: 'DELETE' });
+}
+
 export async function getUserProfile(): Promise<UserProfile> {
   const response = await apiFetch('/api/data/profile');
   return response.json();

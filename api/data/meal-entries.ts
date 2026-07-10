@@ -27,7 +27,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(204).end();
     }
 
-    res.status(405).json({ error: 'GET or POST only.' });
+    if (req.method === 'DELETE') {
+      const entryId = String(req.query.id ?? '').trim();
+      if (!entryId) return res.status(400).json({ error: 'id is required.' });
+      const deleted = await sql`
+        DELETE FROM meal_entries
+        WHERE id = ${entryId} AND "userId" = ${userId}
+        RETURNING id
+      `;
+      if (deleted.length === 0) return res.status(404).json({ error: 'Meal entry not found.' });
+      return res.status(204).end();
+    }
+
+    res.setHeader('Allow', 'GET, POST, DELETE');
+    res.status(405).json({ error: 'GET, POST, or DELETE only.' });
   } catch (error) {
     if (error instanceof AuthError) return res.status(401).json({ error: error.message });
     if (error instanceof DatabaseNotConfiguredError) return res.status(503).json({ error: error.message });
