@@ -1,10 +1,11 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
-import { addMealEntry, createId, listFoodItems, listMealEntries, upsertFoodItem } from '@/lib/db/database';
+import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries, upsertFoodItem } from '@/lib/db/database';
 import { summarizeDay, todayKey } from '@/lib/domain/nutrition';
 import { searchUsdaFoods } from '@/lib/services/nutritionApi';
+import { Trash2 } from 'lucide-react-native';
 import type { FoodItem, MealEntry, MealType } from '@/types/healthhomie';
 
 const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -50,6 +51,32 @@ export default function JournalScreen() {
     }
   }
 
+  async function removeEntry(entry: MealEntry) {
+    try {
+      await deleteMealEntry(entry.id);
+      await load();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Please try again.';
+      if (Platform.OS === 'web') window.alert(`Couldn’t delete entry: ${message}`);
+      else Alert.alert('Couldn’t delete entry', message);
+    }
+  }
+
+  function confirmDelete(entry: MealEntry, foodName: string) {
+    const message = `${foodName} will be removed from today’s journal and totals.`;
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Delete food entry?
+
+${message}`)) void removeEntry(entry);
+      return;
+    }
+
+    Alert.alert('Delete food entry?', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => void removeEntry(entry) },
+    ]);
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Food journal</Text>
@@ -93,9 +120,25 @@ export default function JournalScreen() {
       ))}
 
       <Text style={styles.label}>Today’s entries</Text>
-      {entries.length === 0 ? <Text style={styles.empty}>Nothing logged yet. Tap a food above to start.</Text> : entries.map((entry) => {
+      {entries.length === 0 ? <Text style={styles.empty}>Nothing logged yet. Search for a food above to start.</Text> : entries.map((entry) => {
         const food = foods.find((item) => item.id === entry.foodItemId);
-        return <Text key={entry.id} style={styles.entry}>• {entry.mealType}: {food?.name ?? 'Food'} × {entry.servings}</Text>;
+        const foodName = food?.name ?? 'Food';
+        return (
+          <View key={entry.id} style={styles.entryRow}>
+            <View style={styles.entryDetails}>
+              <Text style={styles.entryName}>{foodName}</Text>
+              <Text style={styles.entryMeta}>{entry.mealType} · {entry.servings} serving{entry.servings === 1 ? '' : 's'}</Text>
+            </View>
+            <Pressable
+              accessibilityLabel={`Delete ${foodName} from today’s journal`}
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={() => confirmDelete(entry, foodName)}
+              style={({ pressed }) => [styles.deleteButton, pressed && styles.deleteButtonPressed]}>
+              <Trash2 color="#b3423b" size={20} />
+            </Pressable>
+          </View>
+        );
       })}
 
       <LogFoodModal key={activeFood?.id} food={activeFood} onClose={() => setActiveFood(null)} onConfirm={logFood} />
@@ -126,6 +169,11 @@ const styles = StyleSheet.create({
   foodName: { fontWeight: '800', color: '#211d18', fontSize: 16 },
   foodMeta: { color: '#7a7165', marginTop: 4 },
   foodMacros: { fontWeight: '800', color: '#4f7c59' },
-  entry: { color: '#443d34', lineHeight: 22 },
+  entryRow: { backgroundColor: '#ffffff', borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  entryDetails: { flex: 1, gap: 4 },
+  entryName: { color: '#211d18', fontSize: 16, fontWeight: '800' },
+  entryMeta: { color: '#7a7165', textTransform: 'capitalize' },
+  deleteButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fae9e7', alignItems: 'center', justifyContent: 'center' },
+  deleteButtonPressed: { opacity: 0.65 },
   empty: { color: '#7a7165', fontStyle: 'italic' },
 });
