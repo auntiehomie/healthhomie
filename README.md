@@ -1,52 +1,95 @@
-# healthhomie
+# homie — your daily health + energy + notes companion
 
-Health tracking at a multi-dimensional level: daily food journal, calorie/macro tracking, Apple Health context, and adaptive goals.
+**homie** is an Expo (React Native) mobile-first app merging two ideas into one:
+- 🥗 **healthhomie** — food journal, macro tracking, goal engine, barcode scanner
+- 🌅 **howdy-morning** — morning check-ins, energy-aware scheduling, Zettelkasten notes
 
-## MVP
+Built for iOS (and web). Runs on Expo SDK 57.
 
-- Expo React Native app with TypeScript
-- Account-based food journal backed by Postgres — the same data syncs across web, iOS, and Android
-- Today dashboard for calories/macros
-- Goal engine for calories/protein/carbs/fat
-- Apple HealthKit permission boundary (native iOS only, not synced to the account yet)
-- USDA FoodData Central + Open Food Facts search, Oura wearables integration
+---
 
-## Development
+## Tabs
+
+| Tab | What it does |
+|---|---|
+| 🌅 Morning | Mood check-in, top 3 priorities, hydration tracker, morning routine, daily affirmation |
+| 🏠 Today | Calories left, macro rings (protein/carbs/fat), Apple Health steps + active kcal |
+| ⚡ Energy | Oura readiness/sleep/activity scores, energy curve by time block, smart schedule, hobby suggestions, cycle phase overlay |
+| 📓 Journal | Food search (USDA), log meals by type, daily totals, delete entries |
+| 📝 Notes | Zettelkasten-style notes with IDs, tags, [[wiki links]], backlinks, search |
+| 🎯 Goals | Goal type (lose/maintain/gain/consistency), calorie + macro targets, weekly adjustment insight |
+| 📷 Scan | Barcode scanner → Open Food Facts lookup |
+| ⚙️ Settings | Oura connection, profile, app info |
+
+---
+
+## Stack
+
+- **Expo SDK 57** + React Native + TypeScript
+- **Expo Router** (file-based tabs)
+- **SQLite** (local food journal + meal entries via `lib/db/database.ts`)
+- **AsyncStorage** (morning check-in, notes persistence)
+- **Neon DB** (server-side auth + Oura token store via Vercel API routes)
+- **Oura API V2** (readiness, sleep, activity, cycle data)
+- **USDA FDC API** + **Open Food Facts** (nutrition search + barcode lookup)
+- **HealthKit** adapter (iOS only, graceful fallback on web/Android)
+- **lucide-react-native** icons
+
+---
+
+## Getting started
 
 ```bash
 npm install
-npm run start
-npm run web
-npm run typecheck
+npm start          # Expo dev server
+npm run ios        # iOS simulator
+npm run web        # Web browser
+npm run typecheck  # TypeScript check
 ```
 
-HealthKit requires an iOS custom dev build on a real iPhone; Expo Go is not enough for full HealthKit testing.
+### Environment variables (Vercel)
 
-## Environment
+| Var | Purpose |
+|---|---|
+| `DATABASE_URL` | Neon PostgreSQL connection string |
+| `JWT_SECRET` | Auth token signing |
+| `OURA_CLIENT_ID` | Oura OAuth app ID |
+| `OURA_CLIENT_SECRET` | Oura OAuth secret |
+| `USDA_FDC_API_KEY` | USDA FoodData Central key (free at fdc.nal.usda.gov) |
 
-Do not commit `.env` files. Add secrets in Vercel:
+---
 
-- `DATABASE_URL` (or `POSTGRES_URL`) — set automatically when you add a Postgres store in the Vercel dashboard (Storage tab → Create Database → Postgres, Neon-backed)
-- `AUTH_JWT_SECRET` — any long random string; signs login sessions and the short-lived Oura OAuth state
-- `SIGNUP_SECRET` — a code you pick; required to register an account (and to call the migration endpoint), so randoms can't self-register
-- `USDA_FDC_API_KEY`
-- `OURA_CLIENT_ID`
-- `OURA_CLIENT_SECRET`
-- `OURA_REDIRECT_URI` — `https://<your-vercel-domain>/api/oura/callback`, must match the redirect URI registered on the Oura OAuth app exactly
+## Architecture
 
-For native (iOS/Android) builds only, also set `EXPO_PUBLIC_API_BASE_URL` (e.g. `https://healthhomie.vercel.app`) so the app knows where to reach the API — web builds infer this from `window.location.origin`.
+```
+app/
+  (tabs)/
+    morning.tsx    ← mood, priorities, hydration, routine, affirmations
+    index.tsx      ← today's macro ring + metric cards
+    energy.tsx     ← Oura energy map, smart schedule, hobby suggestions
+    journal.tsx    ← food logging, USDA search
+    notes.tsx      ← Zettelkasten notes with backlinks
+    goals.tsx      ← goal type + calorie/macro targets
+    scan.tsx       ← barcode → Open Food Facts
+    settings.tsx   ← Oura connection, profile
+api/
+  oura/            ← OAuth + sync Vercel endpoints
+  nutrition/       ← USDA search
+  data/            ← meal entries, foods, profile
+lib/
+  db/database.ts   ← SQLite local data layer
+  services/        ← ouraClient, nutritionApi, healthkit
+  domain/          ← goals, nutrition calculation logic
+```
 
-### First-time database setup
+---
 
-1. Add a Postgres store to the Vercel project (Storage tab → Create Database → Postgres).
-2. Set `AUTH_JWT_SECRET` and `SIGNUP_SECRET` env vars, redeploy.
-3. Run the schema migration once: `POST /api/admin/migrate` with header `x-migrate-secret: <SIGNUP_SECRET>`.
-4. Register your account from the app's login screen using the `SIGNUP_SECRET` as the signup code.
+## Roadmap
 
-## Legal
-
-Privacy Policy and Terms of Service are live in the app at `/legal/privacy` and `/legal/terms` (e.g. `https://healthhomie.vercel.app/legal/privacy`), with the same text mirrored in [`docs/legal/`](docs/legal/) for offline review. These were drafted as a comprehensive starting point (GDPR, CCPA/CPRA, general health-app liability) and are not a substitute for a lawyer's review — get that review before treating them as final, especially before submitting the privacy policy URL to Oura's developer application.
-
-## Notes
-
-Architecture and next steps live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+- [ ] USDA FDC API key connected (currently stubbed)
+- [ ] iOS TestFlight build via Expo EAS
+- [ ] Apple Watch complications (energy + water tracker)
+- [ ] Howdy-style web companion PWA
+- [ ] Google/Apple social login
+- [ ] Calendar sync (Google Cal, Apple Cal)
+- [ ] Plan-to-earn: reward schedule-following behavior

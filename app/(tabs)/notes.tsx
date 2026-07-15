@@ -1,0 +1,289 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function genId(): string {
+  const d = new Date();
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, '0'),
+    String(d.getDate()).padStart(2, '0'),
+    String(d.getHours()).padStart(2, '0'),
+    String(d.getMinutes()).padStart(2, '0'),
+    String(d.getSeconds()).padStart(2, '0'),
+  ].join('') + String(Math.floor(Math.random() * 100)).padStart(2, '0');
+}
+
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+const STORAGE_KEY = 'homie_notes_v1';
+
+async function loadNotes(): Promise<Note[]> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Note[]) : [];
+  } catch { return []; }
+}
+async function saveNotes(notes: Note[]) {
+  try { await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(notes)); } catch {}
+}
+
+function getBacklinks(notes: Note[], target: Note): Note[] {
+  return notes.filter(n => n.id !== target.id && n.content.includes(`[[${target.title}]]`));
+}
+
+// ── Component ──────────────────────────────────────────────────────────────────
+type Screen = 'list' | 'edit';
+
+export default function NotesScreen() {
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [screen, setScreen] = useState<Screen>('list');
+  const [activeNote, setActiveNote] = useState<Note | null>(null);
+  const [search, setSearch] = useState('');
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editTags, setEditTags] = useState('');
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    loadNotes().then(n => { setNotes(n); setLoaded(true); });
+  }, []);
+
+  const updateNotes = useCallback((next: Note[]) => {
+    setNotes(next); void saveNotes(next);
+  }, []);
+
+  function openNote(note: Note) {
+    setActiveNote(note);
+    setEditTitle(note.title);
+    setEditContent(note.content);
+    setEditTags(note.tags.join(', '));
+    setScreen('edit');
+  }
+
+  function newNote() {
+    const note: Note = {
+      id: genId(),
+      title: 'Untitled',
+      content: '',
+      tags: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const next = [note, ...notes];
+    updateNotes(next);
+    openNote(note);
+  }
+
+  function saveEdit() {
+    if (!activeNote) return;
+    const tags = editTags.split(',').map(t => t.trim()).filter(Boolean);
+    const updated: Note = { ...activeNote, title: editTitle || 'Untitled', content: editContent, tags, updatedAt: new Date().toISOString() };
+    const next = notes.map(n => n.id === updated.id ? updated : n);
+    updateNotes(next);
+    setActiveNote(updated);
+  }
+
+  function deleteNote() {
+    if (!activeNote) return;
+    Alert.alert('Delete note', `"${activeNote.title}" will be permanently deleted.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive', onPress: () => {
+          updateNotes(notes.filter(n => n.id !== activeNote.id));
+          setScreen('list'); setActiveNote(null);
+        },
+      },
+    ]);
+  }
+
+  function back() {
+    saveEdit();
+    setScreen('list'); setActiveNote(null);
+  }
+
+  const filtered = notes.filter(n =>
+    !search ||
+    n.title.toLowerCase().includes(search.toLowerCase()) ||
+    n.content.toLowerCase().includes(search.toLowerCase()) ||
+    n.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  if (!loaded) return (
+    <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <Text style={styles.muted}>Loading…</Text>
+    </View>
+  );
+
+  // ── Edit screen ──
+  if (screen === 'edit' && activeNote) {
+    const backlinks = getBacklinks(notes, activeNote);
+    return (
+      <View style={styles.editContainer}>
+        {/* Toolbar */}
+        <View style={styles.toolbar}>
+          <Pressable onPress={back} style={styles.backBtn}>
+            <Text style={styles.backBtnText}>← Notes</Text>
+          </Pressable>
+          <Text style={styles.noteId} numberOfLines={1}>{activeNote.id}</Text>
+          <Pressable onPress={deleteNote} style={styles.deleteButton}>
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </Pressable>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.editScroll} keyboardShouldPersistTaps="handled">
+          <TextInput
+            style={styles.titleInput}
+            value={editTitle}
+            onChangeText={setEditTitle}
+            onBlur={saveEdit}
+            placeholder="Note title…"
+            placeholderTextColor="#9e9891"
+          />
+          <TextInput
+            style={styles.tagsInput}
+            value={editTags}
+            onChangeText={setEditTags}
+            onBlur={saveEdit}
+            placeholder="Tags (comma separated)…"
+            placeholderTextColor="#9e9891"
+          />
+          <TextInput
+            style={styles.contentInput}
+            value={editContent}
+            onChangeText={setEditContent}
+            onBlur={saveEdit}
+            multiline
+            textAlignVertical="top"
+            placeholder={'Write in plain text or markdown…\n\nLink to other notes with [[Note Title]]'}
+            placeholderTextColor="#9e9891"
+          />
+
+          {/* Backlinks */}
+          {backlinks.length > 0 && (
+            <View style={styles.backlinkPanel}>
+              <Text style={styles.backlinkTitle}>🔗 Linked from</Text>
+              {backlinks.map(n => (
+                <Pressable key={n.id} onPress={() => openNote(n)}>
+                  <Text style={styles.backlinkItem}>← {n.title}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // ── List screen ──
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.listHeader}>
+        <View style={styles.hero}>
+          <Text style={styles.eyebrow}>zettelkasten</Text>
+          <Text style={styles.title}>Your notes</Text>
+        </View>
+        <Pressable style={styles.newBtn} onPress={newNote}>
+          <Text style={styles.newBtnText}>+ New</Text>
+        </Pressable>
+      </View>
+
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Search notes, tags…"
+        placeholderTextColor="#9e9891"
+        value={search}
+        onChangeText={setSearch}
+      />
+
+      <ScrollView contentContainerStyle={styles.listScroll}>
+        {filtered.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>📝</Text>
+            <Text style={styles.emptyTitle}>{search ? 'No notes match your search' : 'No notes yet'}</Text>
+            <Text style={styles.muted}>Tap + New to create your first note. Link notes with {'[[Title]]'}</Text>
+          </View>
+        )}
+        {filtered.map(note => (
+          <Pressable key={note.id} style={styles.noteCard} onPress={() => openNote(note)}>
+            <Text style={styles.noteTitle} numberOfLines={1}>{note.title}</Text>
+            <Text style={styles.notePreview} numberOfLines={2}>{note.content || '(empty)'}</Text>
+            <View style={styles.noteMeta}>
+              <Text style={styles.noteDate}>{fmtDate(note.updatedAt)}</Text>
+              {note.tags.length > 0 && (
+                <View style={styles.tagRow}>
+                  {note.tags.slice(0, 3).map(t => (
+                    <View key={t} style={styles.tag}><Text style={styles.tagText}>{t}</Text></View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+const C = { bg: '#fffaf2', card: '#ffffff', accent: '#4f7c59', muted: '#9e9891', text: '#211d18', border: '#e8e1d8' };
+
+const styles = StyleSheet.create({
+  container:         { flex: 1, backgroundColor: C.bg },
+  listHeader:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', padding: 20, paddingBottom: 12 },
+  hero:              { gap: 2 },
+  eyebrow:           { color: C.accent, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, fontSize: 12 },
+  title:             { fontSize: 28, fontWeight: '900', color: C.text },
+  newBtn:            { backgroundColor: C.accent, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8 },
+  newBtnText:        { color: '#fff', fontWeight: '800', fontSize: 14 },
+  searchInput:       { marginHorizontal: 20, marginBottom: 8, backgroundColor: C.card, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, color: C.text, fontSize: 15, borderWidth: 1, borderColor: C.border },
+  listScroll:        { padding: 20, paddingTop: 4, gap: 10, paddingBottom: 40 },
+  noteCard:          { backgroundColor: C.card, borderRadius: 16, padding: 16, gap: 8 },
+  noteTitle:         { fontSize: 17, fontWeight: '800', color: C.text },
+  notePreview:       { fontSize: 14, color: C.muted, lineHeight: 20 },
+  noteMeta:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  noteDate:          { fontSize: 12, color: C.muted },
+  tagRow:            { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  tag:               { backgroundColor: '#e8f0ea', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
+  tagText:           { fontSize: 11, color: C.accent, fontWeight: '700' },
+  emptyState:        { alignItems: 'center', padding: 40, gap: 12 },
+  emptyEmoji:        { fontSize: 48 },
+  emptyTitle:        { fontSize: 18, fontWeight: '800', color: C.text },
+  muted:             { color: C.muted, fontSize: 13, textAlign: 'center' },
+  // Edit screen
+  editContainer:     { flex: 1, backgroundColor: C.bg },
+  toolbar:           { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.card, gap: 10 },
+  backBtn:           { paddingVertical: 4, paddingHorizontal: 2 },
+  backBtnText:       { color: C.accent, fontWeight: '700', fontSize: 15 },
+  noteId:            { flex: 1, fontSize: 11, color: C.muted, fontFamily: 'monospace', textAlign: 'center' },
+  deleteButton:      { paddingVertical: 4, paddingHorizontal: 2 },
+  deleteButtonText:  { color: '#c0392b', fontWeight: '700', fontSize: 14 },
+  editScroll:        { padding: 20, gap: 14, paddingBottom: 60 },
+  titleInput:        { fontSize: 24, fontWeight: '900', color: C.text, borderBottomWidth: 2, borderBottomColor: C.border, paddingVertical: 8 },
+  tagsInput:         { fontSize: 13, color: C.muted, backgroundColor: C.card, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: C.border },
+  contentInput:      { fontSize: 16, color: C.text, lineHeight: 26, minHeight: 320, backgroundColor: C.card, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: C.border },
+  backlinkPanel:     { backgroundColor: '#f5f0e8', borderRadius: 12, padding: 14, gap: 8 },
+  backlinkTitle:     { fontSize: 13, fontWeight: '700', color: C.muted },
+  backlinkItem:      { fontSize: 14, color: C.accent, paddingVertical: 2 },
+});
