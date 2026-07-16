@@ -27,7 +27,7 @@ export default function LoginScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>healthhomie</Text>
+      <Text style={styles.title}>Howdy Morning ☀️</Text>
       <Text style={styles.subtitle}>{mode === 'login' ? 'Log in to sync your data.' : 'Create your account.'}</Text>
 
       <TextInput
