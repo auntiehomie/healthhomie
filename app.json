@@ -1,16 +1,16 @@
 {
   "expo": {
     "name": "Howdy Morning",
-    "slug": "howdymorning",
+    "slug": "howdymornin",
     "version": "0.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "howdymorning",
+    "scheme": "howdymornin",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "io.howdymorning.app",
+      "bundleIdentifier": "io.howdymornin.app",
       "infoPlist": {
         "NSHealthShareUsageDescription": "Howdy Morning reads Apple Health activity, weight, and sleep data to personalize your energy schedule and calorie goals.",
         "NSHealthUpdateUsageDescription": "Howdy Morning can write nutrition totals to Apple Health when you choose to sync your food journal.",
@@ -24,7 +24,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "io.howdymorning.app",
+      "package": "io.howdymornin.app",
       "edgeToEdgeEnabled": true
     },
     "web": {
