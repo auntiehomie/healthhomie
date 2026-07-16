@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "healthhomie",
-    "slug": "healthhomie",
-    "version": "0.1.0",
+    "name": "Howdy Morning",
+    "slug": "howdymorning",
+    "version": "0.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "healthhomie",
+    "scheme": "howdymorning",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.auntiehomie.healthhomie",
+      "bundleIdentifier": "io.howdymorning.app",
       "infoPlist": {
-        "NSHealthShareUsageDescription": "Healthhomie reads Apple Health activity, weight, and sleep data to personalize calorie and macro goals.",
-        "NSHealthUpdateUsageDescription": "Healthhomie can write nutrition totals to Apple Health when you choose to sync your food journal.",
-        "NSCameraUsageDescription": "Healthhomie uses the camera to scan food barcodes."
+        "NSHealthShareUsageDescription": "Howdy Morning reads Apple Health activity, weight, and sleep data to personalize your energy schedule and calorie goals.",
+        "NSHealthUpdateUsageDescription": "Howdy Morning can write nutrition totals to Apple Health when you choose to sync your food journal.",
+        "NSCameraUsageDescription": "Howdy Morning uses the camera to scan food barcodes."
       }
     },
     "android": {
@@ -24,6 +24,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png",
         "backgroundColor": "#ffffff"
       },
+      "package": "io.howdymorning.app",
       "edgeToEdgeEnabled": true
     },
     "web": {
@@ -40,8 +41,8 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-          "NSHealthShareUsageDescription": "Healthhomie reads Apple Health activity, weight, and sleep data to personalize calorie and macro goals.",
-          "NSHealthUpdateUsageDescription": "Healthhomie can write nutrition totals to Apple Health when you choose to sync your food journal."
+          "NSHealthShareUsageDescription": "Howdy Morning reads Apple Health activity, weight, and sleep data to personalize your energy schedule and calorie goals.",
+          "NSHealthUpdateUsageDescription": "Howdy Morning can write nutrition totals to Apple Health when you choose to sync your food journal."
         }
       ]
     ],
