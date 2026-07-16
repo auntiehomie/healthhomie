@@ -102,6 +102,7 @@ export type HealthMetricsDaily = {
   sleepMinutes?: number;
   sleepScore?: number;
   readinessScore?: number;
+  activityScore?: number;
   restingHeartRate?: number;
   hrvMs?: number;
   spo2Pct?: number;

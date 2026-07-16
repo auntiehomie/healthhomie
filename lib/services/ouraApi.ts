@@ -61,14 +61,15 @@ async function requestOuraToken(body: Record<string, string>): Promise<OuraToken
   return response.json();
 }
 
-type OuraDailyActivity = { day: string; steps?: number; active_calories?: number; total_calories?: number };
+type OuraDailyActivity = { day: string; score?: number; steps?: number; active_calories?: number; total_calories?: number };
 type OuraDailySleep = { day: string; score?: number };
 type OuraDailyReadiness = { day: string; score?: number };
 
 /**
- * Pulls the three most stable Oura v2 daily endpoints. Resting heart rate / HRV / SpO2 live on
- * other endpoints with contributor sub-objects whose exact shape needs verifying against a real
- * token before wiring up — left out of normalization for now rather than guessing field names.
+ * Pulls the four most stable Oura v2 daily endpoints (activity/sleep/readiness scores, steps,
+ * calories). Resting heart rate / HRV / SpO2 live on other endpoints with contributor sub-objects
+ * whose exact shape needs verifying against a real token before wiring up — left out of
+ * normalization for now rather than guessing field names.
  */
 export async function fetchOuraDailyMetrics(params: {
   accessToken: string;
@@ -95,6 +96,7 @@ export async function fetchOuraDailyMetrics(params: {
     metric.steps = entry.steps;
     metric.activeEnergyKcal = entry.active_calories;
     metric.totalEnergyKcal = entry.total_calories;
+    metric.activityScore = entry.score;
   }
   for (const entry of sleep) get(entry.day).sleepScore = entry.score;
   for (const entry of readiness) get(entry.day).readinessScore = entry.score;

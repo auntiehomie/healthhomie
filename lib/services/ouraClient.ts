@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { apiUrl, getToken } from '@/lib/services/authClient';
+import type { HealthMetricsDaily } from '@/types/healthhomie';
 
 export async function connectOura(): Promise<{ connected: boolean; reason?: string }> {
   const token = await getToken();
@@ -29,14 +30,14 @@ export async function connectOura(): Promise<{ connected: boolean; reason?: stri
   return { connected: parsed.searchParams.get('connected') === 'true' };
 }
 
-export async function syncOura(): Promise<{ synced: number; reason?: string }> {
+export async function syncOura(): Promise<{ synced: number; reason?: string; metrics?: HealthMetricsDaily[] }> {
   const token = await getToken();
   if (!token) return { synced: 0, reason: 'Log in first.' };
 
   const response = await fetch(apiUrl('/api/oura/sync'), { method: 'POST', headers: { authorization: `Bearer ${token}` } });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) return { synced: 0, reason: payload.error ?? 'Oura sync failed.' };
-  return { synced: payload.metrics?.length ?? 0 };
+  return { synced: payload.metrics?.length ?? 0, metrics: payload.metrics };
 }
 
 export async function getOuraStatus(): Promise<{ connected: boolean; lastSyncedAt?: string }> {

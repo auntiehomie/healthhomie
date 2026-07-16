@@ -1,4 +1,4 @@
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { connectOura, getOuraStatus, syncOura } from '@/lib/services/ouraClient';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface OuraDaily {
@@ -61,41 +62,65 @@ function scoreColor(score: number) {
 
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function EnergyScreen() {
-  const router = useRouter();
   const [data, setData] = useState<OuraDaily | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [connecting, setConnecting] = useState(false);
 
   useFocusEffect(useCallback(() => {
     let active = true;
-    async function fetchOura() {
+    async function load() {
       setLoading(true); setError(null);
-      try {
-        const res = await fetch('/api/oura/sync', { method: 'POST' });
-        if (res.status === 401) { if (active) { setData(null); setLoading(false); } return; }
-        if (!res.ok) throw new Error('Oura sync failed');
-        const json = await res.json() as { readiness?: number; sleep?: number; activity?: number; cyclePhase?: string };
-        if (active) setData(json);
-      } catch (e) {
-        if (active) setError(e instanceof Error ? e.message : 'Could not load Oura data');
-      } finally {
-        if (active) setLoading(false);
+      const status = await getOuraStatus();
+      if (!active) return;
+      if (!status.connected) {
+        setConnected(false);
+        setData(null);
+        setLoading(false);
+        return;
       }
+      setConnected(true);
+      const result = await syncOura();
+      if (!active) return;
+      if (result.reason) {
+        setError(result.reason);
+        setLoading(false);
+        return;
+      }
+      const latest = result.metrics?.[0];
+      setData(latest ? {
+        readiness: latest.readinessScore != null ? Math.round(latest.readinessScore) : undefined,
+        sleep: latest.sleepScore != null ? Math.round(latest.sleepScore) : undefined,
+        activity: latest.activityScore != null ? Math.round(latest.activityScore) : undefined,
+      } : null);
+      setLoading(false);
     }
-    void fetchOura();
+    void load();
     return () => { active = false; };
   }, []));
 
+  async function handleConnect() {
+    setConnecting(true);
+    setError(null);
+    const result = await connectOura();
+    setConnecting(false);
+    if (result.reason) setError(result.reason);
+    // Web navigates away immediately on success. Native returns here once the in-app
+    // browser closes; useFocusEffect re-checks connection status when focus returns.
+  }
+
   // ── Not connected ──
-  if (!loading && !data && !error) {
+  if (!loading && !connected) {
     return (
       <View style={styles.center}>
         <Text style={styles.connectEmoji}>⚡</Text>
         <Text style={styles.connectTitle}>Connect your Oura Ring</Text>
         <Text style={styles.connectSub}>Link your Oura account to see your energy map, readiness score, and smart schedule suggestions.</Text>
-        <Pressable style={styles.connectBtn} onPress={() => router.push('/oura/connected')}>
-          <Text style={styles.connectBtnText}>Connect Oura →</Text>
+        <Pressable style={styles.connectBtn} onPress={handleConnect} disabled={connecting}>
+          <Text style={styles.connectBtnText}>{connecting ? 'Connecting…' : 'Connect Oura →'}</Text>
         </Pressable>
+        {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
       </View>
     );
   }
