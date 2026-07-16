@@ -75,10 +75,14 @@ export const schemaStatements = [
     "sleepMinutes" INTEGER,
     "sleepScore" DOUBLE PRECISION,
     "readinessScore" DOUBLE PRECISION,
+    "activityScore" DOUBLE PRECISION,
     "restingHeartRate" DOUBLE PRECISION,
     "hrvMs" DOUBLE PRECISION,
     "spo2Pct" DOUBLE PRECISION,
     workouts INTEGER,
     PRIMARY KEY ("userId", date, provider)
   );`,
+  // Added after health_metrics_daily already existed in production - CREATE TABLE above is a
+  // no-op there, so the column needs adding explicitly. Safe to run repeatedly.
+  `ALTER TABLE health_metrics_daily ADD COLUMN IF NOT EXISTS "activityScore" DOUBLE PRECISION;`,
 ] as const;

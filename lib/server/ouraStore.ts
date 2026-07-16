@@ -56,11 +56,11 @@ export async function upsertHealthMetrics(userId: string, metrics: HealthMetrics
   const sql = getSql();
   for (const metric of metrics) {
     await sql`
-      INSERT INTO health_metrics_daily ("userId", date, provider, steps, "activeEnergyKcal", "totalEnergyKcal", "sleepScore", "readinessScore")
-      VALUES (${userId}, ${metric.date}, ${metric.provider}, ${metric.steps ?? null}, ${metric.activeEnergyKcal ?? null}, ${metric.totalEnergyKcal ?? null}, ${metric.sleepScore ?? null}, ${metric.readinessScore ?? null})
+      INSERT INTO health_metrics_daily ("userId", date, provider, steps, "activeEnergyKcal", "totalEnergyKcal", "sleepScore", "readinessScore", "activityScore")
+      VALUES (${userId}, ${metric.date}, ${metric.provider}, ${metric.steps ?? null}, ${metric.activeEnergyKcal ?? null}, ${metric.totalEnergyKcal ?? null}, ${metric.sleepScore ?? null}, ${metric.readinessScore ?? null}, ${metric.activityScore ?? null})
       ON CONFLICT ("userId", date, provider) DO UPDATE SET
         steps = EXCLUDED.steps, "activeEnergyKcal" = EXCLUDED."activeEnergyKcal", "totalEnergyKcal" = EXCLUDED."totalEnergyKcal",
-        "sleepScore" = EXCLUDED."sleepScore", "readinessScore" = EXCLUDED."readinessScore"
+        "sleepScore" = EXCLUDED."sleepScore", "readinessScore" = EXCLUDED."readinessScore", "activityScore" = EXCLUDED."activityScore"
     `;
   }
 }
