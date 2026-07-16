@@ -25,9 +25,10 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!authChecked) return;
-    const inLogin = segments[0] === 'login';
-    if (!authed && !inLogin) router.replace('/login');
-    if (authed && inLogin) router.replace('/(tabs)');
+    const publicRoutes = ['login', 'forgot-password', 'reset-password'];
+    const inPublicRoute = publicRoutes.includes(segments[0] as string);
+    if (!authed && !inPublicRoute) router.replace('/login');
+    if (authed && segments[0] === 'login') router.replace('/(tabs)');
   }, [authChecked, authed, segments, router]);
 
   if (!authChecked) return null;
@@ -37,6 +38,8 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+        <Stack.Screen name="reset-password" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />

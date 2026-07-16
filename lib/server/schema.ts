@@ -85,4 +85,24 @@ export const schemaStatements = [
   // Added after health_metrics_daily already existed in production - CREATE TABLE above is a
   // no-op there, so the column needs adding explicitly. Safe to run repeatedly.
   `ALTER TABLE health_metrics_daily ADD COLUMN IF NOT EXISTS "activityScore" DOUBLE PRECISION;`,
+  `CREATE TABLE IF NOT EXISTS invite_codes (
+    id TEXT PRIMARY KEY,
+    code TEXT UNIQUE NOT NULL,
+    label TEXT,
+    "createdByUserId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    "usedByUserId" TEXT REFERENCES users(id) ON DELETE SET NULL,
+    "usedAt" TEXT,
+    "revokedAt" TEXT,
+    "createdAt" TEXT NOT NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS invite_codes_created_by_idx ON invite_codes("createdByUserId");`,
+  `CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id TEXT PRIMARY KEY,
+    "userId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    "tokenHash" TEXT NOT NULL,
+    "expiresAt" TEXT NOT NULL,
+    "usedAt" TEXT,
+    "createdAt" TEXT NOT NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS password_reset_tokens_user_idx ON password_reset_tokens("userId");`,
 ] as const;
