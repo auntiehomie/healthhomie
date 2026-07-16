@@ -1,6 +1,6 @@
 # Howdy Morning ☀️
 
-**howdymorning.io** — your daily health, energy & scheduling companion.
+**howdymornin.io** — your daily health, energy & scheduling companion.
 
 Howdy Morning is an Expo (React Native) mobile-first app that merges health tracking with energy-aware scheduling:
 
@@ -59,7 +59,7 @@ npx expo start
 
 ## Domain
 
-**howdymorning.io** — recommended registrar: Cloudflare Registrar or Namecheap
+**howdymornin.io** — recommended registrar: Cloudflare Registrar or Namecheap
 
 ---
 
