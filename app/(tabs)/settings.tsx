@@ -4,16 +4,56 @@ import { Link, router } from 'expo-router';
 import { requestHealthPermissions } from '@/lib/services/healthkit';
 import { connectOura, getOuraStatus, syncOura } from '@/lib/services/ouraClient';
 import { logout } from '@/lib/services/authClient';
+import { createInviteCode, listInviteCodes, revokeInviteCode, type InviteCode } from '@/lib/services/inviteClient';
+
+function inviteStatus(invite: InviteCode): string {
+  if (invite.revokedAt) return 'Revoked';
+  if (invite.usedAt) return `Used${invite.usedByEmail ? ` by ${invite.usedByEmail}` : ''}`;
+  return 'Available';
+}
 
 export default function SettingsScreen() {
   const [healthStatus, setHealthStatus] = useState('Not requested yet');
   const [ouraStatus, setOuraStatus] = useState('Not connected');
+  const [invites, setInvites] = useState<InviteCode[]>([]);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [generatingInvite, setGeneratingInvite] = useState(false);
 
   useEffect(() => {
     getOuraStatus().then((status) => {
       if (status.connected) setOuraStatus(status.lastSyncedAt ? `Connected, last synced ${status.lastSyncedAt}` : 'Connected, not synced yet');
     });
+    refreshInvites();
   }, []);
+
+  function refreshInvites() {
+    listInviteCodes()
+      .then(setInvites)
+      .catch((err) => setInviteError(err instanceof Error ? err.message : 'Failed to load invite codes.'));
+  }
+
+  async function handleGenerateInvite() {
+    setGeneratingInvite(true);
+    setInviteError(null);
+    try {
+      await createInviteCode();
+      refreshInvites();
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : 'Failed to create invite code.');
+    } finally {
+      setGeneratingInvite(false);
+    }
+  }
+
+  async function handleRevokeInvite(id: string) {
+    setInviteError(null);
+    try {
+      await revokeInviteCode(id);
+      refreshInvites();
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : 'Failed to revoke invite code.');
+    }
+  }
 
   async function handleLogout() {
     await logout();
@@ -71,6 +111,28 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.card}>
+        <Text style={styles.cardTitle}>Invite friends</Text>
+        <Text style={styles.cardText}>Generate a one-time code for someone to register their own account.</Text>
+        <Pressable style={[styles.button, generatingInvite && styles.buttonDisabled]} onPress={handleGenerateInvite} disabled={generatingInvite}>
+          <Text style={styles.buttonText}>{generatingInvite ? 'Generating...' : 'Generate invite code'}</Text>
+        </Pressable>
+        {inviteError && <Text style={styles.error}>{inviteError}</Text>}
+        {invites.map((invite) => (
+          <View key={invite.id} style={styles.inviteRow}>
+            <View style={styles.inviteInfo}>
+              <Text style={styles.inviteCode}>{invite.code}</Text>
+              <Text style={styles.status}>{inviteStatus(invite)}</Text>
+            </View>
+            {!invite.usedAt && !invite.revokedAt && (
+              <Pressable style={styles.revokeButton} onPress={() => handleRevokeInvite(invite.id)}>
+                <Text style={styles.revokeButtonText}>Revoke</Text>
+              </Pressable>
+            )}
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.card}>
         <Text style={styles.cardTitle}>Legal</Text>
         <Link href="/legal/privacy" style={styles.link}>Privacy Policy</Link>
         <Link href="/legal/terms" style={styles.link}>Terms of Service</Link>
@@ -91,4 +153,10 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fffaf2', fontWeight: '800' },
   status: { color: '#443d34', fontWeight: '700' },
   link: { color: '#4f7c59', fontWeight: '700', textDecorationLine: 'underline' },
+  error: { color: '#b3423b', fontWeight: '600' },
+  inviteRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fffaf2', borderRadius: 14, padding: 12 },
+  inviteInfo: { gap: 2 },
+  inviteCode: { fontSize: 16, fontWeight: '800', color: '#211d18', letterSpacing: 1 },
+  revokeButton: { backgroundColor: '#b3423b', borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12 },
+  revokeButtonText: { color: '#fffaf2', fontWeight: '700', fontSize: 12 },
 });

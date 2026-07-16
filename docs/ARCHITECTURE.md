@@ -21,7 +21,13 @@ healthhomie is a calorie/macro journal with Apple Health and Oura context. Your 
 
 ## Auth
 
-There's no public signup: `POST /api/auth/register` requires a `signupSecret` matching the `SIGNUP_SECRET` env var, alongside an email + password. `POST /api/auth/login` verifies the password (bcrypt) and issues a long-lived JWT (`AUTH_JWT_SECRET`, 365-day expiry — this is a personal app, not a bank). The client stores that token in `expo-secure-store` on native and `localStorage` on web, and sends it as `Authorization: Bearer <token>` on every `/api/data/*` and `/api/oura/*` call. `app/_layout.tsx` gates the whole app behind a token check, redirecting to `/login` when absent.
+There's no public signup: `POST /api/auth/register` requires a `code` alongside an email + password — either a per-person invite code (see "Invites" below) or the `SIGNUP_SECRET` bootstrap secret, which is only ever used by the app owner and never handed out. `POST /api/auth/login` verifies the password (bcrypt) and issues a long-lived JWT (`AUTH_JWT_SECRET`, 365-day expiry — this is a personal app, not a bank). The client stores that token in `expo-secure-store` on native and `localStorage` on web, and sends it as `Authorization: Bearer <token>` on every `/api/data/*`, `/api/invites`, and `/api/oura/*` call. `app/_layout.tsx` gates the whole app behind a token check, redirecting to `/login` when absent, except for `/login`, `/forgot-password`, and `/reset-password`, which stay reachable while logged out.
+
+Forgotten passwords go through email, not the invite/signup flow: `POST /api/auth/forgot-password` looks up the account, mints a 1-hour single-use token (`lib/server/passwordResetStore.ts`, stored as a SHA-256 hash) and emails a `/reset-password?token=...` link via Resend (`lib/server/email.ts`); the response is the same generic message whether or not the email matched, to avoid leaking which emails have accounts. `POST /api/auth/reset-password` consumes the token and updates the password hash.
+
+## Invites
+
+Friends register with a one-time invite code instead of the shared signup secret the app used before. `POST /api/invites` (authenticated) mints an 8-character code (`lib/server/inviteStore.ts`); `GET /api/invites` lists the codes a given account has generated, including who used each one; `DELETE /api/invites?id=...` revokes an unused code. Registration (`api/auth/register.ts`) consumes the code atomically on success — reused, revoked, or unknown codes are rejected. This replaces `SIGNUP_SECRET`'s old double duty as both the friend-facing invite code and the `/api/admin/migrate` credential: that secret is now bootstrap-only, and `/api/admin/migrate` prefers a separate `ADMIN_SECRET` (falling back to `SIGNUP_SECRET` if unset, for backward compatibility).
 
 ## Data flow
 
@@ -41,9 +47,12 @@ There's no public signup: `POST /api/auth/register` requires a `signupSecret` ma
 
 - `DATABASE_URL` (or `POSTGRES_URL`) — auto-set by Vercel's Postgres/Neon storage integration.
 - `AUTH_JWT_SECRET` — signs login sessions and the short-lived Oura OAuth state token.
-- `SIGNUP_SECRET` — required to register an account and to call `/api/admin/migrate`.
+- `SIGNUP_SECRET` — bootstrap secret for the owner's own account(s); not shared with anyone else. Falls back to being accepted by `/api/admin/migrate` too if `ADMIN_SECRET` isn't set.
+- `ADMIN_SECRET` — recommended, keeps `/api/admin/migrate` on its own credential separate from `SIGNUP_SECRET`.
 - `USDA_FDC_API_KEY` — Vercel env var for USDA FoodData Central.
 - `OURA_CLIENT_ID` / `OURA_CLIENT_SECRET` / `OURA_REDIRECT_URI` — Oura OAuth2 app credentials (see `docs/WEB_AND_WEARABLES_STRATEGY.md`).
+- `RESEND_API_KEY` — sends password-reset emails via Resend.
+- `RESEND_FROM_EMAIL` — optional; defaults to Resend's unverified sandbox sender. Set to something like `Howdy Morning <noreply@howdymornin.io>` once the domain is verified in Resend.
 - `EXPO_PUBLIC_API_BASE_URL` — native builds only, points the app at the deployed Vercel API.
 
 Open Food Facts does not require an API key for normal lookup usage.

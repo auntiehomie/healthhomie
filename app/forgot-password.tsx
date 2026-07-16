@@ -1,23 +1,21 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import { router } from 'expo-router';
-import { login, register } from '@/lib/services/authClient';
+import { requestPasswordReset } from '@/lib/services/authClient';
 
-export default function LoginScreen() {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
+  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function submit() {
     setSubmitting(true);
     setError(null);
+    setMessage(null);
     try {
-      if (mode === 'login') await login(email.trim(), password);
-      else await register(email.trim(), password, inviteCode);
-      router.replace('/(tabs)');
+      const result = await requestPasswordReset(email.trim());
+      setMessage(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
@@ -27,8 +25,8 @@ export default function LoginScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Howdy Morning ☀️</Text>
-      <Text style={styles.subtitle}>{mode === 'login' ? 'Log in to sync your data.' : 'Create your account.'}</Text>
+      <Text style={styles.title}>Reset your password</Text>
+      <Text style={styles.subtitle}>Enter your account email and we&apos;ll send you a reset link.</Text>
 
       <TextInput
         placeholder="Email"
@@ -39,24 +37,15 @@ export default function LoginScreen() {
         onChangeText={setEmail}
         style={styles.input}
       />
-      <TextInput placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} style={styles.input} />
-      {mode === 'register' && (
-        <TextInput placeholder="Invite code" autoCapitalize="characters" value={inviteCode} onChangeText={setInviteCode} style={styles.input} />
-      )}
+      {message && <Text style={styles.message}>{message}</Text>}
       {error && <Text style={styles.error}>{error}</Text>}
 
       <Pressable style={[styles.button, submitting && styles.buttonDisabled]} onPress={submit} disabled={submitting}>
-        <Text style={styles.buttonText}>{submitting ? 'Please wait...' : mode === 'login' ? 'Log in' : 'Create account'}</Text>
+        <Text style={styles.buttonText}>{submitting ? 'Sending...' : 'Send reset link'}</Text>
       </Pressable>
 
-      {mode === 'login' && (
-        <Pressable onPress={() => router.push('/forgot-password')}>
-          <Text style={styles.switchText}>Forgot password?</Text>
-        </Pressable>
-      )}
-
-      <Pressable onPress={() => setMode(mode === 'login' ? 'register' : 'login')}>
-        <Text style={styles.switchText}>{mode === 'login' ? 'Need an account? Register' : 'Have an account? Log in'}</Text>
+      <Pressable onPress={() => router.replace('/login')}>
+        <Text style={styles.switchText}>Back to log in</Text>
       </Pressable>
     </ScrollView>
   );
@@ -64,9 +53,10 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flexGrow: 1, padding: 24, gap: 14, backgroundColor: '#fffaf2', justifyContent: 'center' },
-  title: { fontSize: 34, fontWeight: '900', color: '#211d18', textAlign: 'center' },
+  title: { fontSize: 28, fontWeight: '900', color: '#211d18', textAlign: 'center' },
   subtitle: { color: '#665f54', textAlign: 'center', marginBottom: 12 },
   input: { backgroundColor: '#ffffff', borderRadius: 16, padding: 14, fontSize: 16 },
+  message: { color: '#4f7c59', fontWeight: '600', textAlign: 'center' },
   error: { color: '#b3423b', fontWeight: '600', textAlign: 'center' },
   button: { backgroundColor: '#4f7c59', borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 8 },
   buttonDisabled: { opacity: 0.6 },
