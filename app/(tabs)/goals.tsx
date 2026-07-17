@@ -40,7 +40,7 @@ export default function GoalsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Goals</Text>
-      <Text style={styles.subtitle}>Healthhomie goals use Apple Health context when available, but stay boring-on-purpose: calories, protein, trend, consistency.</Text>
+      <Text style={styles.subtitle}>Howdy Morning tracks your goals using Apple Health context when available — boring-on-purpose: calories, protein, trend, consistency.</Text>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Current target</Text>

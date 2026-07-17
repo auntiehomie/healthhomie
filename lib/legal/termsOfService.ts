@@ -1,12 +1,12 @@
 export const TERMS_OF_SERVICE_EFFECTIVE_DATE = '2026-07-05';
 
-export const TERMS_OF_SERVICE_TEXT = `# healthhomie Terms of Service
+export const TERMS_OF_SERVICE_TEXT = `# Howdy Morning Terms of Service
 
 Effective date: ${TERMS_OF_SERVICE_EFFECTIVE_DATE}
 
 ## Agreement to terms
 
-By downloading, accessing, or using healthhomie (the "App"), you agree to these Terms of Service ("Terms"). If you do not agree, do not use the App. healthhomie is developed and operated by an independent developer, not a registered company; "we/us/our" refers to that developer.
+By downloading, accessing, or using Howdy Morning (the "App"), you agree to these Terms of Service ("Terms"). If you do not agree, do not use the App. Howdy Morning is developed and operated by an independent developer, not a registered company; "we/us/our" refers to that developer.
 
 ## Eligibility
 
@@ -14,11 +14,11 @@ You must be at least 13 years old, or the minimum age of consent for data proces
 
 ## Description of service
 
-healthhomie is a personal food journal, calorie/macro tracker, and goal-setting tool that can optionally connect to Apple Health and Oura to add health context to your dashboard.
+Howdy Morning is a personal food journal, calorie/macro tracker, and goal-setting tool that can optionally connect to Apple Health and Oura to add health context to your dashboard.
 
 ## Medical disclaimer
 
-healthhomie is not a medical device and does not provide medical advice, diagnosis, or treatment. Calorie/macro targets, goal recommendations, and any other content in the App are for general informational and self-tracking purposes only.
+Howdy Morning is not a medical device and does not provide medical advice, diagnosis, or treatment. Calorie/macro targets, goal recommendations, and any other content in the App are for general informational and self-tracking purposes only.
 
 Always consult a qualified physician or registered dietitian before making changes to your diet, exercise routine, or health regimen, particularly if you have a medical condition, are pregnant or nursing, or have a history of disordered eating. Do not use the App in a medical emergency; contact your local emergency number instead.
 
@@ -46,7 +46,7 @@ The App integrates with third-party services, including Apple HealthKit, Oura, U
 
 ## Intellectual property
 
-The App's code, design, and branding belong to the developer of healthhomie or its licensors. Open-source components are used under their respective licenses, as noted in the App's source repository. Other than those open-source rights, these Terms grant you only a limited, personal right to use the App; no other rights are transferred.
+The App's code, design, and branding belong to the developer of Howdy Morning or its licensors. Open-source components are used under their respective licenses, as noted in the App's source repository. Other than those open-source rights, these Terms grant you only a limited, personal right to use the App; no other rights are transferred.
 
 ## Your content
 
@@ -58,11 +58,11 @@ The App is provided "AS IS" and "AS AVAILABLE," without warranties of any kind, 
 
 ## Limitation of liability
 
-To the maximum extent permitted by law, healthhomie and its developer are not liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of data, arising from your use of, or inability to use, the App, even if advised of the possibility of such damages. Our total liability for any claim arising from the App will not exceed the amount you paid to use the App in the past 12 months, or fifty U.S. dollars ($50) if you paid nothing. Some jurisdictions do not allow the exclusion or limitation of certain warranties or liability, so some of the limitations above may not apply to you.
+To the maximum extent permitted by law, Howdy Morning and its developer are not liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of data, arising from your use of, or inability to use, the App, even if advised of the possibility of such damages. Our total liability for any claim arising from the App will not exceed the amount you paid to use the App in the past 12 months, or fifty U.S. dollars ($50) if you paid nothing. Some jurisdictions do not allow the exclusion or limitation of certain warranties or liability, so some of the limitations above may not apply to you.
 
 ## Indemnification
 
-You agree to indemnify and hold harmless healthhomie and its developer from any claims, damages, or expenses, including reasonable attorneys' fees, arising from your violation of these Terms or your misuse of the App.
+You agree to indemnify and hold harmless Howdy Morning and its developer from any claims, damages, or expenses, including reasonable attorneys' fees, arising from your violation of these Terms or your misuse of the App.
 
 ## Termination
 
