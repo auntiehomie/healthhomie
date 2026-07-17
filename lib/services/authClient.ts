@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-const TOKEN_KEY = 'healthhomie_auth_token';
+const TOKEN_KEY = 'healthhomie_auth_token'; // storage key kept for backward compat (changing would log users out)
 
 export async function getToken(): Promise<string | null> {
   if (Platform.OS === 'web') return typeof window !== 'undefined' ? window.localStorage.getItem(TOKEN_KEY) : null;

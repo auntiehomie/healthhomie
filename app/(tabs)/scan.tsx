@@ -14,7 +14,7 @@ export default function ScanScreen() {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>Scan packaged foods</Text>
-        <Text style={styles.subtitle}>Camera access lets Healthhomie look up barcodes through Open Food Facts.</Text>
+        <Text style={styles.subtitle}>Camera access lets Howdy Morning look up barcodes through Open Food Facts.</Text>
         <Pressable style={styles.button} onPress={requestPermission}><Text style={styles.buttonText}>Allow camera</Text></Pressable>
       </View>
     );

@@ -1,16 +1,16 @@
 export const PRIVACY_POLICY_EFFECTIVE_DATE = '2026-07-05';
 
-export const PRIVACY_POLICY_TEXT = `# healthhomie Privacy Policy
+export const PRIVACY_POLICY_TEXT = `# Howdy Morning Privacy Policy
 
 Effective date: ${PRIVACY_POLICY_EFFECTIVE_DATE}
 
-This Privacy Policy explains what information healthhomie ("healthhomie," "we," "us," "our") collects, how it is used, and the rights you have over it, including specific rights under the EU/UK General Data Protection Regulation (GDPR), the California Consumer Privacy Act as amended by the California Privacy Rights Act (CCPA/CPRA), and other applicable state privacy laws.
+This Privacy Policy explains what information Howdy Morning ("Howdy Morning," "we," "us," "our") collects, how it is used, and the rights you have over it, including specific rights under the EU/UK General Data Protection Regulation (GDPR), the California Consumer Privacy Act as amended by the California Privacy Rights Act (CCPA/CPRA), and other applicable state privacy laws.
 
-healthhomie is developed and operated by an independent developer, not a registered company. References to "we/us/our" refer to that developer.
+Howdy Morning is developed and operated by an independent developer, not a registered company. References to "we/us/our" refer to that developer.
 
 ## Not medical advice, not HIPAA
 
-healthhomie is not a medical device and does not provide medical advice, diagnosis, or treatment. healthhomie is not a "covered entity" or "business associate" under the U.S. Health Insurance Portability and Accountability Act (HIPAA), and information you enter is not protected health information under HIPAA. It is, however, still treated as sensitive under GDPR ("special category data") and CCPA/CPRA ("sensitive personal information"), and we handle it accordingly, as described below.
+Howdy Morning is not a medical device and does not provide medical advice, diagnosis, or treatment. Howdy Morning is not a "covered entity" or "business associate" under the U.S. Health Insurance Portability and Accountability Act (HIPAA), and information you enter is not protected health information under HIPAA. It is, however, still treated as sensitive under GDPR ("special category data") and CCPA/CPRA ("sensitive personal information"), and we handle it accordingly, as described below.
 
 ## Information we collect
 
@@ -20,7 +20,7 @@ healthhomie is not a medical device and does not provide medical advice, diagnos
 - Profile information: age, sex, height, current/target weight, activity level, and goal type.
 
 ### Information from connected health services (only if you choose to connect them)
-- Apple HealthKit (iOS only): steps, active energy, body mass, sleep analysis, and workouts, read directly on your device through Apple's HealthKit framework. This data stays on-device; healthhomie does not currently transmit it to our servers or sync it to your account.
+- Apple HealthKit (iOS only): steps, active energy, body mass, sleep analysis, and workouts, read directly on your device through Apple's HealthKit framework. This data stays on-device; Howdy Morning does not currently transmit it to our servers or sync it to your account.
 - Oura Ring (via OAuth2, optional): if you connect an Oura account, we request access to daily activity, sleep, and readiness data through the Oura API. This is sensitive health data under GDPR and CCPA/CPRA, and connecting it is always an explicit, opt-in action you take in Settings. The Oura access and refresh tokens are stored server-side, associated with your account, and are never sent to or stored on your device.
 
 ### Automatically collected technical information
@@ -49,7 +49,7 @@ We do not use your health or nutrition data for advertising, profiling for marke
 
 - Oura Health, Inc. — only the data needed to complete the OAuth connection and fetch the daily metrics you've authorized. Review Oura's own privacy policy before connecting.
 - USDA FoodData Central and Open Food Facts — only the search term or barcode needed to return a result.
-- Apple — HealthKit reads/writes on iOS are governed by Apple's own platform rules, not by healthhomie.
+- Apple — HealthKit reads/writes on iOS are governed by Apple's own platform rules, not by Howdy Morning.
 - Our hosting and database infrastructure providers (Vercel and its Postgres/Neon storage integration), for running the app, the API, and storing your account's data.
 
 We do not sell personal information, and we do not share personal information with third parties for cross-context behavioral advertising.
@@ -79,7 +79,7 @@ A number of other states (including Virginia, Colorado, Connecticut, and Washing
 
 ## Children's privacy
 
-healthhomie is not directed at children under 13 (or the applicable minimum age in your jurisdiction) and we do not knowingly collect personal information from children. If you believe a child has provided us with personal information, contact us so we can delete it.
+Howdy Morning is not directed at children under 13 (or the applicable minimum age in your jurisdiction) and we do not knowingly collect personal information from children. If you believe a child has provided us with personal information, contact us so we can delete it.
 
 ## Data retention
 

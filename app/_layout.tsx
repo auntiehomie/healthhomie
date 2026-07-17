@@ -40,6 +40,10 @@ export default function RootLayout() {
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
         <Stack.Screen name="reset-password" options={{ headerShown: false }} />
+        <Stack.Screen name="survey" options={{ title: "Quick Survey", headerStyle: { backgroundColor: "#fffaf2" }, headerTintColor: "#211d18", headerTitleStyle: { fontWeight: "900" } }} />
+        <Stack.Screen name="oura/connected" options={{ title: "Oura Connected", headerStyle: { backgroundColor: "#fffaf2" }, headerTintColor: "#211d18", headerTitleStyle: { fontWeight: "900" } }} />
+        <Stack.Screen name="legal/privacy" options={{ title: "Privacy Policy", headerStyle: { backgroundColor: "#fffaf2" }, headerTintColor: "#211d18", headerTitleStyle: { fontWeight: "900" } }} />
+        <Stack.Screen name="legal/terms" options={{ title: "Terms of Service", headerStyle: { backgroundColor: "#fffaf2" }, headerTintColor: "#211d18", headerTitleStyle: { fontWeight: "900" } }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />
