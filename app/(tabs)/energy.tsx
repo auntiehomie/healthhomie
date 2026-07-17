@@ -140,9 +140,11 @@ export default function EnergyScreen() {
     </View>
   );
 
+  // Readiness/sleep are usually available all day (Oura finalizes them once you wake up), but
+  // Oura's public API typically doesn't publish today's activity score until later in the day —
+  // its app shows a live estimate through a mechanism the API doesn't expose. Fall back to 50
+  // only for internal schedule/hobby math below, never for what gets displayed.
   const readiness = data?.readiness ?? 50;
-  const sleep = data?.sleep ?? 0;
-  const activity = data?.activity ?? 0;
   const hobby = getHobbies(readiness);
   const curve = buildEnergyCurve(readiness);
   const cycleNote = data?.cyclePhase ? CYCLE_NOTES[data.cyclePhase] : null;
@@ -165,16 +167,21 @@ export default function EnergyScreen() {
       {/* Score cards */}
       <View style={styles.scoreRow}>
         {[
-          { label: 'Readiness', value: readiness },
-          { label: 'Sleep',     value: sleep },
-          { label: 'Activity',  value: activity },
+          { label: 'Readiness', value: data?.readiness },
+          { label: 'Sleep',     value: data?.sleep },
+          { label: 'Activity',  value: data?.activity },
         ].map(s => (
           <View key={s.label} style={styles.scoreCard}>
-            <Text style={[styles.scoreNum, { color: scoreColor(s.value) }]}>{s.value}</Text>
+            <Text style={[styles.scoreNum, { color: s.value != null ? scoreColor(s.value) : colors.textMuted }]}>
+              {s.value ?? '—'}
+            </Text>
             <Text style={styles.scoreLabel}>{s.label}</Text>
           </View>
         ))}
       </View>
+      {data?.activity == null && (
+        <Text style={styles.muted}>Oura hasn&apos;t published today&apos;s activity score yet — it usually shows up later in the day as your ring syncs.</Text>
+      )}
 
       {/* Energy curve */}
       <View style={styles.card}>
