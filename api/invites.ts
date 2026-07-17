@@ -1,11 +1,13 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { requireUserId, AuthError } from '../lib/server/auth';
+import { requireOwner, AuthError, ForbiddenError } from '../lib/server/auth';
 import { createInviteCode, listInviteCodes, revokeInviteCode } from '../lib/server/inviteStore';
 import { DatabaseNotConfiguredError } from '../lib/server/db';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    const userId = requireUserId(req);
+    // Invite codes are the only way in besides the owner's own bootstrap secret, so only the
+    // owner can mint or revoke them — for now, at least.
+    const userId = requireOwner(req);
 
     if (req.method === 'GET') {
       const invites = await listInviteCodes(userId);
@@ -29,6 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Allow', 'GET, POST, DELETE');
     res.status(405).json({ error: 'GET, POST, or DELETE only.' });
   } catch (error) {
+    if (error instanceof ForbiddenError) return res.status(403).json({ error: error.message });
     if (error instanceof AuthError) return res.status(401).json({ error: error.message });
     if (error instanceof DatabaseNotConfiguredError) return res.status(503).json({ error: error.message });
     res.status(500).json({ error: error instanceof Error ? error.message : 'Invite request failed.' });

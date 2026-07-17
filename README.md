@@ -10,7 +10,7 @@ Howdy Morning is an Expo (React Native) mobile-first app that merges health trac
 - 📓 **Notes & Journal** — Zettelkasten notes with wiki links, backlinks, and tags
 - 🎯 **Goals & Streaks** — calorie/macro targets + weekly adjustment insight
 
-Built for iOS, Android, and web. Runs on Expo SDK 57.
+Built for iOS, Android, and web. Runs on Expo SDK 57. The web build is installable as a PWA with light/dark mode and an in-app update banner — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ---
 
@@ -38,6 +38,7 @@ Built for iOS, Android, and web. Runs on Expo SDK 57.
 - **Resend** for password-reset emails
 - **Oura API v2** (readiness, sleep, activity data), tokens stored server-side per account, never on-device
 - Morning and Notes tabs currently persist locally on-device via `AsyncStorage`, separate from the account-synced Postgres data used by Today/Journal/Goals/Energy
+- Light/dark theme (`lib/theme/`) with a Settings toggle, and a PWA service worker on web that prompts to refresh when a new version ships
 
 ---
 

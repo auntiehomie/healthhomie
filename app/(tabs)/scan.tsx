@@ -1,14 +1,18 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { lookupBarcode } from '@/lib/services/nutritionApi';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import type { ThemeColors } from '@/lib/theme/tokens';
 
 export default function ScanScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [permission, requestPermission] = useCameraPermissions();
   const [lastBarcode, setLastBarcode] = useState<string | null>(null);
   const [status, setStatus] = useState('Barcode lookup is wired to Open Food Facts route scaffolding.');
 
-  if (!permission) return <View style={styles.container}><Text>Loading camera permission…</Text></View>;
+  if (!permission) return <View style={styles.container}><Text style={styles.subtitle}>Loading camera permission…</Text></View>;
 
   if (!permission.granted) {
     return (
@@ -43,12 +47,13 @@ export default function ScanScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, gap: 16, backgroundColor: '#fffaf2' },
-  title: { fontSize: 32, fontWeight: '900', color: '#211d18' },
-  subtitle: { color: '#665f54', lineHeight: 20 },
-  camera: { flex: 1, borderRadius: 24, overflow: 'hidden' },
-  button: { backgroundColor: '#4f7c59', padding: 16, borderRadius: 16, alignItems: 'center' },
-  buttonText: { color: '#fffaf2', fontWeight: '800' },
-  status: { color: '#443d34', lineHeight: 20, backgroundColor: '#ffffff', padding: 14, borderRadius: 16 },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: { flex: 1, padding: 20, gap: 16, backgroundColor: colors.background },
+    title: { fontSize: 32, fontWeight: '900', color: colors.text },
+    subtitle: { color: colors.textMuted, lineHeight: 20 },
+    camera: { flex: 1, borderRadius: 24, overflow: 'hidden' },
+    button: { backgroundColor: colors.primary, padding: 16, borderRadius: 16, alignItems: 'center' },
+    buttonText: { color: colors.onPrimary, fontWeight: '800' },
+    status: { color: colors.text, lineHeight: 20, backgroundColor: colors.surface, padding: 14, borderRadius: 16 },
+  });

@@ -1,8 +1,10 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { getUserProfile, saveUserProfile } from '@/lib/db/database';
 import { calculateDailyGoal, recommendWeeklyAdjustment } from '@/lib/domain/goals';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import type { ThemeColors } from '@/lib/theme/tokens';
 import type { GoalType, NutritionGoal, UserProfile } from '@/types/healthhomie';
 
 const goalTypes: { key: GoalType; label: string; helper: string }[] = [
@@ -13,6 +15,8 @@ const goalTypes: { key: GoalType; label: string; helper: string }[] = [
 ];
 
 export default function GoalsScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [goal, setGoal] = useState<NutritionGoal | null>(null);
 
@@ -67,22 +71,23 @@ export default function GoalsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { padding: 20, gap: 14, backgroundColor: '#fffaf2' },
-  title: { fontSize: 32, fontWeight: '900', color: '#211d18' },
-  subtitle: { color: '#665f54', lineHeight: 20 },
-  card: { backgroundColor: '#ffffff', borderRadius: 24, padding: 18, gap: 8 },
-  cardTitle: { fontSize: 18, fontWeight: '800', color: '#211d18' },
-  big: { fontSize: 40, fontWeight: '900', color: '#4f7c59' },
-  macro: { color: '#665f54' },
-  label: { color: '#211d18', fontWeight: '800', marginTop: 8 },
-  goalRow: { backgroundColor: '#ffffff', borderRadius: 18, padding: 16 },
-  goalRowActive: { backgroundColor: '#4f7c59' },
-  goalLabel: { fontSize: 17, fontWeight: '800', color: '#211d18' },
-  goalHelper: { marginTop: 3, color: '#7a7165' },
-  goalLabelActive: { color: '#fffaf2' },
-  goalHelperActive: { color: '#e5eadf' },
-  insight: { backgroundColor: '#edf5ee', borderRadius: 24, padding: 18, gap: 8 },
-  insightText: { color: '#38513d', lineHeight: 20 },
-  insightDelta: { color: '#234229', fontWeight: '800' },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: { padding: 20, gap: 14, backgroundColor: colors.background },
+    title: { fontSize: 32, fontWeight: '900', color: colors.text },
+    subtitle: { color: colors.textMuted, lineHeight: 20 },
+    card: { backgroundColor: colors.surface, borderRadius: 24, padding: 18, gap: 8 },
+    cardTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+    big: { fontSize: 40, fontWeight: '900', color: colors.primary },
+    macro: { color: colors.textMuted },
+    label: { color: colors.text, fontWeight: '800', marginTop: 8 },
+    goalRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16 },
+    goalRowActive: { backgroundColor: colors.primary },
+    goalLabel: { fontSize: 17, fontWeight: '800', color: colors.text },
+    goalHelper: { marginTop: 3, color: colors.textMuted },
+    goalLabelActive: { color: colors.onPrimary },
+    goalHelperActive: { color: colors.onPrimary, opacity: 0.85 },
+    insight: { backgroundColor: colors.surfaceAlt, borderRadius: 24, padding: 18, gap: 8 },
+    insightText: { color: colors.text, lineHeight: 20 },
+    insightDelta: { color: colors.text, fontWeight: '800' },
+  });

@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { scaleMacros } from '@/lib/domain/nutrition';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import type { ThemeColors } from '@/lib/theme/tokens';
 import type { FoodItem } from '@/types/healthhomie';
 
 const GRAMS_PER_OUNCE = 28.3495;
@@ -16,6 +18,8 @@ export function LogFoodModal({
   onClose: () => void;
   onConfirm: (food: FoodItem, servings: number) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const isMass = food?.servingUnit.toLowerCase() === 'g';
   const [amountText, setAmountText] = useState(() => String(food?.servingSize ?? 1));
   const [massUnit, setMassUnit] = useState<MassUnit>('g');
@@ -89,6 +93,8 @@ export function LogFoodModal({
 }
 
 function MacroStat({ label, value }: { label: string; value: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <View style={styles.macroStat}>
       <Text style={styles.macroValue}>{value}</Text>
@@ -101,30 +107,31 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(33,29,24,0.5)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#fffaf2', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, gap: 16 },
-  title: { fontSize: 22, fontWeight: '800', color: '#211d18' },
-  subtitle: { color: '#7a7165' },
-  amountRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  amountInput: { flex: 1, backgroundColor: '#ffffff', borderRadius: 16, padding: 14, fontSize: 20, fontWeight: '700' },
-  amountInputInvalid: { borderWidth: 2, borderColor: '#b3423b' },
-  unitToggle: { flexDirection: 'row', backgroundColor: '#f0e7da', borderRadius: 999, padding: 4, gap: 4 },
-  unitChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999 },
-  unitChipActive: { backgroundColor: '#4f7c59' },
-  unitChipText: { color: '#665f54', fontWeight: '700' },
-  unitChipTextActive: { color: '#fffaf2' },
-  unitLabel: { color: '#665f54', fontWeight: '700' },
-  error: { color: '#b3423b', fontWeight: '600' },
-  macroGrid: { flexDirection: 'row', gap: 10 },
-  macroStat: { flex: 1, backgroundColor: '#f5f0e8', borderRadius: 16, padding: 12, alignItems: 'center', gap: 4 },
-  macroValue: { fontSize: 18, fontWeight: '800', color: '#211d18' },
-  macroLabel: { fontSize: 12, color: '#7a7165' },
-  actionRow: { flexDirection: 'row', gap: 12 },
-  button: { flex: 1, borderRadius: 16, paddingVertical: 14, alignItems: 'center' },
-  cancelButton: { backgroundColor: '#f0e7da' },
-  cancelButtonText: { color: '#665f54', fontWeight: '800' },
-  confirmButton: { backgroundColor: '#4f7c59' },
-  buttonDisabled: { opacity: 0.5 },
-  confirmButtonText: { color: '#fffaf2', fontWeight: '800' },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    sheet: { backgroundColor: colors.background, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, gap: 16 },
+    title: { fontSize: 22, fontWeight: '800', color: colors.text },
+    subtitle: { color: colors.textMuted },
+    amountRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+    amountInput: { flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 14, fontSize: 20, fontWeight: '700', color: colors.text },
+    amountInputInvalid: { borderWidth: 2, borderColor: colors.danger },
+    unitToggle: { flexDirection: 'row', backgroundColor: colors.chipBackground, borderRadius: 999, padding: 4, gap: 4 },
+    unitChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999 },
+    unitChipActive: { backgroundColor: colors.primary },
+    unitChipText: { color: colors.chipText, fontWeight: '700' },
+    unitChipTextActive: { color: colors.onPrimary },
+    unitLabel: { color: colors.textMuted, fontWeight: '700' },
+    error: { color: colors.danger, fontWeight: '600' },
+    macroGrid: { flexDirection: 'row', gap: 10 },
+    macroStat: { flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: 16, padding: 12, alignItems: 'center', gap: 4 },
+    macroValue: { fontSize: 18, fontWeight: '800', color: colors.text },
+    macroLabel: { fontSize: 12, color: colors.textMuted },
+    actionRow: { flexDirection: 'row', gap: 12 },
+    button: { flex: 1, borderRadius: 16, paddingVertical: 14, alignItems: 'center' },
+    cancelButton: { backgroundColor: colors.chipBackground },
+    cancelButtonText: { color: colors.chipText, fontWeight: '800' },
+    confirmButton: { backgroundColor: colors.primary },
+    buttonDisabled: { opacity: 0.5 },
+    confirmButtonText: { color: colors.onPrimary, fontWeight: '800' },
+  });

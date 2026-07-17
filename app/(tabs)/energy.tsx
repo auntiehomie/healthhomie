@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -9,6 +9,8 @@ import {
   View,
 } from 'react-native';
 import { connectOura, getOuraStatus, syncOura } from '@/lib/services/ouraClient';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import type { ThemeColors } from '@/lib/theme/tokens';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface OuraDaily {
@@ -54,14 +56,16 @@ function buildEnergyCurve(readiness: number): { label: string; pct: number }[] {
   ];
 }
 
-function scoreColor(score: number) {
-  if (score >= 70) return '#4f7c59';
-  if (score >= 40) return '#d0903f';
-  return '#c0392b';
-}
-
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function EnergyScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const scoreColor = useCallback((score: number) => {
+    if (score >= 70) return colors.success;
+    if (score >= 40) return '#d99a3f';
+    return colors.danger;
+  }, [colors]);
+
   const [data, setData] = useState<OuraDaily | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -126,7 +130,7 @@ export default function EnergyScreen() {
   }
 
   if (loading) return (
-    <View style={styles.center}><ActivityIndicator color="#4f7c59" size="large" /></View>
+    <View style={styles.center}><ActivityIndicator color={colors.primary} size="large" /></View>
   );
 
   if (error) return (
@@ -179,7 +183,7 @@ export default function EnergyScreen() {
         <View style={styles.curveContainer}>
           {curve.map(block => (
             <View key={block.label} style={styles.barWrapper}>
-              <View style={[styles.bar, { height: Math.max(8, block.pct * 1.2), backgroundColor: block.pct >= 80 ? C.accent : block.pct >= 60 ? C.accent2 : C.muted }]} />
+              <View style={[styles.bar, { height: Math.max(8, block.pct * 1.2), backgroundColor: block.pct >= 80 ? colors.primary : block.pct >= 60 ? '#d99a3f' : colors.textMuted }]} />
               <Text style={styles.barLabel}>{block.label}</Text>
             </View>
           ))}
@@ -227,33 +231,32 @@ export default function EnergyScreen() {
   );
 }
 
-const C = { bg: '#fffaf2', card: '#ffffff', accent: '#4f7c59', accent2: '#d0903f', muted: '#9e9891', text: '#211d18' };
-
-const styles = StyleSheet.create({
-  container:      { padding: 20, gap: 16, backgroundColor: C.bg, paddingBottom: 40 },
-  center:         { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30, gap: 16, backgroundColor: C.bg },
-  hero:           { gap: 4, paddingTop: 10 },
-  eyebrow:        { color: C.accent, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, fontSize: 12 },
-  title:          { fontSize: 28, fontWeight: '900', color: C.text, lineHeight: 34 },
-  cycleBanner:    { backgroundColor: '#fdf3e3', borderRadius: 12, padding: 14, borderLeftWidth: 4, borderLeftColor: C.accent2 },
-  cycleText:      { color: C.text, fontSize: 14, fontWeight: '600' },
-  scoreRow:       { flexDirection: 'row', gap: 12 },
-  scoreCard:      { flex: 1, backgroundColor: C.card, borderRadius: 16, padding: 16, alignItems: 'center', gap: 4 },
-  scoreNum:       { fontSize: 36, fontWeight: '900' },
-  scoreLabel:     { fontSize: 12, color: C.muted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  card:           { backgroundColor: C.card, borderRadius: 20, padding: 18, gap: 12 },
-  cardTitle:      { fontSize: 16, fontWeight: '800', color: C.text },
-  muted:          { color: C.muted, fontSize: 13 },
-  curveContainer: { flexDirection: 'row', alignItems: 'flex-end', height: 130, gap: 8, paddingTop: 10 },
-  barWrapper:     { flex: 1, alignItems: 'center', gap: 6 },
-  bar:            { width: '100%', borderRadius: 6 },
-  barLabel:       { fontSize: 10, color: C.muted, textAlign: 'center' },
-  scheduleItem:   { fontSize: 14, color: C.text, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#f0ebe3' },
-  hobbyItem:      { fontSize: 14, color: C.text, paddingVertical: 2 },
-  connectEmoji:   { fontSize: 56 },
-  connectTitle:   { fontSize: 24, fontWeight: '900', color: C.text, textAlign: 'center' },
-  connectSub:     { fontSize: 15, color: C.muted, textAlign: 'center', lineHeight: 22 },
-  connectBtn:     { backgroundColor: C.accent, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 },
-  connectBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
-  errorText:      { fontSize: 16, color: '#c0392b', textAlign: 'center' },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container:      { padding: 20, gap: 16, backgroundColor: colors.background, paddingBottom: 40 },
+    center:         { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30, gap: 16, backgroundColor: colors.background },
+    hero:           { gap: 4, paddingTop: 10 },
+    eyebrow:        { color: colors.primary, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, fontSize: 12 },
+    title:          { fontSize: 28, fontWeight: '900', color: colors.text, lineHeight: 34 },
+    cycleBanner:    { backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 14, borderLeftWidth: 4, borderLeftColor: '#d99a3f' },
+    cycleText:      { color: colors.text, fontSize: 14, fontWeight: '600' },
+    scoreRow:       { flexDirection: 'row', gap: 12 },
+    scoreCard:      { flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16, alignItems: 'center', gap: 4 },
+    scoreNum:       { fontSize: 36, fontWeight: '900' },
+    scoreLabel:     { fontSize: 12, color: colors.textMuted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+    card:           { backgroundColor: colors.surface, borderRadius: 20, padding: 18, gap: 12 },
+    cardTitle:      { fontSize: 16, fontWeight: '800', color: colors.text },
+    muted:          { color: colors.textMuted, fontSize: 13 },
+    curveContainer: { flexDirection: 'row', alignItems: 'flex-end', height: 130, gap: 8, paddingTop: 10 },
+    barWrapper:     { flex: 1, alignItems: 'center', gap: 6 },
+    bar:            { width: '100%', borderRadius: 6 },
+    barLabel:       { fontSize: 10, color: colors.textMuted, textAlign: 'center' },
+    scheduleItem:   { fontSize: 14, color: colors.text, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: colors.border },
+    hobbyItem:      { fontSize: 14, color: colors.text, paddingVertical: 2 },
+    connectEmoji:   { fontSize: 56 },
+    connectTitle:   { fontSize: 24, fontWeight: '900', color: colors.text, textAlign: 'center' },
+    connectSub:     { fontSize: 15, color: colors.textMuted, textAlign: 'center', lineHeight: 22 },
+    connectBtn:     { backgroundColor: colors.primary, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 },
+    connectBtnText: { color: colors.onPrimary, fontWeight: '800', fontSize: 16 },
+    errorText:      { fontSize: 16, color: colors.danger, textAlign: 'center' },
+  });

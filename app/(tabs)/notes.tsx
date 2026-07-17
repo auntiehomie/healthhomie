@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -9,6 +9,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import type { ThemeColors } from '@/lib/theme/tokens';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface Note {
@@ -57,6 +59,8 @@ function getBacklinks(notes: Note[], target: Note): Note[] {
 type Screen = 'list' | 'edit';
 
 export default function NotesScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [screen, setScreen] = useState<Screen>('list');
   const [activeNote, setActiveNote] = useState<Note | null>(null);
@@ -159,7 +163,7 @@ export default function NotesScreen() {
             onChangeText={setEditTitle}
             onBlur={saveEdit}
             placeholder="Note title…"
-            placeholderTextColor="#9e9891"
+            placeholderTextColor={colors.textMuted}
           />
           <TextInput
             style={styles.tagsInput}
@@ -167,7 +171,7 @@ export default function NotesScreen() {
             onChangeText={setEditTags}
             onBlur={saveEdit}
             placeholder="Tags (comma separated)…"
-            placeholderTextColor="#9e9891"
+            placeholderTextColor={colors.textMuted}
           />
           <TextInput
             style={styles.contentInput}
@@ -177,7 +181,7 @@ export default function NotesScreen() {
             multiline
             textAlignVertical="top"
             placeholder={'Write in plain text or markdown…\n\nLink to other notes with [[Note Title]]'}
-            placeholderTextColor="#9e9891"
+            placeholderTextColor={colors.textMuted}
           />
 
           {/* Backlinks */}
@@ -213,7 +217,7 @@ export default function NotesScreen() {
       <TextInput
         style={styles.searchInput}
         placeholder="Search notes, tags…"
-        placeholderTextColor="#9e9891"
+        placeholderTextColor={colors.textMuted}
         value={search}
         onChangeText={setSearch}
       />
@@ -247,43 +251,42 @@ export default function NotesScreen() {
   );
 }
 
-const C = { bg: '#fffaf2', card: '#ffffff', accent: '#4f7c59', muted: '#9e9891', text: '#211d18', border: '#e8e1d8' };
-
-const styles = StyleSheet.create({
-  container:         { flex: 1, backgroundColor: C.bg },
-  listHeader:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', padding: 20, paddingBottom: 12 },
-  hero:              { gap: 2 },
-  eyebrow:           { color: C.accent, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, fontSize: 12 },
-  title:             { fontSize: 28, fontWeight: '900', color: C.text },
-  newBtn:            { backgroundColor: C.accent, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8 },
-  newBtnText:        { color: '#fff', fontWeight: '800', fontSize: 14 },
-  searchInput:       { marginHorizontal: 20, marginBottom: 8, backgroundColor: C.card, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, color: C.text, fontSize: 15, borderWidth: 1, borderColor: C.border },
-  listScroll:        { padding: 20, paddingTop: 4, gap: 10, paddingBottom: 40 },
-  noteCard:          { backgroundColor: C.card, borderRadius: 16, padding: 16, gap: 8 },
-  noteTitle:         { fontSize: 17, fontWeight: '800', color: C.text },
-  notePreview:       { fontSize: 14, color: C.muted, lineHeight: 20 },
-  noteMeta:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-  noteDate:          { fontSize: 12, color: C.muted },
-  tagRow:            { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  tag:               { backgroundColor: '#e8f0ea', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
-  tagText:           { fontSize: 11, color: C.accent, fontWeight: '700' },
-  emptyState:        { alignItems: 'center', padding: 40, gap: 12 },
-  emptyEmoji:        { fontSize: 48 },
-  emptyTitle:        { fontSize: 18, fontWeight: '800', color: C.text },
-  muted:             { color: C.muted, fontSize: 13, textAlign: 'center' },
-  // Edit screen
-  editContainer:     { flex: 1, backgroundColor: C.bg },
-  toolbar:           { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.card, gap: 10 },
-  backBtn:           { paddingVertical: 4, paddingHorizontal: 2 },
-  backBtnText:       { color: C.accent, fontWeight: '700', fontSize: 15 },
-  noteId:            { flex: 1, fontSize: 11, color: C.muted, fontFamily: 'monospace', textAlign: 'center' },
-  deleteButton:      { paddingVertical: 4, paddingHorizontal: 2 },
-  deleteButtonText:  { color: '#c0392b', fontWeight: '700', fontSize: 14 },
-  editScroll:        { padding: 20, gap: 14, paddingBottom: 60 },
-  titleInput:        { fontSize: 24, fontWeight: '900', color: C.text, borderBottomWidth: 2, borderBottomColor: C.border, paddingVertical: 8 },
-  tagsInput:         { fontSize: 13, color: C.muted, backgroundColor: C.card, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: C.border },
-  contentInput:      { fontSize: 16, color: C.text, lineHeight: 26, minHeight: 320, backgroundColor: C.card, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: C.border },
-  backlinkPanel:     { backgroundColor: '#f5f0e8', borderRadius: 12, padding: 14, gap: 8 },
-  backlinkTitle:     { fontSize: 13, fontWeight: '700', color: C.muted },
-  backlinkItem:      { fontSize: 14, color: C.accent, paddingVertical: 2 },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container:         { flex: 1, backgroundColor: colors.background },
+    listHeader:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', padding: 20, paddingBottom: 12 },
+    hero:              { gap: 2 },
+    eyebrow:           { color: colors.primary, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, fontSize: 12 },
+    title:             { fontSize: 28, fontWeight: '900', color: colors.text },
+    newBtn:            { backgroundColor: colors.primary, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8 },
+    newBtnText:        { color: colors.onPrimary, fontWeight: '800', fontSize: 14 },
+    searchInput:       { marginHorizontal: 20, marginBottom: 8, backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, color: colors.text, fontSize: 15, borderWidth: 1, borderColor: colors.border },
+    listScroll:        { padding: 20, paddingTop: 4, gap: 10, paddingBottom: 40 },
+    noteCard:          { backgroundColor: colors.surface, borderRadius: 16, padding: 16, gap: 8 },
+    noteTitle:         { fontSize: 17, fontWeight: '800', color: colors.text },
+    notePreview:       { fontSize: 14, color: colors.textMuted, lineHeight: 20 },
+    noteMeta:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+    noteDate:          { fontSize: 12, color: colors.textMuted },
+    tagRow:            { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+    tag:               { backgroundColor: colors.surfaceAlt, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
+    tagText:           { fontSize: 11, color: colors.primary, fontWeight: '700' },
+    emptyState:        { alignItems: 'center', padding: 40, gap: 12 },
+    emptyEmoji:        { fontSize: 48 },
+    emptyTitle:        { fontSize: 18, fontWeight: '800', color: colors.text },
+    muted:             { color: colors.textMuted, fontSize: 13, textAlign: 'center' },
+    // Edit screen
+    editContainer:     { flex: 1, backgroundColor: colors.background },
+    toolbar:           { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface, gap: 10 },
+    backBtn:           { paddingVertical: 4, paddingHorizontal: 2 },
+    backBtnText:       { color: colors.primary, fontWeight: '700', fontSize: 15 },
+    noteId:            { flex: 1, fontSize: 11, color: colors.textMuted, fontFamily: 'monospace', textAlign: 'center' },
+    deleteButton:      { paddingVertical: 4, paddingHorizontal: 2 },
+    deleteButtonText:  { color: colors.danger, fontWeight: '700', fontSize: 14 },
+    editScroll:        { padding: 20, gap: 14, paddingBottom: 60 },
+    titleInput:        { fontSize: 24, fontWeight: '900', color: colors.text, borderBottomWidth: 2, borderBottomColor: colors.border, paddingVertical: 8 },
+    tagsInput:         { fontSize: 13, color: colors.textMuted, backgroundColor: colors.surface, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: colors.border },
+    contentInput:      { fontSize: 16, color: colors.text, lineHeight: 26, minHeight: 320, backgroundColor: colors.surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.border },
+    backlinkPanel:     { backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 14, gap: 8 },
+    backlinkTitle:     { fontSize: 13, fontWeight: '700', color: colors.textMuted },
+    backlinkItem:      { fontSize: 14, color: colors.primary, paddingVertical: 2 },
+  });

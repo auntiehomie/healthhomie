@@ -1,0 +1,14 @@
+{
+  "name": "Howdy Morning",
+  "short_name": "Howdy Morning",
+  "description": "Daily health, energy & scheduling companion.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#f5f6fa",
+  "theme_color": "#5850ec",
+  "icons": [
+    { "src": "/pwa-icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -5,6 +5,7 @@ import type { VercelRequest } from '@vercel/node';
 const TOKEN_TTL = '365d';
 
 export class AuthError extends Error {}
+export class ForbiddenError extends Error {}
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12);
@@ -14,24 +15,38 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-export function signAuthToken(userId: string): string {
+export function signAuthToken(userId: string, isOwner: boolean): string {
   const secret = requireJwtSecret();
-  return jwt.sign({ sub: userId }, secret, { expiresIn: TOKEN_TTL });
+  return jwt.sign({ sub: userId, isOwner }, secret, { expiresIn: TOKEN_TTL });
 }
 
-/** Throws AuthError on any missing/invalid/expired token — callers should catch and return 401. */
-export function requireUserId(req: VercelRequest): string {
+function verifyBearerToken(req: VercelRequest): { userId: string; isOwner: boolean } {
   const header = req.headers.authorization;
   const token = header?.startsWith('Bearer ') ? header.slice(7) : undefined;
   if (!token) throw new AuthError('Missing bearer token.');
 
   const secret = requireJwtSecret();
   try {
-    const payload = jwt.verify(token, secret) as { sub: string };
-    return payload.sub;
+    const payload = jwt.verify(token, secret) as { sub: string; isOwner?: boolean };
+    return { userId: payload.sub, isOwner: !!payload.isOwner };
   } catch {
     throw new AuthError('Invalid or expired session. Please log in again.');
   }
+}
+
+/** Throws AuthError on any missing/invalid/expired token — callers should catch and return 401. */
+export function requireUserId(req: VercelRequest): string {
+  return verifyBearerToken(req).userId;
+}
+
+/**
+ * Same as requireUserId, but also requires the isOwner claim from login/register time.
+ * Throws ForbiddenError (map to 403) for a valid-but-non-owner session, AuthError (401) otherwise.
+ */
+export function requireOwner(req: VercelRequest): string {
+  const { userId, isOwner } = verifyBearerToken(req);
+  if (!isOwner) throw new ForbiddenError('Only the app owner can do this.');
+  return userId;
 }
 
 function requireJwtSecret(): string {

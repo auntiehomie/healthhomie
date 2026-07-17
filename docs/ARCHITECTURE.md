@@ -27,7 +27,9 @@ Forgotten passwords go through email, not the invite/signup flow: `POST /api/aut
 
 ## Invites
 
-Friends register with a one-time invite code instead of the shared signup secret the app used before. `POST /api/invites` (authenticated) mints an 8-character code (`lib/server/inviteStore.ts`); `GET /api/invites` lists the codes a given account has generated, including who used each one; `DELETE /api/invites?id=...` revokes an unused code. Registration (`api/auth/register.ts`) consumes the code atomically on success — reused, revoked, or unknown codes are rejected. This replaces `SIGNUP_SECRET`'s old double duty as both the friend-facing invite code and the `/api/admin/migrate` credential: that secret is now bootstrap-only, and `/api/admin/migrate` prefers a separate `ADMIN_SECRET` (falling back to `SIGNUP_SECRET` if unset, for backward compatibility).
+Friends register with a one-time invite code instead of the shared signup secret the app used before. `/api/invites` (GET/POST/DELETE, `lib/server/inviteStore.ts`) is owner-only — `requireOwner` (`lib/server/auth.ts`) checks the `isOwner` claim baked into the JWT at login/register time, rejecting non-owners with 403. Only an account created via the `SIGNUP_SECRET` bootstrap path is ever marked `isOwner = true`; every invite-code registration is `isOwner = false`. The Settings "Invite friends" card calls `GET /api/invites` on mount and quietly hides itself on a 403 rather than showing an error, since that's expected for non-owner accounts. Registration (`api/auth/register.ts`) consumes the code atomically on success — reused, revoked, or unknown codes are rejected. This also replaces `SIGNUP_SECRET`'s old double duty as both the friend-facing invite code and the `/api/admin/migrate` credential: that secret is now bootstrap-only, and `/api/admin/migrate` prefers a separate `ADMIN_SECRET` (falling back to `SIGNUP_SECRET` if unset, for backward compatibility).
+
+Note: existing sessions issued before this change won't have an `isOwner` claim in their token yet — including the owner's own session. Log out and back in once after this ships to pick up the claim.
 
 ## Data flow
 
@@ -60,6 +62,14 @@ Open Food Facts does not require an API key for normal lookup usage.
 ## Survey
 
 Settings → "Take the survey" links to an optional `/survey` screen (two cards: Body & movement, Knowledge & productivity), backed by a single `survey_responses` row per user (`api/data/survey.ts`, `lib/services/surveyClient.ts`). Every field is optional. Weight is the one sensitive field: it's encrypted client-side (`lib/services/privacy.ts`) with a passphrase the user chooses on the spot — PBKDF2 (100k iterations) derives an AES-CBC key from that passphrase plus a random per-save salt, both generated with `expo-crypto`'s secure RNG. The passphrase itself is never sent to the server or stored anywhere; only ciphertext, salt, and IV land in Postgres, so the server (and anyone with direct database access, including the app's own developer) cannot read the value. Losing the passphrase means the old encrypted weight is unrecoverable — the UI makes this explicit and lets the user just save a new one.
+
+## Theme
+
+`lib/theme/tokens.ts` defines a light/dark color palette (indigo primary on neutral grays, closer to Linear/Notion/Todoist than the original warm cream-and-green look); `lib/theme/ThemeContext.tsx` exposes it via `useTheme()`, tracking a `light` / `dark` / `system` preference persisted in `AsyncStorage` and falling back to the device's `useColorScheme()` when set to `system`. Every screen and shared component computes its `StyleSheet` from `colors` via `useMemo(() => createStyles(colors), [colors])` instead of hardcoding hex values, so the whole app re-themes instantly. The toggle lives in Settings → Appearance. `app/+html.tsx` mirrors the two background colors in a `prefers-color-scheme` media query so there's no flash of the wrong theme before the app hydrates on web.
+
+## PWA
+
+The web build is installable as a PWA: `public/manifest.webmanifest` (name, icons, `theme_color`/`background_color` matching the light/dark tokens) is linked from `app/+html.tsx`, alongside `apple-mobile-web-app-*` meta tags for iOS "Add to Home Screen". `components/UpdateBanner.tsx` registers `public/sw.js` on web only (`lib/services/pwaUpdate.ts`) and shows a "Refresh" banner when a new deployment's service worker is waiting to activate. The service worker does no asset caching — this app always needs the network — its only job is installability plus update detection: `npm run build:web` runs `scripts/generate-sw.js` first, which stamps a fresh build timestamp into `public/sw.js` so its bytes differ on every deploy (the browser's update check is a byte diff of the SW script itself, so an unchanged file would never be seen as "new"). Tapping Refresh posts `SKIP_WAITING` to the waiting worker; once it takes control (`controllerchange`), the page reloads automatically. `vercel.json` sets `Cache-Control: no-cache` on `/sw.js` so browsers always fetch the latest copy to diff against.
 
 ## Wearables
 
