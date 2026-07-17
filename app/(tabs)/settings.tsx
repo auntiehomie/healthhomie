@@ -133,6 +133,14 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.card}>
+        <Text style={styles.cardTitle}>Survey</Text>
+        <Text style={styles.cardText}>An optional check-in on body stats, movement, and how you manage notes and knowledge.</Text>
+        <Pressable style={styles.button} onPress={() => router.push('/survey')}>
+          <Text style={styles.buttonText}>Take the survey</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.card}>
         <Text style={styles.cardTitle}>Legal</Text>
         <Link href="/legal/privacy" style={styles.link}>Privacy Policy</Link>
         <Link href="/legal/terms" style={styles.link}>Terms of Service</Link>

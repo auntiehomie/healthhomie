@@ -105,4 +105,21 @@ export const schemaStatements = [
     "createdAt" TEXT NOT NULL
   );`,
   `CREATE INDEX IF NOT EXISTS password_reset_tokens_user_idx ON password_reset_tokens("userId");`,
+  // "weightCiphertext"/"weightSalt"/"weightIv" hold an AES-CBC blob keyed from a passphrase the
+  // user chooses on-device and never transmits — the server only ever sees ciphertext, by design.
+  `CREATE TABLE IF NOT EXISTS survey_responses (
+    "userId" TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    "heightCm" DOUBLE PRECISION,
+    "weightCiphertext" TEXT,
+    "weightSalt" TEXT,
+    "weightIv" TEXT,
+    movement TEXT,
+    goals TEXT,
+    "notesHabit" TEXT,
+    "notesReviewFrequency" TEXT,
+    "notesSystem" TEXT,
+    "notesChallenge" TEXT,
+    "createdAt" TEXT NOT NULL,
+    "updatedAt" TEXT NOT NULL
+  );`,
 ] as const;

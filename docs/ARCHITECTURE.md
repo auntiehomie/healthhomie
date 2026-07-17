@@ -57,6 +57,10 @@ Friends register with a one-time invite code instead of the shared signup secret
 
 Open Food Facts does not require an API key for normal lookup usage.
 
+## Survey
+
+Settings → "Take the survey" links to an optional `/survey` screen (two cards: Body & movement, Knowledge & productivity), backed by a single `survey_responses` row per user (`api/data/survey.ts`, `lib/services/surveyClient.ts`). Every field is optional. Weight is the one sensitive field: it's encrypted client-side (`lib/services/privacy.ts`) with a passphrase the user chooses on the spot — PBKDF2 (100k iterations) derives an AES-CBC key from that passphrase plus a random per-save salt, both generated with `expo-crypto`'s secure RNG. The passphrase itself is never sent to the server or stored anywhere; only ciphertext, salt, and IV land in Postgres, so the server (and anyone with direct database access, including the app's own developer) cannot read the value. Losing the passphrase means the old encrypted weight is unrecoverable — the UI makes this explicit and lets the user just save a new one.
+
 ## Wearables
 
 - Oura is wired end to end and stores tokens server-side, per account, in Postgres — the client never sees an Oura access/refresh token. `api/oura/start.ts` (authenticated) mints a short-lived signed state token and returns Oura's consent URL; `api/oura/callback.ts` verifies that state, exchanges the code, and stores the tokens; `api/oura/sync.ts` (authenticated) refreshes if needed and pulls daily activity/sleep/readiness into `health_metrics_daily`. This closes the token-handling tradeoff flagged in an earlier version of this doc.
