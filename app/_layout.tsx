@@ -2,12 +2,23 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { getToken } from '@/lib/services/authClient';
+import { ThemeProvider, useTheme } from '@/lib/theme/ThemeContext';
+import { UpdateBanner } from '@/components/UpdateBanner';
 
 export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <AppShell />
+    </ThemeProvider>
+  );
+}
+
+function AppShell() {
   const [authChecked, setAuthChecked] = useState(false);
   const [authed, setAuthed] = useState(false);
   const router = useRouter();
   const segments = useSegments();
+  const { colors, scheme } = useTheme();
 
   // Re-checks on every navigation, not just app boot: login.tsx writes the token to storage
   // then navigates directly, and this is the only way this layout learns the token now
@@ -35,14 +46,22 @@ export default function RootLayout() {
 
   return (
     <>
-      <Stack>
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.surface },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '900' },
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
         <Stack.Screen name="reset-password" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
-      <StatusBar style="auto" />
+      <UpdateBanner />
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
     </>
   );
 }

@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -8,6 +8,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import type { ThemeColors } from '@/lib/theme/tokens';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Mood = 'great' | 'good' | 'meh' | 'tired' | 'stressed';
@@ -49,6 +51,8 @@ async function save(key: string, value: unknown) {
 
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function MorningScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [mood, setMood] = useState<Mood | null>(null);
   const [priorities, setPriorities] = useState(['', '', '']);
   const [water, setWater] = useState(0);
@@ -144,7 +148,7 @@ export default function MorningScreen() {
             key={i}
             style={styles.input}
             placeholder={`Priority ${i + 1}…`}
-            placeholderTextColor="#9e9891"
+            placeholderTextColor={colors.textMuted}
             value={priorities[i] ?? ''}
             onChangeText={v => updatePri(i, v)}
           />
@@ -184,7 +188,7 @@ export default function MorningScreen() {
           <TextInput
             style={[styles.input, { flex: 1 }]}
             placeholder="Add routine item…"
-            placeholderTextColor="#9e9891"
+            placeholderTextColor={colors.textMuted}
             value={routineInput}
             onChangeText={setRoutineInput}
             onSubmitEditing={addRoutine}
@@ -203,7 +207,7 @@ export default function MorningScreen() {
           style={styles.noteInput}
           multiline
           placeholder="Brain dump, intentions, anything…"
-          placeholderTextColor="#9e9891"
+          placeholderTextColor={colors.textMuted}
           value={morningNote}
           onChangeText={updateNote}
           textAlignVertical="top"
@@ -213,36 +217,35 @@ export default function MorningScreen() {
   );
 }
 
-const C = { bg: '#fffaf2', card: '#ffffff', accent: '#4f7c59', accent2: '#d0903f', muted: '#9e9891', text: '#211d18', border: '#e8e1d8' };
-
-const styles = StyleSheet.create({
-  container:    { padding: 20, gap: 16, backgroundColor: C.bg, paddingBottom: 40 },
-  hero:         { gap: 4, paddingTop: 10 },
-  eyebrow:      { color: C.accent, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, fontSize: 12 },
-  title:        { fontSize: 28, fontWeight: '900', color: C.text, lineHeight: 34 },
-  affBox:       { backgroundColor: C.accent, borderRadius: 16, padding: 18, gap: 6 },
-  affText:      { color: '#fff', fontSize: 16, fontWeight: '600', lineHeight: 22 },
-  affHint:      { color: 'rgba(255,255,255,0.6)', fontSize: 11 },
-  card:         { backgroundColor: C.card, borderRadius: 20, padding: 18, gap: 12 },
-  cardTitle:    { fontSize: 16, fontWeight: '800', color: C.text },
-  moodRow:      { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  moodBtn:      { width: 52, height: 52, borderRadius: 26, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.border },
-  moodBtnActive:{ borderColor: C.accent, backgroundColor: '#e8f0ea' },
-  moodEmoji:    { fontSize: 24 },
-  moodNote:     { color: C.muted, fontSize: 13 },
-  input:        { backgroundColor: C.bg, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: C.text, fontSize: 15, borderWidth: 1, borderColor: C.border },
-  waterRow:     { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  glass:        { fontSize: 28, opacity: 0.25 },
-  glassFilled:  { opacity: 1 },
-  muted:        { color: C.muted, fontSize: 13 },
-  routineRow:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  checkbox:     { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  checkboxText: { fontSize: 20 },
-  routineText:  { flex: 1, fontSize: 15, color: C.text },
-  routineDone:  { textDecorationLine: 'line-through', color: C.muted },
-  deleteBtn:    { color: C.muted, fontSize: 16, paddingHorizontal: 6 },
-  row:          { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  addBtn:       { backgroundColor: C.accent, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
-  addBtnText:   { color: '#fff', fontWeight: '700', fontSize: 14 },
-  noteInput:    { backgroundColor: C.bg, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: C.text, fontSize: 15, borderWidth: 1, borderColor: C.border, minHeight: 120 },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container:    { padding: 20, gap: 16, backgroundColor: colors.background, paddingBottom: 40 },
+    hero:         { gap: 4, paddingTop: 10 },
+    eyebrow:      { color: colors.primary, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, fontSize: 12 },
+    title:        { fontSize: 28, fontWeight: '900', color: colors.text, lineHeight: 34 },
+    affBox:       { backgroundColor: colors.primary, borderRadius: 16, padding: 18, gap: 6 },
+    affText:      { color: colors.onPrimary, fontSize: 16, fontWeight: '600', lineHeight: 22 },
+    affHint:      { color: colors.onPrimary, opacity: 0.7, fontSize: 11 },
+    card:         { backgroundColor: colors.surface, borderRadius: 20, padding: 18, gap: 12 },
+    cardTitle:    { fontSize: 16, fontWeight: '800', color: colors.text },
+    moodRow:      { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
+    moodBtn:      { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.border },
+    moodBtnActive:{ borderColor: colors.primary, backgroundColor: colors.surfaceAlt },
+    moodEmoji:    { fontSize: 24 },
+    moodNote:     { color: colors.textMuted, fontSize: 13 },
+    input:        { backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: colors.text, fontSize: 15, borderWidth: 1, borderColor: colors.border },
+    waterRow:     { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+    glass:        { fontSize: 28, opacity: 0.25 },
+    glassFilled:  { opacity: 1 },
+    muted:        { color: colors.textMuted, fontSize: 13 },
+    routineRow:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    checkbox:     { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+    checkboxText: { fontSize: 20 },
+    routineText:  { flex: 1, fontSize: 15, color: colors.text },
+    routineDone:  { textDecorationLine: 'line-through', color: colors.textMuted },
+    deleteBtn:    { color: colors.textMuted, fontSize: 16, paddingHorizontal: 6 },
+    row:          { flexDirection: 'row', gap: 10, alignItems: 'center' },
+    addBtn:       { backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
+    addBtnText:   { color: colors.onPrimary, fontWeight: '700', fontSize: 14 },
+    noteInput:    { backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: colors.text, fontSize: 15, borderWidth: 1, borderColor: colors.border, minHeight: 120 },
+  });

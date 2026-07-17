@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { requestPasswordReset } from '@/lib/services/authClient';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import type { ThemeColors } from '@/lib/theme/tokens';
 
 export default function ForgotPasswordScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +34,7 @@ export default function ForgotPasswordScreen() {
 
       <TextInput
         placeholder="Email"
+        placeholderTextColor={colors.textMuted}
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
@@ -51,15 +56,16 @@ export default function ForgotPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 24, gap: 14, backgroundColor: '#fffaf2', justifyContent: 'center' },
-  title: { fontSize: 28, fontWeight: '900', color: '#211d18', textAlign: 'center' },
-  subtitle: { color: '#665f54', textAlign: 'center', marginBottom: 12 },
-  input: { backgroundColor: '#ffffff', borderRadius: 16, padding: 14, fontSize: 16 },
-  message: { color: '#4f7c59', fontWeight: '600', textAlign: 'center' },
-  error: { color: '#b3423b', fontWeight: '600', textAlign: 'center' },
-  button: { backgroundColor: '#4f7c59', borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 8 },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fffaf2', fontWeight: '800', fontSize: 16 },
-  switchText: { color: '#4f7c59', fontWeight: '700', textAlign: 'center', marginTop: 12 },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: { flexGrow: 1, padding: 24, gap: 14, backgroundColor: colors.background, justifyContent: 'center' },
+    title: { fontSize: 28, fontWeight: '900', color: colors.text, textAlign: 'center' },
+    subtitle: { color: colors.textMuted, textAlign: 'center', marginBottom: 12 },
+    input: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, fontSize: 16, color: colors.text },
+    message: { color: colors.success, fontWeight: '600', textAlign: 'center' },
+    error: { color: colors.danger, fontWeight: '600', textAlign: 'center' },
+    button: { backgroundColor: colors.primary, borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 8 },
+    buttonDisabled: { opacity: 0.6 },
+    buttonText: { color: colors.onPrimary, fontWeight: '800', fontSize: 16 },
+    switchText: { color: colors.primary, fontWeight: '700', textAlign: 'center', marginTop: 12 },
+  });

@@ -5,12 +5,16 @@ import { LogFoodModal } from '@/components/health/LogFoodModal';
 import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries, upsertFoodItem } from '@/lib/db/database';
 import { summarizeDay, todayKey } from '@/lib/domain/nutrition';
 import { searchUsdaFoods } from '@/lib/services/nutritionApi';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import type { ThemeColors } from '@/lib/theme/tokens';
 import { Trash2 } from 'lucide-react-native';
 import type { FoodItem, MealEntry, MealType } from '@/types/healthhomie';
 
 const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 
 export default function JournalScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [foods, setFoods] = useState<FoodItem[]>([]);
   const [entries, setEntries] = useState<MealEntry[]>([]);
   const [selectedMeal, setSelectedMeal] = useState<MealType>('breakfast');
@@ -105,7 +109,7 @@ ${message}`)) void removeEntry(entry);
           style={[styles.input, styles.searchInput]}
         />
         <Pressable style={styles.searchButton} onPress={runSearch} disabled={searching}>
-          {searching ? <ActivityIndicator color="#fffaf2" /> : <Text style={styles.searchButtonText}>Search</Text>}
+          {searching ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.searchButtonText}>Search</Text>}
         </Pressable>
       </View>
       {searchError && <Text style={styles.error}>{searchError}</Text>}
@@ -135,7 +139,7 @@ ${message}`)) void removeEntry(entry);
               hitSlop={8}
               onPress={() => confirmDelete(entry, foodName)}
               style={({ pressed }) => [styles.deleteButton, pressed && styles.deleteButtonPressed]}>
-              <Trash2 color="#b3423b" size={20} />
+              <Trash2 color={colors.danger} size={20} />
             </Pressable>
           </View>
         );
@@ -146,34 +150,35 @@ ${message}`)) void removeEntry(entry);
   );
 }
 
-const styles = StyleSheet.create({
-  container: { padding: 20, gap: 14, backgroundColor: '#fffaf2' },
-  title: { fontSize: 32, fontWeight: '900', color: '#211d18' },
-  subtitle: { color: '#665f54', lineHeight: 20 },
-  summary: { backgroundColor: '#211d18', borderRadius: 24, padding: 18 },
-  summaryValue: { color: '#fffaf2', fontSize: 30, fontWeight: '900' },
-  summaryText: { color: '#dfd6c8' },
-  label: { color: '#211d18', fontWeight: '800', marginTop: 8 },
-  mealRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, backgroundColor: '#f0e7da' },
-  chipActive: { backgroundColor: '#4f7c59' },
-  chipText: { color: '#665f54', fontWeight: '700' },
-  chipTextActive: { color: '#fffaf2' },
-  input: { backgroundColor: '#ffffff', borderRadius: 16, padding: 14, fontSize: 18 },
-  searchRow: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
-  searchInput: { flex: 1 },
-  searchButton: { backgroundColor: '#4f7c59', borderRadius: 16, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
-  searchButtonText: { color: '#fffaf2', fontWeight: '800' },
-  error: { color: '#b3423b', fontWeight: '600' },
-  foodRow: { backgroundColor: '#ffffff', borderRadius: 18, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  foodName: { fontWeight: '800', color: '#211d18', fontSize: 16 },
-  foodMeta: { color: '#7a7165', marginTop: 4 },
-  foodMacros: { fontWeight: '800', color: '#4f7c59' },
-  entryRow: { backgroundColor: '#ffffff', borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  entryDetails: { flex: 1, gap: 4 },
-  entryName: { color: '#211d18', fontSize: 16, fontWeight: '800' },
-  entryMeta: { color: '#7a7165', textTransform: 'capitalize' },
-  deleteButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fae9e7', alignItems: 'center', justifyContent: 'center' },
-  deleteButtonPressed: { opacity: 0.65 },
-  empty: { color: '#7a7165', fontStyle: 'italic' },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: { padding: 20, gap: 14, backgroundColor: colors.background },
+    title: { fontSize: 32, fontWeight: '900', color: colors.text },
+    subtitle: { color: colors.textMuted, lineHeight: 20 },
+    summary: { backgroundColor: colors.text, borderRadius: 24, padding: 18 },
+    summaryValue: { color: colors.background, fontSize: 30, fontWeight: '900' },
+    summaryText: { color: colors.background, opacity: 0.75 },
+    label: { color: colors.text, fontWeight: '800', marginTop: 8 },
+    mealRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, backgroundColor: colors.chipBackground },
+    chipActive: { backgroundColor: colors.primary },
+    chipText: { color: colors.chipText, fontWeight: '700' },
+    chipTextActive: { color: colors.onPrimary },
+    input: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, fontSize: 18, color: colors.text },
+    searchRow: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
+    searchInput: { flex: 1 },
+    searchButton: { backgroundColor: colors.primary, borderRadius: 16, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
+    searchButtonText: { color: colors.onPrimary, fontWeight: '800' },
+    error: { color: colors.danger, fontWeight: '600' },
+    foodRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    foodName: { fontWeight: '800', color: colors.text, fontSize: 16 },
+    foodMeta: { color: colors.textMuted, marginTop: 4 },
+    foodMacros: { fontWeight: '800', color: colors.primary },
+    entryRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+    entryDetails: { flex: 1, gap: 4 },
+    entryName: { color: colors.text, fontSize: 16, fontWeight: '800' },
+    entryMeta: { color: colors.textMuted, textTransform: 'capitalize' },
+    deleteButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+    deleteButtonPressed: { opacity: 0.65 },
+    empty: { color: colors.textMuted, fontStyle: 'italic' },
+  });

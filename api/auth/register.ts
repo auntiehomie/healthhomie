@@ -27,7 +27,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const userId = randomUUID();
     const now = new Date().toISOString();
     const passwordHash = await hashPassword(password);
-    await sql`INSERT INTO users (id, email, "passwordHash", "createdAt") VALUES (${userId}, ${normalizedEmail}, ${passwordHash}, ${now})`;
+    // Only the bootstrap-secret path can ever produce an owner account — invite-code
+    // registrations (everyone else) are never owners.
+    await sql`INSERT INTO users (id, email, "passwordHash", "isOwner", "createdAt") VALUES (${userId}, ${normalizedEmail}, ${passwordHash}, ${isBootstrapSecret}, ${now})`;
 
     // Invite codes reference the new user's id via a foreign key, so they can only be
     // consumed after the user row exists — roll the user back if the code turns out invalid.
@@ -41,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     await seedDemoFoods(userId);
 
-    res.status(201).json({ token: signAuthToken(userId) });
+    res.status(201).json({ token: signAuthToken(userId, isBootstrapSecret) });
   } catch (error) {
     if (error instanceof DatabaseNotConfiguredError) return res.status(503).json({ error: error.message });
     res.status(500).json({ error: error instanceof Error ? error.message : 'Registration failed.' });

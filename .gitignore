@@ -9,6 +9,10 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Generated at build time by scripts/generate-sw.js (see public/manifest.webmanifest for the
+# static PWA assets that ARE committed)
+public/sw.js
+
 # Native
 .kotlin/
 *.orig.*

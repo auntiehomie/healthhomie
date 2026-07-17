@@ -13,6 +13,15 @@ export default function Root({ children }: { children: ReactNode }) {
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 
+        {/* PWA: installable app metadata + update-detecting service worker (registered in components/UpdateBanner.tsx) */}
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#5850ec" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#8b84f7" />
+        <link rel="apple-touch-icon" href="/pwa-icon.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Howdy Morning" />
+
         {/*
           Disable body scrolling on web. This makes ScrollView components work closer to how they do on native.
           However, body scrolling is often nice to have for mobile web. If you want to enable it, remove this line.
@@ -30,10 +39,10 @@ export default function Root({ children }: { children: ReactNode }) {
 
 const responsiveBackground = `
 body {
-  background-color: #fff;
+  background-color: #f5f6fa;
 }
 @media (prefers-color-scheme: dark) {
   body {
-    background-color: #000;
+    background-color: #0e0f14;
   }
 }`;

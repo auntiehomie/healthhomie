@@ -10,16 +10,18 @@ import {
   Zap,
 } from 'lucide-react-native';
 import ScrollableTabBar from '@/components/ScrollableTabBar';
+import { useTheme } from '@/lib/theme/ThemeContext';
 
 const SIZE = 22;
 
 export default function TabLayout() {
+  const { colors } = useTheme();
   return (
     <Tabs
       tabBar={(props) => <ScrollableTabBar {...props} />}
       screenOptions={{
-        headerStyle:      { backgroundColor: '#fffaf2' },
-        headerTintColor:  '#211d18',
+        headerStyle:      { backgroundColor: colors.surface },
+        headerTintColor:  colors.text,
         headerTitleStyle: { fontWeight: '900' },
       }}
     >

@@ -3,8 +3,11 @@ export const schemaStatements = [
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
     "passwordHash" TEXT NOT NULL,
+    "isOwner" BOOLEAN NOT NULL DEFAULT FALSE,
     "createdAt" TEXT NOT NULL
   );`,
+  // Added after users already existed in production - see the activityScore comment below for why this needs its own statement.
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS "isOwner" BOOLEAN NOT NULL DEFAULT FALSE;`,
   `CREATE TABLE IF NOT EXISTS food_items (
     id TEXT NOT NULL,
     "userId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

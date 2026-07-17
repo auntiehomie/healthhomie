@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MacroRing } from '@/components/health/MacroRing';
 import { MetricCard } from '@/components/health/MetricCard';
@@ -7,9 +7,16 @@ import { getUserProfile, listFoodItems, listMealEntries } from '@/lib/db/databas
 import { calculateDailyGoal } from '@/lib/domain/goals';
 import { summarizeDay, todayKey } from '@/lib/domain/nutrition';
 import { readTodayHealthSnapshot } from '@/lib/services/healthkit';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import type { ThemeColors } from '@/lib/theme/tokens';
 import type { DailyNutritionSummary, HealthSnapshot } from '@/types/healthhomie';
 
+const CARBS_COLOR = '#d99a3f';
+const FAT_COLOR = '#8b5cf6';
+
 export default function TodayScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [summary, setSummary] = useState<DailyNutritionSummary>({ date: todayKey(), entries: 0, calories: 0, proteinG: 0, carbsG: 0, fatG: 0 });
   const [goal, setGoal] = useState(calculateDailyGoal({ id: 'loading', goalType: 'improve-consistency', activityMultiplier: 1.2, createdAt: '', updatedAt: '' }));
   const [snapshot, setSnapshot] = useState<HealthSnapshot>({ date: todayKey() });
@@ -47,23 +54,24 @@ export default function TodayScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Macros</Text>
         <View style={styles.macroRow}>
-          <MacroRing label="Protein" actual={summary.proteinG} target={goal.proteinTargetG} color="#4f7c59" />
-          <MacroRing label="Carbs" actual={summary.carbsG} target={goal.carbsG} color="#d0903f" />
-          <MacroRing label="Fat" actual={summary.fatG} target={goal.fatG} color="#7a6ee6" />
+          <MacroRing label="Protein" actual={summary.proteinG} target={goal.proteinTargetG} color={colors.primary} />
+          <MacroRing label="Carbs" actual={summary.carbsG} target={goal.carbsG} color={CARBS_COLOR} />
+          <MacroRing label="Fat" actual={summary.fatG} target={goal.fatG} color={FAT_COLOR} />
         </View>
       </View>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { padding: 20, gap: 20, backgroundColor: '#fffaf2' },
-  hero: { gap: 8, paddingTop: 10 },
-  eyebrow: { color: '#4f7c59', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 },
-  title: { fontSize: 34, lineHeight: 38, fontWeight: '900', color: '#211d18' },
-  subtitle: { color: '#665f54', fontSize: 16 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  section: { backgroundColor: '#ffffff', borderRadius: 24, padding: 18, gap: 16 },
-  sectionTitle: { fontSize: 20, fontWeight: '800', color: '#211d18' },
-  macroRow: { flexDirection: 'row', gap: 12 },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: { padding: 20, gap: 20, backgroundColor: colors.background },
+    hero: { gap: 8, paddingTop: 10 },
+    eyebrow: { color: colors.primary, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 },
+    title: { fontSize: 34, lineHeight: 38, fontWeight: '900', color: colors.text },
+    subtitle: { color: colors.textMuted, fontSize: 16 },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+    section: { backgroundColor: colors.surface, borderRadius: 24, padding: 18, gap: 16 },
+    sectionTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
+    macroRow: { flexDirection: 'row', gap: 12 },
+  });

@@ -10,16 +10,25 @@ export type InviteCode = {
   createdAt: string;
 };
 
+/** Thrown when the current account isn't the app owner — expected for everyone but the owner, not a bug to surface as an error. */
+export class InviteForbiddenError extends Error {}
+
 async function authHeaders(): Promise<Record<string, string>> {
   const token = await getToken();
   if (!token) throw new Error('Log in first.');
   return { authorization: `Bearer ${token}` };
 }
 
+async function throwForResponse(response: Response, fallback: string): Promise<never> {
+  const payload = await response.json().catch(() => ({}));
+  if (response.status === 403) throw new InviteForbiddenError(payload.error ?? fallback);
+  throw new Error(payload.error ?? fallback);
+}
+
 export async function listInviteCodes(): Promise<InviteCode[]> {
   const response = await fetch(apiUrl('/api/invites'), { headers: await authHeaders() });
+  if (!response.ok) await throwForResponse(response, 'Failed to load invite codes.');
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error ?? 'Failed to load invite codes.');
   return payload.invites as InviteCode[];
 }
 
@@ -29,8 +38,8 @@ export async function createInviteCode(label?: string): Promise<InviteCode> {
     headers: { ...(await authHeaders()), 'content-type': 'application/json' },
     body: JSON.stringify({ label }),
   });
+  if (!response.ok) await throwForResponse(response, 'Failed to create invite code.');
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error ?? 'Failed to create invite code.');
   return payload.invite as InviteCode;
 }
 
@@ -39,6 +48,5 @@ export async function revokeInviteCode(id: string): Promise<void> {
     method: 'DELETE',
     headers: await authHeaders(),
   });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.error ?? 'Failed to revoke invite code.');
+  if (!response.ok) await throwForResponse(response, 'Failed to revoke invite code.');
 }

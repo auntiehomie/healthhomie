@@ -1,6 +1,11 @@
+import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import type { ThemeColors } from '@/lib/theme/tokens';
 
 export function LegalDocument({ text }: { text: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const lines = text.split('\n');
 
   return (
@@ -26,15 +31,16 @@ export function LegalDocument({ text }: { text: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { padding: 20, paddingBottom: 48, gap: 4, backgroundColor: '#fffaf2', maxWidth: 720 },
-  h1: { fontSize: 28, fontWeight: '900', color: '#211d18', marginBottom: 8 },
-  h2: { fontSize: 20, fontWeight: '800', color: '#211d18', marginTop: 16, marginBottom: 4 },
-  h3: { fontSize: 16, fontWeight: '700', color: '#211d18', marginTop: 10, marginBottom: 2 },
-  paragraph: { fontSize: 14, lineHeight: 21, color: '#443d34' },
-  bulletRow: { flexDirection: 'row', gap: 8, paddingLeft: 4 },
-  bullet: { fontSize: 14, color: '#4f7c59' },
-  bulletText: { flex: 1, fontSize: 14, lineHeight: 21, color: '#443d34' },
-  divider: { height: 1, backgroundColor: '#e4ddd1', marginVertical: 16 },
-  spacer: { height: 6 },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: { padding: 20, paddingBottom: 48, gap: 4, backgroundColor: colors.background, maxWidth: 720 },
+    h1: { fontSize: 28, fontWeight: '900', color: colors.text, marginBottom: 8 },
+    h2: { fontSize: 20, fontWeight: '800', color: colors.text, marginTop: 16, marginBottom: 4 },
+    h3: { fontSize: 16, fontWeight: '700', color: colors.text, marginTop: 10, marginBottom: 2 },
+    paragraph: { fontSize: 14, lineHeight: 21, color: colors.textMuted },
+    bulletRow: { flexDirection: 'row', gap: 8, paddingLeft: 4 },
+    bullet: { fontSize: 14, color: colors.primary },
+    bulletText: { flex: 1, fontSize: 14, lineHeight: 21, color: colors.textMuted },
+    divider: { height: 1, backgroundColor: colors.border, marginVertical: 16 },
+    spacer: { height: 6 },
+  });

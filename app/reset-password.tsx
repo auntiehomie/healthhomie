@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { resetPassword } from '@/lib/services/authClient';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import type { ThemeColors } from '@/lib/theme/tokens';
 
 export default function ResetPasswordScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { token } = useLocalSearchParams<{ token?: string }>();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -52,8 +56,22 @@ export default function ResetPasswordScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Choose a new password</Text>
 
-      <TextInput placeholder="New password" secureTextEntry value={password} onChangeText={setPassword} style={styles.input} />
-      <TextInput placeholder="Confirm new password" secureTextEntry value={confirm} onChangeText={setConfirm} style={styles.input} />
+      <TextInput
+        placeholder="New password"
+        placeholderTextColor={colors.textMuted}
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+        style={styles.input}
+      />
+      <TextInput
+        placeholder="Confirm new password"
+        placeholderTextColor={colors.textMuted}
+        secureTextEntry
+        value={confirm}
+        onChangeText={setConfirm}
+        style={styles.input}
+      />
       {error && <Text style={styles.error}>{error}</Text>}
 
       <Pressable style={[styles.button, submitting && styles.buttonDisabled]} onPress={submit} disabled={submitting}>
@@ -63,13 +81,14 @@ export default function ResetPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 24, gap: 14, backgroundColor: '#fffaf2', justifyContent: 'center' },
-  title: { fontSize: 28, fontWeight: '900', color: '#211d18', textAlign: 'center' },
-  subtitle: { color: '#665f54', textAlign: 'center', marginBottom: 12 },
-  input: { backgroundColor: '#ffffff', borderRadius: 16, padding: 14, fontSize: 16 },
-  error: { color: '#b3423b', fontWeight: '600', textAlign: 'center' },
-  button: { backgroundColor: '#4f7c59', borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 8 },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fffaf2', fontWeight: '800', fontSize: 16 },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: { flexGrow: 1, padding: 24, gap: 14, backgroundColor: colors.background, justifyContent: 'center' },
+    title: { fontSize: 28, fontWeight: '900', color: colors.text, textAlign: 'center' },
+    subtitle: { color: colors.textMuted, textAlign: 'center', marginBottom: 12 },
+    input: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, fontSize: 16, color: colors.text },
+    error: { color: colors.danger, fontWeight: '600', textAlign: 'center' },
+    button: { backgroundColor: colors.primary, borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 8 },
+    buttonDisabled: { opacity: 0.6 },
+    buttonText: { color: colors.onPrimary, fontWeight: '800', fontSize: 16 },
+  });
