@@ -9,25 +9,15 @@ import {
   Sun,
   Zap,
 } from 'lucide-react-native';
+import ScrollableTabBar from '@/components/ScrollableTabBar';
 
-const ACTIVE   = '#4f7c59';
-const INACTIVE = '#9e9891';
 const SIZE = 22;
 
 export default function TabLayout() {
   return (
     <Tabs
+      tabBar={(props) => <ScrollableTabBar {...props} />}
       screenOptions={{
-        tabBarActiveTintColor:   ACTIVE,
-        tabBarInactiveTintColor: INACTIVE,
-        tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopColor:  '#e8e1d8',
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 6,
-        },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
         headerStyle:      { backgroundColor: '#fffaf2' },
         headerTintColor:  '#211d18',
         headerTitleStyle: { fontWeight: '900' },
