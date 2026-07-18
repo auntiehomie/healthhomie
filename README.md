@@ -36,7 +36,7 @@ Built for iOS, Android, and web. Runs on Expo SDK 57. The web build is installab
 - **Postgres** (Vercel Storage → Neon) as the single source of truth for the account's food journal, profile, goals, and Oura connection — the same data syncs across web, iOS, and Android. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full data flow.
 - **Email/password accounts** gated by a per-person invite code (or the owner's bootstrap secret), JWT sessions (`jsonwebtoken` + `bcryptjs`) — no third-party auth provider
 - **Resend** for password-reset emails
-- **Oura API v2** (readiness, sleep, activity data), tokens stored server-side per account, never on-device
+- **Oura API v2** (readiness, sleep, activity data) and **Fitbit Web API** (steps, active calories, sleep) — either connects independently in Settings, tokens stored server-side per account, never on-device. Both write into the same `health_metrics_daily` table, so Today's Steps/Active kcal cards show data from whichever is connected
 - **Claude (Anthropic API)** generates the Home tab's daily AI coach suggestions from Oura scores + goals, cached once per day per account in Postgres
 - The Home tab's Productivity page and the Notes tab currently persist locally on-device via `AsyncStorage`, separate from the account-synced Postgres data used by Today/Journal/Goals/the Home tab's Health page
 - Light/dark theme (`lib/theme/`) with a Settings toggle, and a PWA service worker on web that prompts to refresh when a new version ships
@@ -60,6 +60,7 @@ npx expo start
 | `ADMIN_SECRET` | Recommended — separate credential for `/api/admin/migrate` (falls back to `SIGNUP_SECRET` if unset) |
 | `USDA_FDC_API_KEY` | USDA FoodData Central search |
 | `OURA_CLIENT_ID` / `OURA_CLIENT_SECRET` / `OURA_REDIRECT_URI` | Oura OAuth2 app credentials |
+| `FITBIT_CLIENT_ID` / `FITBIT_CLIENT_SECRET` / `FITBIT_REDIRECT_URI` | Fitbit OAuth2 app credentials — register an app at [dev.fitbit.com](https://dev.fitbit.com/apps/new), OAuth 2.0 Application Type "Server", redirect URI `https://howdymornin.io/api/fitbit/callback` |
 | `RESEND_API_KEY` | Sends password-reset emails via [Resend](https://resend.com) |
 | `RESEND_FROM_EMAIL` | Optional — e.g. `Howdy Morning <noreply@howdymornin.io>` once the domain is verified in Resend; defaults to Resend's unverified sandbox sender |
 | `ANTHROPIC_API_KEY` | Powers the Home tab's AI coach suggestions via the [Anthropic API](https://console.anthropic.com); without it, `/api/ai/suggestions` returns a 503 |

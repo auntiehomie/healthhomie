@@ -5,6 +5,7 @@ import { Link, router } from 'expo-router';
 import { Copy, Share2 } from 'lucide-react-native';
 import { requestHealthPermissions } from '@/lib/services/healthkit';
 import { connectOura, getOuraStatus, syncOura } from '@/lib/services/ouraClient';
+import { connectFitbit, getFitbitStatus, syncFitbit } from '@/lib/services/fitbitClient';
 import { logout } from '@/lib/services/authClient';
 import { promoteToOwner } from '@/lib/services/adminClient';
 import { createInviteCode, InviteForbiddenError, listInviteCodes, revokeInviteCode, type InviteCode } from '@/lib/services/inviteClient';
@@ -32,6 +33,7 @@ export default function SettingsScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [healthStatus, setHealthStatus] = useState('Not requested yet');
   const [ouraStatus, setOuraStatus] = useState('Not connected');
+  const [fitbitStatus, setFitbitStatus] = useState('Not connected');
   const [invites, setInvites] = useState<InviteCode[]>([]);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [generatingInvite, setGeneratingInvite] = useState(false);
@@ -44,6 +46,9 @@ export default function SettingsScreen() {
   useEffect(() => {
     getOuraStatus().then((status) => {
       if (status.connected) setOuraStatus(status.lastSyncedAt ? `Connected, last synced ${status.lastSyncedAt}` : 'Connected, not synced yet');
+    });
+    getFitbitStatus().then((status) => {
+      if (status.connected) setFitbitStatus(status.lastSyncedAt ? `Connected, last synced ${status.lastSyncedAt}` : 'Connected, not synced yet');
     });
     refreshInvites();
   }, []);
@@ -153,6 +158,18 @@ export default function SettingsScreen() {
     setOuraStatus(result.reason ?? `Synced ${result.synced} days of Oura data.`);
   }
 
+  async function handleConnectFitbit() {
+    setFitbitStatus('Connecting...');
+    const result = await connectFitbit();
+    if (result.reason) setFitbitStatus(result.reason);
+  }
+
+  async function handleSyncFitbit() {
+    setFitbitStatus('Syncing...');
+    const result = await syncFitbit();
+    setFitbitStatus(result.reason ?? `Synced ${result.synced} days of Fitbit data.`);
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Settings</Text>
@@ -200,6 +217,18 @@ export default function SettingsScreen() {
           <Text style={styles.buttonText}>Sync Oura data</Text>
         </Pressable>
         <Text style={styles.status}>{ouraStatus}</Text>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Fitbit</Text>
+        <Text style={styles.cardText}>Steps, active calories, and sleep for web + mobile. No Apple Health or Oura required.</Text>
+        <Pressable style={styles.button} onPress={handleConnectFitbit}>
+          <Text style={styles.buttonText}>Connect Fitbit</Text>
+        </Pressable>
+        <Pressable style={styles.button} onPress={handleSyncFitbit}>
+          <Text style={styles.buttonText}>Sync Fitbit data</Text>
+        </Pressable>
+        <Text style={styles.status}>{fitbitStatus}</Text>
       </View>
 
       {canManageInvites && (
