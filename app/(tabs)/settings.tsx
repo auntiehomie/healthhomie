@@ -1,6 +1,8 @@
+import * as Clipboard from 'expo-clipboard';
 import { useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { Link, router } from 'expo-router';
+import { Copy, Share2 } from 'lucide-react-native';
 import { requestHealthPermissions } from '@/lib/services/healthkit';
 import { connectOura, getOuraStatus, syncOura } from '@/lib/services/ouraClient';
 import { logout } from '@/lib/services/authClient';
@@ -12,6 +14,10 @@ function inviteStatus(invite: InviteCode): string {
   if (invite.revokedAt) return 'Revoked';
   if (invite.usedAt) return `Used${invite.usedByEmail ? ` by ${invite.usedByEmail}` : ''}`;
   return 'Available';
+}
+
+function inviteMessage(code: string): string {
+  return `Join me on Howdy Morning — register at https://howdymornin.io with invite code ${code}`;
 }
 
 const APPEARANCE_OPTIONS: { key: ThemePreference; label: string }[] = [
@@ -29,6 +35,7 @@ export default function SettingsScreen() {
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [generatingInvite, setGeneratingInvite] = useState(false);
   const [canManageInvites, setCanManageInvites] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     getOuraStatus().then((status) => {
@@ -64,6 +71,35 @@ export default function SettingsScreen() {
     } finally {
       setGeneratingInvite(false);
     }
+  }
+
+  function flashCopied(id: string) {
+    setCopiedId(id);
+    setTimeout(() => setCopiedId((current) => (current === id ? null : current)), 2000);
+  }
+
+  async function handleCopyInvite(invite: InviteCode) {
+    await Clipboard.setStringAsync(invite.code);
+    flashCopied(invite.id);
+  }
+
+  async function handleShareInvite(invite: InviteCode) {
+    const message = inviteMessage(invite.code);
+    if (Platform.OS === 'web') {
+      const nav = typeof navigator !== 'undefined' ? (navigator as Navigator & { share?: (data: { text: string }) => Promise<void> }) : undefined;
+      if (nav?.share) {
+        try {
+          await nav.share({ text: message });
+          return;
+        } catch {
+          // User cancelled, or the browser doesn't really support it — fall back to copying the message.
+        }
+      }
+      await Clipboard.setStringAsync(message);
+      flashCopied(invite.id);
+      return;
+    }
+    await Share.share({ message });
   }
 
   async function handleRevokeInvite(id: string) {
@@ -150,7 +186,10 @@ export default function SettingsScreen() {
       {canManageInvites && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Invite friends</Text>
-          <Text style={styles.cardText}>Generate a one-time code for someone to register their own account.</Text>
+          <Text style={styles.cardText}>
+            Generate a one-time code, then tap the share icon to send it straight to a friend — or the copy icon to
+            paste it yourself. Either way they&apos;ll register at howdymornin.io with that code.
+          </Text>
           <Pressable style={[styles.button, generatingInvite && styles.buttonDisabled]} onPress={handleGenerateInvite} disabled={generatingInvite}>
             <Text style={styles.buttonText}>{generatingInvite ? 'Generating...' : 'Generate invite code'}</Text>
           </Pressable>
@@ -159,12 +198,20 @@ export default function SettingsScreen() {
             <View key={invite.id} style={styles.inviteRow}>
               <View style={styles.inviteInfo}>
                 <Text style={styles.inviteCode}>{invite.code}</Text>
-                <Text style={styles.status}>{inviteStatus(invite)}</Text>
+                <Text style={styles.status}>{copiedId === invite.id ? 'Copied!' : inviteStatus(invite)}</Text>
               </View>
               {!invite.usedAt && !invite.revokedAt && (
-                <Pressable style={styles.revokeButton} onPress={() => handleRevokeInvite(invite.id)}>
-                  <Text style={styles.revokeButtonText}>Revoke</Text>
-                </Pressable>
+                <View style={styles.inviteActions}>
+                  <Pressable accessibilityLabel="Copy invite code" style={styles.iconButton} onPress={() => handleCopyInvite(invite)}>
+                    <Copy color={colors.onPrimary} size={16} />
+                  </Pressable>
+                  <Pressable accessibilityLabel="Share invite code" style={styles.iconButton} onPress={() => handleShareInvite(invite)}>
+                    <Share2 color={colors.onPrimary} size={16} />
+                  </Pressable>
+                  <Pressable accessibilityLabel="Revoke invite code" style={styles.revokeButton} onPress={() => handleRevokeInvite(invite.id)}>
+                    <Text style={styles.revokeButtonText}>Revoke</Text>
+                  </Pressable>
+                </View>
               )}
             </View>
           ))}
@@ -210,6 +257,8 @@ const createStyles = (colors: ThemeColors) =>
     inviteRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surfaceAlt, borderRadius: 14, padding: 12 },
     inviteInfo: { gap: 2 },
     inviteCode: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: 1 },
+    inviteActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+    iconButton: { backgroundColor: colors.primary, borderRadius: 10, padding: 8 },
     revokeButton: { backgroundColor: colors.danger, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12 },
     revokeButtonText: { color: colors.onPrimary, fontWeight: '700', fontSize: 12 },
   });

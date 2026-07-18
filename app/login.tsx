@@ -19,9 +19,13 @@ export default function LoginScreen() {
     setSubmitting(true);
     setError(null);
     try {
-      if (mode === 'login') await login(email.trim(), password);
-      else await register(email.trim(), password, inviteCode);
-      router.replace('/(tabs)');
+      if (mode === 'login') {
+        await login(email.trim(), password);
+        router.replace('/(tabs)');
+      } else {
+        await register(email.trim(), password, inviteCode);
+        router.replace('/survey?onboarding=true');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
