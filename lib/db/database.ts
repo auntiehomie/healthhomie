@@ -40,6 +40,10 @@ export async function deleteMealEntry(entryId: string): Promise<void> {
   await apiFetch(`/api/data/meal-entries?id=${encodeURIComponent(entryId)}`, { method: 'DELETE' });
 }
 
+export async function updateMealEntry(entry: Pick<MealEntry, 'id' | 'servings' | 'hour' | 'mealType'>): Promise<void> {
+  await apiFetch('/api/data/meal-entries', { method: 'PUT', body: JSON.stringify(entry) });
+}
+
 export async function getUserProfile(): Promise<UserProfile> {
   const response = await apiFetch('/api/data/profile');
   return response.json();

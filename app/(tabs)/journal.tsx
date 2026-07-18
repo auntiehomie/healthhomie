@@ -1,19 +1,19 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BarcodeScanner } from '@/components/health/BarcodeScanner';
+import { EditEntryModal } from '@/components/health/EditEntryModal';
+import { HourPicker } from '@/components/health/HourPicker';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
-import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries, upsertFoodItem } from '@/lib/db/database';
+import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries, updateMealEntry, upsertFoodItem } from '@/lib/db/database';
 import { foodDisplayName } from '@/lib/domain/food';
-import { deriveMealType, formatHour, HOURS } from '@/lib/domain/mealType';
+import { deriveMealType, formatHour } from '@/lib/domain/mealType';
 import { summarizeDay, todayKey } from '@/lib/domain/nutrition';
 import { searchUsdaFoods } from '@/lib/services/nutritionApi';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { ScanBarcode, Trash2, X } from 'lucide-react-native';
 import type { FoodItem, MealEntry } from '@/types/healthhomie';
-
-const HOUR_CHIP_WIDTH = 64;
 
 export default function JournalScreen() {
   const { colors } = useTheme();
@@ -22,12 +22,12 @@ export default function JournalScreen() {
   const [entries, setEntries] = useState<MealEntry[]>([]);
   const [selectedHour, setSelectedHour] = useState<number>(new Date().getHours());
   const [activeFood, setActiveFood] = useState<FoodItem | null>(null);
+  const [editingEntry, setEditingEntry] = useState<MealEntry | null>(null);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
-  const hourScrollRef = useRef<ScrollView>(null);
 
   const load = useCallback(async () => {
     const [nextFoods, nextEntries] = await Promise.all([listFoodItems(), listMealEntries(todayKey())]);
@@ -63,8 +63,16 @@ export default function JournalScreen() {
     await load();
   }
 
-  function scrollToSelectedHour() {
-    hourScrollRef.current?.scrollTo({ x: Math.max(0, (selectedHour - 2) * HOUR_CHIP_WIDTH), animated: false });
+  async function saveEntryEdit(updated: Pick<MealEntry, 'id' | 'servings' | 'hour' | 'mealType'>) {
+    try {
+      await updateMealEntry(updated);
+      setEditingEntry(null);
+      await load();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Please try again.';
+      if (Platform.OS === 'web') window.alert(`Couldn’t update entry: ${message}`);
+      else Alert.alert('Couldn’t update entry', message);
+    }
   }
 
   async function runSearch() {
@@ -116,21 +124,7 @@ ${message}`)) void removeEntry(entry);
         <Text style={styles.summaryText}>{Math.round(summary.proteinG)}g protein · {Math.round(summary.carbsG)}g carbs · {Math.round(summary.fatG)}g fat</Text>
       </View>
 
-      <Text style={styles.label}>Time</Text>
-      <ScrollView
-        ref={hourScrollRef}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        onLayout={scrollToSelectedHour}
-        style={styles.hourScroll}
-        contentContainerStyle={styles.hourRow}
-      >
-        {HOURS.map((hour) => (
-          <Pressable key={hour} onPress={() => setSelectedHour(hour)} style={[styles.chip, styles.hourChip, selectedHour === hour && styles.chipActive]}>
-            <Text style={[styles.chipText, selectedHour === hour && styles.chipTextActive]}>{formatHour(hour)}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+      <HourPicker selectedHour={selectedHour} onSelectHour={setSelectedHour} />
 
       <Text style={styles.label}>Search foods</Text>
       <View style={styles.searchRow}>
@@ -182,7 +176,7 @@ ${message}`)) void removeEntry(entry);
         const food = foods.find((item) => item.id === entry.foodItemId);
         const foodName = food ? foodDisplayName(food) : 'Food';
         return (
-          <View key={entry.id} style={styles.entryRow}>
+          <Pressable key={entry.id} onPress={() => setEditingEntry(entry)} style={styles.entryRow}>
             <View style={styles.entryDetails}>
               <Text style={styles.entryName}>{foodName}</Text>
               <Text style={styles.entryMeta}>{entry.hour != null ? formatHour(entry.hour) : entry.mealType} · {entry.servings} serving{entry.servings === 1 ? '' : 's'}</Text>
@@ -191,15 +185,23 @@ ${message}`)) void removeEntry(entry);
               accessibilityLabel={`Delete ${foodName} from today’s journal`}
               accessibilityRole="button"
               hitSlop={8}
-              onPress={() => confirmDelete(entry, foodName)}
+              onPress={(event) => { event.stopPropagation(); confirmDelete(entry, foodName); }}
               style={({ pressed }) => [styles.deleteButton, pressed && styles.deleteButtonPressed]}>
               <Trash2 color={colors.danger} size={20} />
             </Pressable>
-          </View>
+          </Pressable>
         );
       })}
 
       <LogFoodModal key={activeFood?.id} food={activeFood} onClose={() => setActiveFood(null)} onConfirm={logFood} />
+
+      <EditEntryModal
+        key={editingEntry?.id}
+        entry={editingEntry}
+        food={foods.find((item) => item.id === editingEntry?.foodItemId)}
+        onClose={() => setEditingEntry(null)}
+        onSave={saveEntryEdit}
+      />
 
       <Modal visible={scannerOpen} animationType="slide" onRequestClose={() => setScannerOpen(false)}>
         <View style={styles.scannerScreen}>
@@ -232,9 +234,6 @@ const createStyles = (colors: ThemeColors) =>
     summaryText: { color: colors.background, opacity: 0.75 },
     label: { color: colors.text, fontWeight: '800', marginTop: 8 },
     resultsLabel: { color: colors.textMuted, fontWeight: '700', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 },
-    hourScroll: { flexGrow: 0 },
-    hourRow: { flexDirection: 'row', gap: 8 },
-    hourChip: { width: HOUR_CHIP_WIDTH, alignItems: 'center' },
     chip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, backgroundColor: colors.chipBackground },
     chipActive: { backgroundColor: colors.primary },
     chipText: { color: colors.chipText, fontWeight: '700' },
