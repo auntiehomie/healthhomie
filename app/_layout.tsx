@@ -1,15 +1,18 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { getToken } from '@/lib/services/authClient';
 import { ThemeProvider, useTheme } from '@/lib/theme/ThemeContext';
 import { UpdateBanner } from '@/components/UpdateBanner';
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <AppShell />
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <AppShell />
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -58,6 +61,7 @@ function AppShell() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
         <Stack.Screen name="reset-password" options={{ headerShown: false }} />
