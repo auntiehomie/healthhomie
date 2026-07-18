@@ -66,13 +66,29 @@ export default function NotesScreen() {
     openNote(note);
   }
 
-  function saveEdit() {
+  // Saves on every keystroke rather than on blur — onBlur never fires reliably for every way a
+  // user can leave a field (tapping the drawer's hamburger icon, switching tabs, etc.), which was
+  // silently dropping edits with zero feedback that anything had gone wrong.
+  function persistNote(fields: Partial<Pick<Note, 'title' | 'content' | 'tags'>>) {
     if (!activeNote) return;
-    const tags = editTags.split(',').map(t => t.trim()).filter(Boolean);
-    const updated: Note = { ...activeNote, title: editTitle || 'Untitled', content: editContent, tags, updatedAt: new Date().toISOString() };
-    const next = notes.map(n => n.id === updated.id ? updated : n);
-    updateNotes(next);
+    const updated: Note = { ...activeNote, ...fields, updatedAt: new Date().toISOString() };
     setActiveNote(updated);
+    updateNotes(notes.map(n => (n.id === updated.id ? updated : n)));
+  }
+
+  function updateTitle(value: string) {
+    setEditTitle(value);
+    persistNote({ title: value });
+  }
+
+  function updateTags(value: string) {
+    setEditTags(value);
+    persistNote({ tags: value.split(',').map(t => t.trim()).filter(Boolean) });
+  }
+
+  function updateContent(value: string) {
+    setEditContent(value);
+    persistNote({ content: value });
   }
 
   function deleteNote() {
@@ -89,7 +105,7 @@ export default function NotesScreen() {
   }
 
   function back() {
-    saveEdit();
+    if (activeNote && !activeNote.title.trim()) persistNote({ title: 'Untitled' });
     setScreen('list'); setActiveNote(null);
   }
 
@@ -116,7 +132,7 @@ export default function NotesScreen() {
           <Pressable onPress={back} style={styles.backBtn}>
             <Text style={styles.backBtnText}>← Notes</Text>
           </Pressable>
-          <Text style={styles.noteId} numberOfLines={1}>{activeNote.id}</Text>
+          <Text style={styles.savedLabel} numberOfLines={1}>Saved automatically</Text>
           <Pressable onPress={deleteNote} style={styles.deleteButton}>
             <Text style={styles.deleteButtonText}>Delete</Text>
           </Pressable>
@@ -126,24 +142,21 @@ export default function NotesScreen() {
           <TextInput
             style={styles.titleInput}
             value={editTitle}
-            onChangeText={setEditTitle}
-            onBlur={saveEdit}
+            onChangeText={updateTitle}
             placeholder="Note title…"
             placeholderTextColor={colors.textMuted}
           />
           <TextInput
             style={styles.tagsInput}
             value={editTags}
-            onChangeText={setEditTags}
-            onBlur={saveEdit}
+            onChangeText={updateTags}
             placeholder="Tags (comma separated)…"
             placeholderTextColor={colors.textMuted}
           />
           <TextInput
             style={styles.contentInput}
             value={editContent}
-            onChangeText={setEditContent}
-            onBlur={saveEdit}
+            onChangeText={updateContent}
             multiline
             textAlignVertical="top"
             placeholder={'Write in plain text or markdown…\n\nLink to other notes with [[Note Title]]'}
@@ -246,7 +259,7 @@ const createStyles = (colors: ThemeColors) =>
     toolbar:           { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface, gap: 10 },
     backBtn:           { paddingVertical: 4, paddingHorizontal: 2 },
     backBtnText:       { color: colors.primary, fontWeight: '700', fontSize: 15 },
-    noteId:            { flex: 1, fontSize: 11, color: colors.textMuted, fontFamily: 'monospace', textAlign: 'center' },
+    savedLabel:        { flex: 1, fontSize: 12, color: colors.textMuted, textAlign: 'center', fontWeight: '600' },
     deleteButton:      { paddingVertical: 4, paddingHorizontal: 2 },
     deleteButtonText:  { color: colors.danger, fontWeight: '700', fontSize: 14 },
     editScroll:        { padding: 20, gap: 14, paddingBottom: 60 },
