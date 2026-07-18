@@ -40,7 +40,7 @@ Note: existing sessions issued before this change won't have an `isOwner` claim 
 - Today dashboard: calories, macros, entries, health snapshot placeholders
 - Food journal: USDA search with a live macro-preview modal (amount + gram/ounce entry), reusable saved foods
 - Goals: BMR/TDEE estimate, protein-forward macro targets, weekly adjustment logic
-- Scan: camera + Open Food Facts route boundary
+- Scan: camera barcode lookup via Open Food Facts (`components/health/BarcodeScanner.tsx`), feeding straight into the same macro-preview `LogFoodModal` Journal uses so a scanned product's calories/protein/carbs/fat show immediately with a one-tap log action; the same scanner is also embedded in Journal behind a scan icon next to search, so scanning doesn't require leaving that tab
 - Settings: account (logout), Apple Health permission flow, Oura connect/sync, legal links
 - Energy: Oura readiness/sleep/activity scores via the same account-synced Postgres data (`lib/services/ouraClient.ts` + `/api/oura/sync`), energy curve and schedule suggestions derived client-side from the readiness score
 - Morning, Notes (added in a separate merge): mood check-in, priorities, hydration, routine checklist, and Zettelkasten-style notes — currently persisted locally on-device via `AsyncStorage`, not yet synced through the account/Postgres layer the way Today/Journal/Goals/Energy are

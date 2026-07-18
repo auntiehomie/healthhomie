@@ -1,13 +1,14 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { BarcodeScanner } from '@/components/health/BarcodeScanner';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
 import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries, upsertFoodItem } from '@/lib/db/database';
 import { summarizeDay, todayKey } from '@/lib/domain/nutrition';
 import { searchUsdaFoods } from '@/lib/services/nutritionApi';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
-import { Trash2 } from 'lucide-react-native';
+import { ScanBarcode, Trash2, X } from 'lucide-react-native';
 import type { FoodItem, MealEntry, MealType } from '@/types/healthhomie';
 
 const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -23,6 +24,7 @@ export default function JournalScreen() {
   const [results, setResults] = useState<FoodItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   const load = useCallback(async () => {
     const [nextFoods, nextEntries] = await Promise.all([listFoodItems(), listMealEntries(todayKey())]);
@@ -111,6 +113,9 @@ ${message}`)) void removeEntry(entry);
         <Pressable style={styles.searchButton} onPress={runSearch} disabled={searching}>
           {searching ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.searchButtonText}>Search</Text>}
         </Pressable>
+        <Pressable accessibilityLabel="Scan a barcode" style={styles.scanButton} onPress={() => setScannerOpen(true)}>
+          <ScanBarcode color={colors.onPrimary} size={20} />
+        </Pressable>
       </View>
       {searchError && <Text style={styles.error}>{searchError}</Text>}
       {results.map((food) => (
@@ -146,6 +151,23 @@ ${message}`)) void removeEntry(entry);
       })}
 
       <LogFoodModal key={activeFood?.id} food={activeFood} onClose={() => setActiveFood(null)} onConfirm={logFood} />
+
+      <Modal visible={scannerOpen} animationType="slide" onRequestClose={() => setScannerOpen(false)}>
+        <View style={styles.scannerScreen}>
+          <View style={styles.scannerHeader}>
+            <Text style={styles.scannerTitle}>Scan a barcode</Text>
+            <Pressable accessibilityLabel="Close scanner" hitSlop={8} onPress={() => setScannerOpen(false)}>
+              <X color={colors.text} size={24} />
+            </Pressable>
+          </View>
+          <BarcodeScanner
+            onFound={(food) => {
+              setScannerOpen(false);
+              setActiveFood(food);
+            }}
+          />
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -166,9 +188,13 @@ const createStyles = (colors: ThemeColors) =>
     chipTextActive: { color: colors.onPrimary },
     input: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, fontSize: 18, color: colors.text },
     searchRow: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
-    searchInput: { flex: 1 },
-    searchButton: { backgroundColor: colors.primary, borderRadius: 16, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
+    searchInput: { flex: 1, minWidth: 0 },
+    searchButton: { backgroundColor: colors.primary, borderRadius: 16, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     searchButtonText: { color: colors.onPrimary, fontWeight: '800' },
+    scanButton: { backgroundColor: colors.primary, borderRadius: 16, width: 52, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    scannerScreen: { flex: 1, backgroundColor: colors.background, padding: 20, paddingTop: 60, gap: 16 },
+    scannerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    scannerTitle: { fontSize: 22, fontWeight: '900', color: colors.text },
     error: { color: colors.danger, fontWeight: '600' },
     foodRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     foodName: { fontWeight: '800', color: colors.text, fontSize: 16 },
