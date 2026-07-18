@@ -125,4 +125,11 @@ export const schemaStatements = [
     "createdAt" TEXT NOT NULL,
     "updatedAt" TEXT NOT NULL
   );`,
+  `CREATE TABLE IF NOT EXISTS ai_suggestions_daily (
+    "userId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    suggestion TEXT NOT NULL,
+    "createdAt" TEXT NOT NULL,
+    PRIMARY KEY ("userId", date)
+  );`,
 ] as const;

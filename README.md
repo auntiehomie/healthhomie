@@ -37,7 +37,8 @@ Built for iOS, Android, and web. Runs on Expo SDK 57. The web build is installab
 - **Email/password accounts** gated by a per-person invite code (or the owner's bootstrap secret), JWT sessions (`jsonwebtoken` + `bcryptjs`) — no third-party auth provider
 - **Resend** for password-reset emails
 - **Oura API v2** (readiness, sleep, activity data), tokens stored server-side per account, never on-device
-- Morning and Notes tabs currently persist locally on-device via `AsyncStorage`, separate from the account-synced Postgres data used by Today/Journal/Goals/Energy
+- **Claude (Anthropic API)** generates the Home tab's daily AI coach suggestions from Oura scores + goals, cached once per day per account in Postgres
+- The Home tab's Productivity page and the Notes tab currently persist locally on-device via `AsyncStorage`, separate from the account-synced Postgres data used by Today/Journal/Goals/the Home tab's Health page
 - Light/dark theme (`lib/theme/`) with a Settings toggle, and a PWA service worker on web that prompts to refresh when a new version ships
 
 ---
@@ -61,6 +62,7 @@ npx expo start
 | `OURA_CLIENT_ID` / `OURA_CLIENT_SECRET` / `OURA_REDIRECT_URI` | Oura OAuth2 app credentials |
 | `RESEND_API_KEY` | Sends password-reset emails via [Resend](https://resend.com) |
 | `RESEND_FROM_EMAIL` | Optional — e.g. `Howdy Morning <noreply@howdymornin.io>` once the domain is verified in Resend; defaults to Resend's unverified sandbox sender |
+| `ANTHROPIC_API_KEY` | Powers the Home tab's AI coach suggestions via the [Anthropic API](https://console.anthropic.com); without it, `/api/ai/suggestions` returns a 503 |
 | `EXPO_PUBLIC_API_BASE_URL` | Native builds only — points the app at the deployed API (web infers this from the browser origin) |
 
 ### First-time database setup

@@ -50,7 +50,7 @@ async function save(key: string, value: unknown) {
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
-export default function MorningScreen() {
+export function ProductivityPage() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [mood, setMood] = useState<Mood | null>(null);
