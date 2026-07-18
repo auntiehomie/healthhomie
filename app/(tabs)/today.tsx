@@ -7,6 +7,7 @@ import { getUserProfile, listFoodItems, listMealEntries } from '@/lib/db/databas
 import { calculateDailyGoal } from '@/lib/domain/goals';
 import { summarizeDay, todayKey } from '@/lib/domain/nutrition';
 import { readTodayHealthSnapshot } from '@/lib/services/healthkit';
+import { getLatestHealthSnapshot } from '@/lib/services/healthMetricsClient';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import type { DailyNutritionSummary, HealthSnapshot } from '@/types/healthhomie';
@@ -24,8 +25,25 @@ export default function TodayScreen() {
   useFocusEffect(useCallback(() => {
     let active = true;
     async function load() {
-      const [foods, entries, profile, health] = await Promise.all([listFoodItems(), listMealEntries(todayKey()), getUserProfile(), readTodayHealthSnapshot()]);
+      const [foods, entries, profile, localHealth, syncedHealth] = await Promise.all([
+        listFoodItems(),
+        listMealEntries(todayKey()),
+        getUserProfile(),
+        readTodayHealthSnapshot(),
+        getLatestHealthSnapshot(),
+      ]);
       if (!active) return;
+      // Device-local HealthKit values (once wired) win when present; otherwise fall back to
+      // whatever's synced server-side from a connected provider (Oura today, others later) —
+      // this is how steps/active-kcal show up even for accounts with no Apple Health access.
+      const health: HealthSnapshot = {
+        date: localHealth.date,
+        steps: localHealth.steps ?? syncedHealth.steps,
+        activeEnergyKcal: localHealth.activeEnergyKcal ?? syncedHealth.activeEnergyKcal,
+        weightKg: localHealth.weightKg ?? syncedHealth.weightKg,
+        sleepMinutes: localHealth.sleepMinutes ?? syncedHealth.sleepMinutes,
+        workouts: localHealth.workouts ?? syncedHealth.workouts,
+      };
       setSnapshot(health);
       setSummary(summarizeDay(todayKey(), entries, foods));
       setGoal(calculateDailyGoal(profile, health));
@@ -47,7 +65,7 @@ export default function TodayScreen() {
       <View style={styles.grid}>
         <MetricCard label="Calories left" value={`${caloriesLeft}`} helper={`${Math.round(summary.calories)} / ${Math.round(goal.calories)} kcal`} />
         <MetricCard label="Food entries" value={`${summary.entries}`} helper="Consistency beats perfection" />
-        <MetricCard label="Steps" value={snapshot.steps ? `${snapshot.steps}` : '—'} helper="Apple Health once enabled" />
+        <MetricCard label="Steps" value={snapshot.steps ? `${snapshot.steps}` : '—'} helper="From Oura, Apple Health, or another connected source" />
         <MetricCard label="Active kcal" value={snapshot.activeEnergyKcal ? `${Math.round(snapshot.activeEnergyKcal)}` : '—'} helper="Used to tune goals" />
       </View>
 
