@@ -5,6 +5,7 @@ import { ScanBarcode, X } from 'lucide-react-native';
 import { BarcodeScanner } from '@/components/health/BarcodeScanner';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
 import { listRecipes, saveRecipe, upsertFoodItem } from '@/lib/db/database';
+import { foodDisplayName } from '@/lib/domain/food';
 import { recipePerServing, recipeTotals } from '@/lib/domain/recipes';
 import { searchUsdaFoods } from '@/lib/services/nutritionApi';
 import { useTheme } from '@/lib/theme/ThemeContext';
@@ -144,12 +145,12 @@ export default function RecipeEditorScreen() {
       {ingredients.map((ing) => (
         <View key={ing.id} style={styles.ingredientRow}>
           <View style={styles.ingredientInfo}>
-            <Text style={styles.ingredientName}>{ing.food?.name ?? 'Food'}</Text>
+            <Text style={styles.ingredientName}>{ing.food ? foodDisplayName(ing.food) : 'Food'}</Text>
             <Text style={styles.ingredientMeta}>
               {ing.servings} × {ing.food?.servingSize}{ing.food?.servingUnit} · {ing.food ? Math.round(ing.food.calories * ing.servings) : 0} kcal
             </Text>
           </View>
-          <Pressable accessibilityLabel={`Remove ${ing.food?.name ?? 'ingredient'}`} onPress={() => removeIngredient(ing.id)} hitSlop={8}>
+          <Pressable accessibilityLabel={`Remove ${ing.food ? foodDisplayName(ing.food) : 'ingredient'}`} onPress={() => removeIngredient(ing.id)} hitSlop={8}>
             <X color={colors.danger} size={20} />
           </Pressable>
         </View>
@@ -177,7 +178,7 @@ export default function RecipeEditorScreen() {
       {results.map((food) => (
         <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
           <View>
-            <Text style={styles.foodName}>{food.name}</Text>
+            <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
             <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.source}</Text>
           </View>
           <Text style={styles.foodMacros}>{Math.round(food.calories)} kcal</Text>

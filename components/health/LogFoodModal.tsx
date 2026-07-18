@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { foodDisplayName } from '@/lib/domain/food';
 import { scaleMacros } from '@/lib/domain/nutrition';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
@@ -81,7 +82,7 @@ export function LogFoodModal({
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
-          <Text style={styles.title}>{food.name}</Text>
+          <Text style={styles.title}>{foodDisplayName(food)}</Text>
           <Text style={styles.subtitle}>Base: {food.servingSize}{food.servingUnit} · {Math.round(food.calories)} kcal</Text>
 
           {hasServingsToggle && (

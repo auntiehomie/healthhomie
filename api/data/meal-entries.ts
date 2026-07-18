@@ -20,8 +20,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const entry = (req.body ?? {}) as MealEntry;
       if (!entry.id || !entry.foodItemId) return res.status(400).json({ error: 'id and foodItemId are required.' });
       await sql`
-        INSERT INTO meal_entries (id, "userId", "foodItemId", "mealType", date, servings, notes, "createdAt")
-        VALUES (${entry.id}, ${userId}, ${entry.foodItemId}, ${entry.mealType}, ${entry.date}, ${entry.servings}, ${entry.notes ?? null}, ${entry.createdAt})
+        INSERT INTO meal_entries (id, "userId", "foodItemId", "mealType", "hour", date, servings, notes, "createdAt")
+        VALUES (${entry.id}, ${userId}, ${entry.foodItemId}, ${entry.mealType}, ${entry.hour ?? null}, ${entry.date}, ${entry.servings}, ${entry.notes ?? null}, ${entry.createdAt})
         ON CONFLICT (id) DO NOTHING
       `;
       return res.status(204).end();
