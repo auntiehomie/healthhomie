@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
@@ -9,46 +8,13 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { genNoteId, loadNotes, saveNotes, type Note } from '@/lib/db/notesStorage';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 
-// ── Types ──────────────────────────────────────────────────────────────────────
-interface Note {
-  id: string;
-  title: string;
-  content: string;
-  tags: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
 // ── Helpers ────────────────────────────────────────────────────────────────────
-function genId(): string {
-  const d = new Date();
-  return [
-    d.getFullYear(),
-    String(d.getMonth() + 1).padStart(2, '0'),
-    String(d.getDate()).padStart(2, '0'),
-    String(d.getHours()).padStart(2, '0'),
-    String(d.getMinutes()).padStart(2, '0'),
-    String(d.getSeconds()).padStart(2, '0'),
-  ].join('') + String(Math.floor(Math.random() * 100)).padStart(2, '0');
-}
-
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-const STORAGE_KEY = 'homie_notes_v1';
-
-async function loadNotes(): Promise<Note[]> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Note[]) : [];
-  } catch { return []; }
-}
-async function saveNotes(notes: Note[]) {
-  try { await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(notes)); } catch {}
 }
 
 function getBacklinks(notes: Note[], target: Note): Note[] {
@@ -88,7 +54,7 @@ export default function NotesScreen() {
 
   function newNote() {
     const note: Note = {
-      id: genId(),
+      id: genNoteId(),
       title: 'Untitled',
       content: '',
       tags: [],

@@ -9,6 +9,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { router } from 'expo-router';
+import { getNoteById, upsertNoteById } from '@/lib/db/notesStorage';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 
@@ -38,6 +40,9 @@ const AFFIRMATIONS = [
 
 const todayKey = () => new Date().toISOString().split('T')[0];
 const randomAff = () => AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)];
+const dailyNoteId = (day: string) => `daily-${day}`;
+const dailyNoteTitle = (day: string) =>
+  `Daily note — ${new Date(day + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
 // ── Storage helpers ────────────────────────────────────────────────────────────
 async function load<T>(key: string, fallback: T): Promise<T> {
@@ -67,16 +72,16 @@ export function ProductivityPage() {
   useEffect(() => {
     (async () => {
       const day = todayKey();
-      const [m, p, w, r, n, a] = await Promise.all([
+      const [m, p, w, r, note, a] = await Promise.all([
         load<Mood | null>('mood_' + day, null),
         load<string[]>('priorities_' + day, ['', '', '']),
         load<number>('water_' + day, 0),
         load<RoutineItem[]>('routine', []),
-        load<string>('note_' + day, ''),
+        getNoteById(dailyNoteId(day)),
         load<string>('affirmation_' + day, randomAff()),
       ]);
       setMood(m); setPriorities(p); setWater(w);
-      setRoutine(r); setMorningNote(n); setAffirmation(a);
+      setRoutine(r); setMorningNote(note?.content ?? ''); setAffirmation(a);
       setLoaded(true);
     })();
   }, []);
@@ -101,7 +106,10 @@ export function ProductivityPage() {
   const deleteRoutine = useCallback((i: number) => {
     setRoutine(prev => { const n = prev.filter((_, idx) => idx !== i); void save('routine', n); return n; });
   }, []);
-  const updateNote = useCallback((v: string) => { setMorningNote(v); void save('note_' + day, v); }, [day]);
+  const updateNote = useCallback((v: string) => {
+    setMorningNote(v);
+    void upsertNoteById(dailyNoteId(day), { title: dailyNoteTitle(day), content: v, tags: ['daily'] });
+  }, [day]);
   const newAffirmation = useCallback(() => {
     const a = randomAff(); setAffirmation(a); void save('affirmation_' + day, a);
   }, [day]);
@@ -214,7 +222,9 @@ export function ProductivityPage() {
           textAlignVertical="top"
         />
         <View style={styles.noteFooter}>
-          <Text style={styles.muted}>Saves automatically as you type</Text>
+          <Pressable onPress={() => router.push('/(tabs)/notes')}>
+            <Text style={styles.noteLink}>Saved to Notes, tagged &quot;daily&quot; →</Text>
+          </Pressable>
           <Pressable style={styles.doneBtn} onPress={() => Keyboard.dismiss()}>
             <Text style={styles.doneBtnText}>Done</Text>
           </Pressable>
@@ -256,7 +266,8 @@ const createStyles = (colors: ThemeColors) =>
     addBtn:       { backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
     addBtnText:   { color: colors.onPrimary, fontWeight: '700', fontSize: 14 },
     noteInput:    { backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: colors.text, fontSize: 15, borderWidth: 1, borderColor: colors.border, minHeight: 120 },
-    noteFooter:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    noteFooter:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+    noteLink:     { color: colors.primary, fontWeight: '600', fontSize: 12, flexShrink: 1 },
     doneBtn:      { backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
     doneBtnText:  { color: colors.onPrimary, fontWeight: '700', fontSize: 14 },
   });
