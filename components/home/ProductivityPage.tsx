@@ -106,7 +106,7 @@ export function ProductivityPage() {
   }, [day]);
 
   if (!loaded) return (
-    <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+    <View style={[styles.container, styles.fill, { justifyContent: 'center', alignItems: 'center' }]}>
       <Text style={styles.muted}>Loading…</Text>
     </View>
   );
@@ -114,7 +114,7 @@ export function ProductivityPage() {
   const moodObj = MOODS.find(m => m.key === mood);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
       {/* Header */}
       <View style={styles.hero}>
         <Text style={styles.eyebrow}>good morning</Text>
@@ -219,6 +219,7 @@ export function ProductivityPage() {
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
+    fill:         { flex: 1 },
     container:    { padding: 20, gap: 16, backgroundColor: colors.background, paddingBottom: 40 },
     hero:         { gap: 4, paddingTop: 10 },
     eyebrow:      { color: colors.primary, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, fontSize: 12 },

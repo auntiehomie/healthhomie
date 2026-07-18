@@ -56,10 +56,10 @@ export default function HomeScreen() {
         onMomentumScrollEnd={handleMomentumEnd}
         style={styles.pager}
       >
-        <View style={{ width }}>
+        <View style={{ width, flex: 1 }}>
           <ProductivityPage />
         </View>
-        <View style={{ width }}>
+        <View style={{ width, flex: 1 }}>
           <HealthPage />
         </View>
       </ScrollView>

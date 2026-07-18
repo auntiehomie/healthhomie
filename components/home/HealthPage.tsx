@@ -187,7 +187,7 @@ export function HealthPage() {
   // ── Not connected ──
   if (!loading && !connected) {
     return (
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
         <View style={styles.center}>
           <Text style={styles.connectEmoji}>⚡</Text>
           <Text style={styles.connectTitle}>Connect your Oura Ring</Text>
@@ -357,6 +357,7 @@ const markdownStyles = (colors: ThemeColors) => ({
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
+    fill:           { flex: 1 },
     container:      { padding: 20, gap: 16, backgroundColor: colors.background, paddingBottom: 40 },
     center:         { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30, gap: 16, backgroundColor: colors.background },
     hero:           { gap: 4, paddingTop: 10 },
