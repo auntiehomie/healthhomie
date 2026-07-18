@@ -1,17 +1,20 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { requireUserId, AuthError } from '../../lib/server/auth';
-import { getOuraConnection } from '../../lib/server/ouraStore';
+import { getHealthConnection } from '../../lib/server/healthConnectionsStore';
 import { DatabaseNotConfiguredError } from '../../lib/server/db';
+import type { HealthProvider } from '../../types/healthhomie';
+
+const SUPPORTED_PROVIDERS: HealthProvider[] = ['oura', 'fitbit'];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'GET only.' });
 
   try {
     const userId = requireUserId(req);
-    const provider = String(req.query.provider ?? 'oura');
-    if (provider !== 'oura') return res.status(400).json({ error: 'Unsupported provider.' });
+    const provider = String(req.query.provider ?? 'oura') as HealthProvider;
+    if (!SUPPORTED_PROVIDERS.includes(provider)) return res.status(400).json({ error: 'Unsupported provider.' });
 
-    const connection = await getOuraConnection(userId);
+    const connection = await getHealthConnection(userId, provider);
     if (!connection) return res.status(200).json({ connection: null });
     res.status(200).json({ connection: { status: connection.status, lastSyncedAt: connection.lastSyncedAt, scopes: connection.scopes } });
   } catch (error) {
