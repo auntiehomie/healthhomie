@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MacroRing } from '@/components/health/MacroRing';
@@ -63,7 +63,12 @@ export default function TodayScreen() {
       </View>
 
       <View style={styles.grid}>
-        <MetricCard label="Calories left" value={`${caloriesLeft}`} helper={`${Math.round(summary.calories)} / ${Math.round(goal.calories)} kcal`} />
+        <MetricCard
+          label="Calories left"
+          value={`${caloriesLeft}`}
+          helper={`${Math.round(summary.calories)} / ${Math.round(goal.calories)} kcal`}
+          onPress={() => router.push('/(tabs)/journal')}
+        />
         <MetricCard label="Food entries" value={`${summary.entries}`} helper="Consistency beats perfection" />
         <MetricCard label="Steps" value={snapshot.steps ? `${snapshot.steps}` : '—'} helper="From Oura, Apple Health, or another connected source" />
         <MetricCard label="Active kcal" value={snapshot.activeEnergyKcal ? `${Math.round(snapshot.activeEnergyKcal)}` : '—'} helper="Used to tune goals" />

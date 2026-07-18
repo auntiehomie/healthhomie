@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -201,7 +201,12 @@ export function HealthPage() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Food today</Text>
           <View style={styles.grid}>
-            <MetricCard label="Calories left" value={`${caloriesLeft}`} helper={`${Math.round(summary.calories)} / ${Math.round(goal.calories)} kcal`} />
+            <MetricCard
+              label="Calories left"
+              value={`${caloriesLeft}`}
+              helper={`${Math.round(summary.calories)} / ${Math.round(goal.calories)} kcal`}
+              onPress={() => router.push('/(tabs)/journal')}
+            />
             <MetricCard label="Food entries" value={`${summary.entries}`} helper="Consistency beats perfection" />
           </View>
           <View style={styles.macroRow}>
@@ -337,7 +342,12 @@ export function HealthPage() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Food today</Text>
         <View style={styles.grid}>
-          <MetricCard label="Calories left" value={`${caloriesLeft}`} helper={`${Math.round(summary.calories)} / ${Math.round(goal.calories)} kcal`} />
+          <MetricCard
+            label="Calories left"
+            value={`${caloriesLeft}`}
+            helper={`${Math.round(summary.calories)} / ${Math.round(goal.calories)} kcal`}
+            onPress={() => router.push('/(tabs)/journal')}
+          />
           <MetricCard label="Food entries" value={`${summary.entries}`} helper="Consistency beats perfection" />
         </View>
         <View style={styles.macroRow}>
