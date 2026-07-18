@@ -1,27 +1,42 @@
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { BarcodeScanner } from '@/components/health/BarcodeScanner';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
 import { addMealEntry, createId, upsertFoodItem } from '@/lib/db/database';
+import { foodDisplayName } from '@/lib/domain/food';
+import { deriveMealType, formatHour, HOURS } from '@/lib/domain/mealType';
 import { todayKey } from '@/lib/domain/nutrition';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
-import type { FoodItem, MealType } from '@/types/healthhomie';
+import type { FoodItem } from '@/types/healthhomie';
 
-const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
+const HOUR_CHIP_WIDTH = 64;
 
 export default function ScanScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const [selectedMeal, setSelectedMeal] = useState<MealType>('snack');
+  const [selectedHour, setSelectedHour] = useState<number>(new Date().getHours());
   const [activeFood, setActiveFood] = useState<FoodItem | null>(null);
   const [loggedMessage, setLoggedMessage] = useState<string | null>(null);
+  const hourScrollRef = useRef<ScrollView>(null);
 
   async function logFood(food: FoodItem, servings: number) {
     await upsertFoodItem(food);
-    await addMealEntry({ id: createId('entry'), foodItemId: food.id, mealType: selectedMeal, date: todayKey(), servings, createdAt: new Date().toISOString() });
+    await addMealEntry({
+      id: createId('entry'),
+      foodItemId: food.id,
+      mealType: deriveMealType(selectedHour),
+      hour: selectedHour,
+      date: todayKey(),
+      servings,
+      createdAt: new Date().toISOString(),
+    });
     setActiveFood(null);
-    setLoggedMessage(`Logged ${food.name} to ${selectedMeal}.`);
+    setLoggedMessage(`Logged ${foodDisplayName(food)} at ${formatHour(selectedHour)}.`);
+  }
+
+  function scrollToSelectedHour() {
+    hourScrollRef.current?.scrollTo({ x: Math.max(0, (selectedHour - 2) * HOUR_CHIP_WIDTH), animated: false });
   }
 
   return (
@@ -29,14 +44,21 @@ export default function ScanScreen() {
       <Text style={styles.title}>Scan a barcode</Text>
       <Text style={styles.subtitle}>Point the camera at a packaged food and its nutrition facts pop up, ready to log.</Text>
 
-      <Text style={styles.label}>Log to</Text>
-      <View style={styles.mealRow}>
-        {mealTypes.map((meal) => (
-          <Pressable key={meal} onPress={() => setSelectedMeal(meal)} style={[styles.chip, selectedMeal === meal && styles.chipActive]}>
-            <Text style={[styles.chipText, selectedMeal === meal && styles.chipTextActive]}>{meal}</Text>
+      <Text style={styles.label}>Time</Text>
+      <ScrollView
+        ref={hourScrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        onLayout={scrollToSelectedHour}
+        style={styles.hourScroll}
+        contentContainerStyle={styles.hourRow}
+      >
+        {HOURS.map((hour) => (
+          <Pressable key={hour} onPress={() => setSelectedHour(hour)} style={[styles.chip, styles.hourChip, selectedHour === hour && styles.chipActive]}>
+            <Text style={[styles.chipText, selectedHour === hour && styles.chipTextActive]}>{formatHour(hour)}</Text>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
 
       <BarcodeScanner
         onFound={(food) => {
@@ -59,7 +81,9 @@ const createStyles = (colors: ThemeColors) =>
     title: { fontSize: 32, fontWeight: '900', color: colors.text },
     subtitle: { color: colors.textMuted, lineHeight: 20 },
     label: { color: colors.text, fontWeight: '800', marginTop: 4 },
-    mealRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    hourScroll: { flexGrow: 0 },
+    hourRow: { flexDirection: 'row', gap: 8 },
+    hourChip: { width: HOUR_CHIP_WIDTH, alignItems: 'center' },
     chip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, backgroundColor: colors.chipBackground },
     chipActive: { backgroundColor: colors.primary },
     chipText: { color: colors.chipText, fontWeight: '700' },

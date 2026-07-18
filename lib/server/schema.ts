@@ -40,6 +40,8 @@ export const schemaStatements = [
     "createdAt" TEXT NOT NULL
   );`,
   `CREATE INDEX IF NOT EXISTS meal_entries_user_date_idx ON meal_entries("userId", date);`,
+  // Nullable and additive — old rows just have no hour and fall back to displaying "mealType".
+  `ALTER TABLE meal_entries ADD COLUMN IF NOT EXISTS "hour" INTEGER;`,
   `CREATE TABLE IF NOT EXISTS user_profile (
     "userId" TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     age INTEGER,

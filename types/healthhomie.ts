@@ -29,6 +29,8 @@ export type MealEntry = {
   id: string;
   foodItemId: string;
   mealType: MealType;
+  /** Local hour of day (0-23) the food was logged for — the primary time UI now uses; mealType is kept in sync but derived. */
+  hour?: number;
   date: string;
   servings: number;
   notes?: string;

@@ -1,30 +1,33 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BarcodeScanner } from '@/components/health/BarcodeScanner';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
 import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries, upsertFoodItem } from '@/lib/db/database';
+import { foodDisplayName } from '@/lib/domain/food';
+import { deriveMealType, formatHour, HOURS } from '@/lib/domain/mealType';
 import { summarizeDay, todayKey } from '@/lib/domain/nutrition';
 import { searchUsdaFoods } from '@/lib/services/nutritionApi';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { ScanBarcode, Trash2, X } from 'lucide-react-native';
-import type { FoodItem, MealEntry, MealType } from '@/types/healthhomie';
+import type { FoodItem, MealEntry } from '@/types/healthhomie';
 
-const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
+const HOUR_CHIP_WIDTH = 64;
 
 export default function JournalScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [foods, setFoods] = useState<FoodItem[]>([]);
   const [entries, setEntries] = useState<MealEntry[]>([]);
-  const [selectedMeal, setSelectedMeal] = useState<MealType>('breakfast');
+  const [selectedHour, setSelectedHour] = useState<number>(new Date().getHours());
   const [activeFood, setActiveFood] = useState<FoodItem | null>(null);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const hourScrollRef = useRef<ScrollView>(null);
 
   const load = useCallback(async () => {
     const [nextFoods, nextEntries] = await Promise.all([listFoodItems(), listMealEntries(todayKey())]);
@@ -40,16 +43,28 @@ export default function JournalScreen() {
   const myFoodMatches = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.trim().toLowerCase();
-    return foods.filter((food) => food.name.toLowerCase().includes(q)).slice(0, 8);
+    return foods.filter((food) => food.name.toLowerCase().includes(q) || food.brand?.toLowerCase().includes(q)).slice(0, 8);
   }, [foods, query]);
 
   async function logFood(food: FoodItem, servings: number) {
     await upsertFoodItem(food);
-    await addMealEntry({ id: createId('entry'), foodItemId: food.id, mealType: selectedMeal, date: todayKey(), servings, createdAt: new Date().toISOString() });
+    await addMealEntry({
+      id: createId('entry'),
+      foodItemId: food.id,
+      mealType: deriveMealType(selectedHour),
+      hour: selectedHour,
+      date: todayKey(),
+      servings,
+      createdAt: new Date().toISOString(),
+    });
     setActiveFood(null);
     setResults([]);
     setQuery('');
     await load();
+  }
+
+  function scrollToSelectedHour() {
+    hourScrollRef.current?.scrollTo({ x: Math.max(0, (selectedHour - 2) * HOUR_CHIP_WIDTH), animated: false });
   }
 
   async function runSearch() {
@@ -101,12 +116,21 @@ ${message}`)) void removeEntry(entry);
         <Text style={styles.summaryText}>{Math.round(summary.proteinG)}g protein · {Math.round(summary.carbsG)}g carbs · {Math.round(summary.fatG)}g fat</Text>
       </View>
 
-      <Text style={styles.label}>Meal</Text>
-      <View style={styles.mealRow}>{mealTypes.map((meal) => (
-        <Pressable key={meal} onPress={() => setSelectedMeal(meal)} style={[styles.chip, selectedMeal === meal && styles.chipActive]}>
-          <Text style={[styles.chipText, selectedMeal === meal && styles.chipTextActive]}>{meal}</Text>
-        </Pressable>
-      ))}</View>
+      <Text style={styles.label}>Time</Text>
+      <ScrollView
+        ref={hourScrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        onLayout={scrollToSelectedHour}
+        style={styles.hourScroll}
+        contentContainerStyle={styles.hourRow}
+      >
+        {HOURS.map((hour) => (
+          <Pressable key={hour} onPress={() => setSelectedHour(hour)} style={[styles.chip, styles.hourChip, selectedHour === hour && styles.chipActive]}>
+            <Text style={[styles.chipText, selectedHour === hour && styles.chipTextActive]}>{formatHour(hour)}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
 
       <Text style={styles.label}>Search foods</Text>
       <View style={styles.searchRow}>
@@ -133,7 +157,7 @@ ${message}`)) void removeEntry(entry);
           {myFoodMatches.map((food) => (
             <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
               <View>
-                <Text style={styles.foodName}>{food.name}</Text>
+                <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
                 <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.id.startsWith('recipe-') ? 'recipe' : food.source}</Text>
               </View>
               <Text style={styles.foodMacros}>{Math.round(food.calories)} kcal</Text>
@@ -146,7 +170,7 @@ ${message}`)) void removeEntry(entry);
       {results.map((food) => (
         <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
           <View>
-            <Text style={styles.foodName}>{food.name}</Text>
+            <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
             <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.source}</Text>
           </View>
           <Text style={styles.foodMacros}>{Math.round(food.calories)} kcal</Text>
@@ -156,12 +180,12 @@ ${message}`)) void removeEntry(entry);
       <Text style={styles.label}>Today’s entries</Text>
       {entries.length === 0 ? <Text style={styles.empty}>Nothing logged yet. Search for a food above to start.</Text> : entries.map((entry) => {
         const food = foods.find((item) => item.id === entry.foodItemId);
-        const foodName = food?.name ?? 'Food';
+        const foodName = food ? foodDisplayName(food) : 'Food';
         return (
           <View key={entry.id} style={styles.entryRow}>
             <View style={styles.entryDetails}>
               <Text style={styles.entryName}>{foodName}</Text>
-              <Text style={styles.entryMeta}>{entry.mealType} · {entry.servings} serving{entry.servings === 1 ? '' : 's'}</Text>
+              <Text style={styles.entryMeta}>{entry.hour != null ? formatHour(entry.hour) : entry.mealType} · {entry.servings} serving{entry.servings === 1 ? '' : 's'}</Text>
             </View>
             <Pressable
               accessibilityLabel={`Delete ${foodName} from today’s journal`}
@@ -208,7 +232,9 @@ const createStyles = (colors: ThemeColors) =>
     summaryText: { color: colors.background, opacity: 0.75 },
     label: { color: colors.text, fontWeight: '800', marginTop: 8 },
     resultsLabel: { color: colors.textMuted, fontWeight: '700', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 },
-    mealRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    hourScroll: { flexGrow: 0 },
+    hourRow: { flexDirection: 'row', gap: 8 },
+    hourChip: { width: HOUR_CHIP_WIDTH, alignItems: 'center' },
     chip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, backgroundColor: colors.chipBackground },
     chipActive: { backgroundColor: colors.primary },
     chipText: { color: colors.chipText, fontWeight: '700' },
