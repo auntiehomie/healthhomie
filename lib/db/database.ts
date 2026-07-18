@@ -1,5 +1,5 @@
 import { apiUrl, getToken } from '@/lib/services/authClient';
-import type { FoodItem, MealEntry, UserProfile } from '@/types/healthhomie';
+import type { FoodItem, MealEntry, Recipe, UserProfile } from '@/types/healthhomie';
 
 async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const token = await getToken();
@@ -47,6 +47,22 @@ export async function getUserProfile(): Promise<UserProfile> {
 
 export async function saveUserProfile(profile: UserProfile): Promise<void> {
   await apiFetch('/api/data/profile', { method: 'PUT', body: JSON.stringify(profile) });
+}
+
+export async function listRecipes(): Promise<Recipe[]> {
+  const response = await apiFetch('/api/data/recipes');
+  const payload = await response.json();
+  return payload.recipes;
+}
+
+export async function saveRecipe(input: { id?: string; name: string; servings: number; ingredients: { foodItemId: string; servings: number }[] }): Promise<Recipe> {
+  const response = await apiFetch('/api/data/recipes', { method: 'POST', body: JSON.stringify(input) });
+  const payload = await response.json();
+  return payload.recipe;
+}
+
+export async function deleteRecipe(id: string): Promise<void> {
+  await apiFetch(`/api/data/recipes?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
 export function createId(prefix: string): string {

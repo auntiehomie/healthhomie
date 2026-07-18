@@ -35,6 +35,14 @@ export default function JournalScreen() {
   useFocusEffect(useCallback(() => { load().catch(console.warn); }, [load]));
   const summary = useMemo(() => summarizeDay(todayKey(), entries, foods), [entries, foods]);
 
+  // Foods you've already scanned/searched/logged before, plus saved recipes (source: 'custom') —
+  // searched locally so recipes are actually reachable when logging, not just saved and forgotten.
+  const myFoodMatches = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.trim().toLowerCase();
+    return foods.filter((food) => food.name.toLowerCase().includes(q)).slice(0, 8);
+  }, [foods, query]);
+
   async function logFood(food: FoodItem, servings: number) {
     await upsertFoodItem(food);
     await addMealEntry({ id: createId('entry'), foodItemId: food.id, mealType: selectedMeal, date: todayKey(), servings, createdAt: new Date().toISOString() });
@@ -118,6 +126,23 @@ ${message}`)) void removeEntry(entry);
         </Pressable>
       </View>
       {searchError && <Text style={styles.error}>{searchError}</Text>}
+
+      {myFoodMatches.length > 0 && (
+        <>
+          <Text style={styles.resultsLabel}>My foods & recipes</Text>
+          {myFoodMatches.map((food) => (
+            <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
+              <View>
+                <Text style={styles.foodName}>{food.name}</Text>
+                <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.id.startsWith('recipe-') ? 'recipe' : food.source}</Text>
+              </View>
+              <Text style={styles.foodMacros}>{Math.round(food.calories)} kcal</Text>
+            </Pressable>
+          ))}
+        </>
+      )}
+
+      {results.length > 0 && <Text style={styles.resultsLabel}>USDA results</Text>}
       {results.map((food) => (
         <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
           <View>
@@ -181,6 +206,7 @@ const createStyles = (colors: ThemeColors) =>
     summaryValue: { color: colors.background, fontSize: 30, fontWeight: '900' },
     summaryText: { color: colors.background, opacity: 0.75 },
     label: { color: colors.text, fontWeight: '800', marginTop: 8 },
+    resultsLabel: { color: colors.textMuted, fontWeight: '700', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 },
     mealRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, backgroundColor: colors.chipBackground },
     chipActive: { backgroundColor: colors.primary },
