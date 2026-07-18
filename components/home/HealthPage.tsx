@@ -8,9 +8,20 @@ import {
   Text,
   View,
 } from 'react-native';
+import Markdown from 'react-native-markdown-display';
+import { MacroRing } from '@/components/health/MacroRing';
+import { MetricCard } from '@/components/health/MetricCard';
+import { generateSuggestion, getCachedSuggestion } from '@/lib/services/aiSuggestionsClient';
+import { getUserProfile, listFoodItems, listMealEntries } from '@/lib/db/database';
+import { calculateDailyGoal } from '@/lib/domain/goals';
+import { summarizeDay, todayKey } from '@/lib/domain/nutrition';
 import { connectOura, getOuraStatus, syncOura } from '@/lib/services/ouraClient';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import type { DailyNutritionSummary } from '@/types/healthhomie';
+
+const CARBS_COLOR = '#d99a3f';
+const FAT_COLOR = '#8b5cf6';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface OuraDaily {
@@ -57,7 +68,7 @@ function buildEnergyCurve(readiness: number): { label: string; pct: number }[] {
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
-export default function EnergyScreen() {
+export function HealthPage() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scoreColor = useCallback((score: number) => {
@@ -71,6 +82,13 @@ export default function EnergyScreen() {
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
+
+  const [summary, setSummary] = useState<DailyNutritionSummary>({ date: todayKey(), entries: 0, calories: 0, proteinG: 0, carbsG: 0, fatG: 0 });
+  const [goal, setGoal] = useState(calculateDailyGoal({ id: 'loading', goalType: 'improve-consistency', activityMultiplier: 1.2, createdAt: '', updatedAt: '' }));
+
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(true);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -104,6 +122,56 @@ export default function EnergyScreen() {
     return () => { active = false; };
   }, []));
 
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    async function load() {
+      const [foods, entries, profile] = await Promise.all([listFoodItems(), listMealEntries(todayKey()), getUserProfile()]);
+      if (!active) return;
+      setSummary(summarizeDay(todayKey(), entries, foods));
+      setGoal(calculateDailyGoal(profile));
+    }
+    load().catch(console.warn);
+    return () => { active = false; };
+  }, []));
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setAiLoading(true);
+    getCachedSuggestion()
+      .then((result) => {
+        if (!active) return;
+        if (result.suggestion) {
+          setAiSuggestion(result.suggestion);
+          setAiLoading(false);
+          return;
+        }
+        return generateSuggestion(false).then((generated) => {
+          if (!active) return;
+          setAiSuggestion(generated.suggestion);
+        });
+      })
+      .catch((err) => {
+        if (active) setAiError(err instanceof Error ? err.message : 'Failed to load AI suggestions.');
+      })
+      .finally(() => {
+        if (active) setAiLoading(false);
+      });
+    return () => { active = false; };
+  }, []));
+
+  async function handleRegenerate() {
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const result = await generateSuggestion(true);
+      setAiSuggestion(result.suggestion);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'Failed to regenerate suggestions.');
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   async function handleConnect() {
     setConnecting(true);
     setError(null);
@@ -114,18 +182,35 @@ export default function EnergyScreen() {
     // browser closes; useFocusEffect re-checks connection status when focus returns.
   }
 
+  const caloriesLeft = Math.round(goal.calories - summary.calories);
+
   // ── Not connected ──
   if (!loading && !connected) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.connectEmoji}>⚡</Text>
-        <Text style={styles.connectTitle}>Connect your Oura Ring</Text>
-        <Text style={styles.connectSub}>Link your Oura account to see your energy map, readiness score, and smart schedule suggestions.</Text>
-        <Pressable style={styles.connectBtn} onPress={handleConnect} disabled={connecting}>
-          <Text style={styles.connectBtnText}>{connecting ? 'Connecting…' : 'Connect Oura →'}</Text>
-        </Pressable>
-        {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
-      </View>
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.center}>
+          <Text style={styles.connectEmoji}>⚡</Text>
+          <Text style={styles.connectTitle}>Connect your Oura Ring</Text>
+          <Text style={styles.connectSub}>Link your Oura account to see your energy map, readiness score, and smart schedule suggestions.</Text>
+          <Pressable style={styles.connectBtn} onPress={handleConnect} disabled={connecting}>
+            <Text style={styles.connectBtnText}>{connecting ? 'Connecting…' : 'Connect Oura →'}</Text>
+          </Pressable>
+          {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Food today</Text>
+          <View style={styles.grid}>
+            <MetricCard label="Calories left" value={`${caloriesLeft}`} helper={`${Math.round(summary.calories)} / ${Math.round(goal.calories)} kcal`} />
+            <MetricCard label="Food entries" value={`${summary.entries}`} helper="Consistency beats perfection" />
+          </View>
+          <View style={styles.macroRow}>
+            <MacroRing label="Protein" actual={summary.proteinG} target={goal.proteinTargetG} color={colors.primary} />
+            <MacroRing label="Carbs" actual={summary.carbsG} target={goal.carbsG} color={CARBS_COLOR} />
+            <MacroRing label="Fat" actual={summary.fatG} target={goal.fatG} color={FAT_COLOR} />
+          </View>
+        </View>
+      </ScrollView>
     );
   }
 
@@ -183,6 +268,19 @@ export default function EnergyScreen() {
         <Text style={styles.muted}>Oura hasn&apos;t published today&apos;s activity score yet — it usually shows up later in the day as your ring syncs.</Text>
       )}
 
+      {/* AI suggestions */}
+      <View style={styles.card}>
+        <View style={styles.aiHeaderRow}>
+          <Text style={styles.cardTitle}>✨ AI coach</Text>
+          <Pressable onPress={handleRegenerate} disabled={aiLoading}>
+            <Text style={[styles.refreshLink, aiLoading && styles.refreshLinkDisabled]}>{aiLoading ? 'Thinking…' : 'Refresh'}</Text>
+          </Pressable>
+        </View>
+        {aiError && <Text style={styles.errorText}>⚠️ {aiError}</Text>}
+        {aiLoading && !aiSuggestion && <Text style={styles.muted}>Personalizing suggestions from your Oura data and goals…</Text>}
+        {aiSuggestion && <Markdown style={markdownStyles(colors)}>{aiSuggestion}</Markdown>}
+      </View>
+
       {/* Energy curve */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>⚡ Energy curve</Text>
@@ -234,9 +332,28 @@ export default function EnergyScreen() {
           <Text key={i} style={styles.hobbyItem}>• {item}</Text>
         ))}
       </View>
+
+      {/* Food today */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Food today</Text>
+        <View style={styles.grid}>
+          <MetricCard label="Calories left" value={`${caloriesLeft}`} helper={`${Math.round(summary.calories)} / ${Math.round(goal.calories)} kcal`} />
+          <MetricCard label="Food entries" value={`${summary.entries}`} helper="Consistency beats perfection" />
+        </View>
+        <View style={styles.macroRow}>
+          <MacroRing label="Protein" actual={summary.proteinG} target={goal.proteinTargetG} color={colors.primary} />
+          <MacroRing label="Carbs" actual={summary.carbsG} target={goal.carbsG} color={CARBS_COLOR} />
+          <MacroRing label="Fat" actual={summary.fatG} target={goal.fatG} color={FAT_COLOR} />
+        </View>
+      </View>
     </ScrollView>
   );
 }
+
+const markdownStyles = (colors: ThemeColors) => ({
+  body: { color: colors.text, fontSize: 14 },
+  heading3: { color: colors.text, fontSize: 14, fontWeight: '800' as const, marginTop: 8, marginBottom: 2 },
+});
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
@@ -253,6 +370,9 @@ const createStyles = (colors: ThemeColors) =>
     scoreLabel:     { fontSize: 12, color: colors.textMuted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
     card:           { backgroundColor: colors.surface, borderRadius: 20, padding: 18, gap: 12 },
     cardTitle:      { fontSize: 16, fontWeight: '800', color: colors.text },
+    aiHeaderRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    refreshLink:    { color: colors.primary, fontWeight: '700', fontSize: 13 },
+    refreshLinkDisabled: { opacity: 0.5 },
     muted:          { color: colors.textMuted, fontSize: 13 },
     curveContainer: { flexDirection: 'row', alignItems: 'flex-end', height: 130, gap: 8, paddingTop: 10 },
     barWrapper:     { flex: 1, alignItems: 'center', gap: 6 },
@@ -266,4 +386,8 @@ const createStyles = (colors: ThemeColors) =>
     connectBtn:     { backgroundColor: colors.primary, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 },
     connectBtnText: { color: colors.onPrimary, fontWeight: '800', fontSize: 16 },
     errorText:      { fontSize: 16, color: colors.danger, textAlign: 'center' },
+    section:        { backgroundColor: colors.surface, borderRadius: 24, padding: 18, gap: 16 },
+    sectionTitle:   { fontSize: 20, fontWeight: '800', color: colors.text },
+    grid:           { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+    macroRow:       { flexDirection: 'row', gap: 12 },
   });

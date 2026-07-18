@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { getSurvey, saveSurvey, type SurveyInput, type SurveyResponse } from '@/lib/services/surveyClient';
 import { decryptWithPassphrase, encryptWithPassphrase } from '@/lib/services/privacy';
@@ -22,6 +22,8 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 export default function SurveyScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { onboarding } = useLocalSearchParams<{ onboarding?: string }>();
+  const isOnboarding = onboarding === 'true';
   const [survey, setSurvey] = useState<SurveyResponse | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -118,6 +120,10 @@ export default function SurveyScreen() {
       });
       setSurvey(saved);
       setWeightLocked(!!saved.weightCiphertext);
+      if (isOnboarding) {
+        router.replace('/(tabs)');
+        return;
+      }
       setStatus('Saved — thanks for filling this out!');
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Something went wrong.');
@@ -130,8 +136,17 @@ export default function SurveyScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Quick survey</Text>
-      <Text style={styles.subtitle}>Totally optional — skip anything you&apos;d rather not answer.</Text>
+      <Text style={styles.title}>{isOnboarding ? 'Welcome! Quick setup' : 'Quick survey'}</Text>
+      <Text style={styles.subtitle}>
+        {isOnboarding
+          ? "A few optional questions to personalize things — skip anything you'd rather not answer."
+          : "Totally optional — skip anything you'd rather not answer."}
+      </Text>
+      {isOnboarding && (
+        <Pressable onPress={() => router.replace('/(tabs)')}>
+          <Text style={styles.linkText}>Skip for now</Text>
+        </Pressable>
+      )}
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Body & movement</Text>
@@ -257,7 +272,7 @@ export default function SurveyScreen() {
       {status && <Text style={styles.status}>{status}</Text>}
 
       <Pressable style={[styles.button, saving && styles.buttonDisabled]} onPress={submit} disabled={saving}>
-        <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Save survey'}</Text>
+        <Text style={styles.buttonText}>{saving ? 'Saving...' : isOnboarding ? 'Continue' : 'Save survey'}</Text>
       </Pressable>
     </ScrollView>
   );

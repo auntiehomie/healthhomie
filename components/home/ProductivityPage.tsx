@@ -21,7 +21,7 @@ const MOODS: { key: Mood; emoji: string; label: string; note: string }[] = [
   { key: 'good',     emoji: '😊', label: 'Good',     note: 'Solid start! Keep that momentum 💪' },
   { key: 'meh',      emoji: '😐', label: 'Meh',      note: 'Meh days still move forward. One thing at a time.' },
   { key: 'tired',    emoji: '😴', label: 'Tired',    note: 'Rest is productive too. Be gentle with yourself 🌙' },
-  { key: 'stressed', emoji: '😤', label: 'Stressed', note: "Breathe. You&apos;ve handled hard days before. Start small." },
+  { key: 'stressed', emoji: '😤', label: 'Stressed', note: "Breathe. You've handled hard days before. Start small." },
 ];
 
 const AFFIRMATIONS = [
@@ -30,7 +30,7 @@ const AFFIRMATIONS = [
   'Your consistency is your superpower. One day at a time.',
   'Small progress is still progress. Celebrate it.',
   'Clarity comes from action, not thought. Start moving.',
-  "You&apos;ve survived 100% of your hard days. This one too.",
+  "You've survived 100% of your hard days. This one too.",
   'Your future self is cheering you on right now.',
   'One small step today compounds into something incredible.',
 ];
@@ -50,7 +50,7 @@ async function save(key: string, value: unknown) {
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
-export default function MorningScreen() {
+export function ProductivityPage() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [mood, setMood] = useState<Mood | null>(null);

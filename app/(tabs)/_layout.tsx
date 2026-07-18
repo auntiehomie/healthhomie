@@ -4,10 +4,9 @@ import {
   Calendar,
   Dumbbell,
   FileText,
+  Home,
   ScanBarcode,
   Settings,
-  Sun,
-  Zap,
 } from 'lucide-react-native';
 import ScrollableTabBar from '@/components/ScrollableTabBar';
 import { useTheme } from '@/lib/theme/ThemeContext';
@@ -25,33 +24,23 @@ export default function TabLayout() {
         headerTitleStyle: { fontWeight: '900' },
       }}
     >
-      {/* ── New: Morning check-in ── */}
+      {/* ── New: Home (swipeable Productivity + Health) ── */}
       <Tabs.Screen
-        name="morning"
+        name="index"
         options={{
-          title: 'Morning',
-          tabBarIcon: ({ color }) => <Sun size={SIZE} color={color} />,
-          headerTitle: 'Morning ☀️',
+          title: 'Home',
+          tabBarIcon: ({ color }) => <Home size={SIZE} color={color} />,
+          headerTitle: 'Howdy Morning ☀️',
         }}
       />
 
       {/* ── Existing: Today (nutrition/macros) ── */}
       <Tabs.Screen
-        name="index"
+        name="today"
         options={{
           title: 'Today',
           tabBarIcon: ({ color }) => <Activity size={SIZE} color={color} />,
           headerTitle: 'Today',
-        }}
-      />
-
-      {/* ── New: Energy map (Oura) ── */}
-      <Tabs.Screen
-        name="energy"
-        options={{
-          title: 'Energy',
-          tabBarIcon: ({ color }) => <Zap size={SIZE} color={color} />,
-          headerTitle: 'Energy Map ⚡',
         }}
       />
 
