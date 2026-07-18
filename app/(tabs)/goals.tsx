@@ -42,7 +42,7 @@ export default function GoalsScreen() {
   }) : null;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Goals</Text>
       <Text style={styles.subtitle}>Healthhomie goals use Apple Health context when available, but stay boring-on-purpose: calories, protein, trend, consistency.</Text>
 
@@ -73,6 +73,7 @@ export default function GoalsScreen() {
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
+    fill: { flex: 1 },
     container: { padding: 20, gap: 14, backgroundColor: colors.background },
     title: { fontSize: 32, fontWeight: '900', color: colors.text },
     subtitle: { color: colors.textMuted, lineHeight: 20 },

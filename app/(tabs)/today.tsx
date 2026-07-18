@@ -55,7 +55,7 @@ export default function TodayScreen() {
   const caloriesLeft = Math.round(goal.calories - summary.calories);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
       <View style={styles.hero}>
         <Text style={styles.eyebrow}>daily food + health loop</Text>
         <Text style={styles.title}>Hey homie, here’s today.</Text>
@@ -88,6 +88,7 @@ export default function TodayScreen() {
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
+    fill: { flex: 1 },
     container: { padding: 20, gap: 20, backgroundColor: colors.background },
     hero: { gap: 8, paddingTop: 10 },
     eyebrow: { color: colors.primary, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 },

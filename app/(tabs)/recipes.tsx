@@ -54,7 +54,7 @@ export default function RecipesScreen() {
   if (!loaded) return null;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Recipes</Text>
@@ -105,6 +105,7 @@ export default function RecipesScreen() {
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
+    fill: { flex: 1 },
     container: { padding: 20, gap: 14, backgroundColor: colors.background },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
     title: { fontSize: 32, fontWeight: '900', color: colors.text },

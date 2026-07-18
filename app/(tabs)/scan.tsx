@@ -25,7 +25,7 @@ export default function ScanScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Scan a barcode</Text>
       <Text style={styles.subtitle}>Point the camera at a packaged food and its nutrition facts pop up, ready to log.</Text>
 
@@ -54,6 +54,7 @@ export default function ScanScreen() {
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
+    fill: { flex: 1 },
     container: { padding: 20, gap: 14, backgroundColor: colors.background },
     title: { fontSize: 32, fontWeight: '900', color: colors.text },
     subtitle: { color: colors.textMuted, lineHeight: 20 },
