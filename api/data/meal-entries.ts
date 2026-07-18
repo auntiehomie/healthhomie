@@ -27,6 +27,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(204).end();
     }
 
+    if (req.method === 'PUT') {
+      const body = (req.body ?? {}) as Partial<MealEntry> & { id?: string };
+      if (!body.id) return res.status(400).json({ error: 'id is required.' });
+      if (!body.servings || body.servings <= 0) return res.status(400).json({ error: 'servings must be greater than zero.' });
+      const rows = await sql`
+        UPDATE meal_entries
+        SET servings = ${body.servings}, "hour" = ${body.hour ?? null}, "mealType" = ${body.mealType ?? 'snack'}
+        WHERE id = ${body.id} AND "userId" = ${userId}
+        RETURNING id
+      `;
+      if (rows.length === 0) return res.status(404).json({ error: 'Meal entry not found.' });
+      return res.status(204).end();
+    }
+
     if (req.method === 'DELETE') {
       const entryId = String(req.query.id ?? '').trim();
       if (!entryId) return res.status(400).json({ error: 'id is required.' });
@@ -39,8 +53,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(204).end();
     }
 
-    res.setHeader('Allow', 'GET, POST, DELETE');
-    res.status(405).json({ error: 'GET, POST, or DELETE only.' });
+    res.setHeader('Allow', 'GET, POST, PUT, DELETE');
+    res.status(405).json({ error: 'GET, POST, PUT, or DELETE only.' });
   } catch (error) {
     if (error instanceof AuthError) return res.status(401).json({ error: error.message });
     if (error instanceof DatabaseNotConfiguredError) return res.status(503).json({ error: error.message });
