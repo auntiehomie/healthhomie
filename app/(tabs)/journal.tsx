@@ -92,7 +92,7 @@ ${message}`)) void removeEntry(entry);
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Food journal</Text>
       <Text style={styles.subtitle}>Search USDA foods or tap a saved food to log it.</Text>
 
@@ -199,6 +199,7 @@ ${message}`)) void removeEntry(entry);
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
+    fill: { flex: 1 },
     container: { padding: 20, gap: 14, backgroundColor: colors.background },
     title: { fontSize: 32, fontWeight: '900', color: colors.text },
     subtitle: { color: colors.textMuted, lineHeight: 20 },

@@ -171,7 +171,7 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Settings</Text>
       <Text style={styles.subtitle}>Your journal and profile sync across web, iOS, and Android through your account.</Text>
 
@@ -309,6 +309,7 @@ export default function SettingsScreen() {
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
+    fill: { flex: 1 },
     container: { padding: 20, gap: 16, backgroundColor: colors.background },
     title: { fontSize: 32, fontWeight: '900', color: colors.text },
     subtitle: { color: colors.textMuted, lineHeight: 20 },

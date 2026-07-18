@@ -122,7 +122,7 @@ export default function NotesScreen() {
           </Pressable>
         </View>
 
-        <ScrollView contentContainerStyle={styles.editScroll} keyboardShouldPersistTaps="handled">
+        <ScrollView style={styles.fill} contentContainerStyle={styles.editScroll} keyboardShouldPersistTaps="handled">
           <TextInput
             style={styles.titleInput}
             value={editTitle}
@@ -188,7 +188,7 @@ export default function NotesScreen() {
         onChangeText={setSearch}
       />
 
-      <ScrollView contentContainerStyle={styles.listScroll}>
+      <ScrollView style={styles.fill} contentContainerStyle={styles.listScroll}>
         {filtered.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>📝</Text>
@@ -220,6 +220,7 @@ export default function NotesScreen() {
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container:         { flex: 1, backgroundColor: colors.background },
+    fill:              { flex: 1 },
     listHeader:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', padding: 20, paddingBottom: 12 },
     hero:              { gap: 2 },
     eyebrow:           { color: colors.primary, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, fontSize: 12 },
