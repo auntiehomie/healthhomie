@@ -1,11 +1,12 @@
 import * as Clipboard from 'expo-clipboard';
 import { useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Copy, Share2 } from 'lucide-react-native';
 import { requestHealthPermissions } from '@/lib/services/healthkit';
 import { connectOura, getOuraStatus, syncOura } from '@/lib/services/ouraClient';
 import { logout } from '@/lib/services/authClient';
+import { promoteToOwner } from '@/lib/services/adminClient';
 import { createInviteCode, InviteForbiddenError, listInviteCodes, revokeInviteCode, type InviteCode } from '@/lib/services/inviteClient';
 import { useTheme, type ThemePreference } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
@@ -36,6 +37,9 @@ export default function SettingsScreen() {
   const [generatingInvite, setGeneratingInvite] = useState(false);
   const [canManageInvites, setCanManageInvites] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [promoteEmail, setPromoteEmail] = useState('');
+  const [promoting, setPromoting] = useState(false);
+  const [promoteStatus, setPromoteStatus] = useState<string | null>(null);
 
   useEffect(() => {
     getOuraStatus().then((status) => {
@@ -109,6 +113,21 @@ export default function SettingsScreen() {
       refreshInvites();
     } catch (err) {
       setInviteError(err instanceof Error ? err.message : 'Failed to revoke invite code.');
+    }
+  }
+
+  async function handlePromote() {
+    if (!promoteEmail.trim()) return;
+    setPromoting(true);
+    setPromoteStatus(null);
+    try {
+      const email = await promoteToOwner(promoteEmail.trim());
+      setPromoteStatus(`${email} can now manage invites. They'll need to log out and back in for it to take effect.`);
+      setPromoteEmail('');
+    } catch (err) {
+      setPromoteStatus(err instanceof Error ? err.message : 'Failed to promote account.');
+    } finally {
+      setPromoting(false);
     }
   }
 
@@ -218,6 +237,30 @@ export default function SettingsScreen() {
         </View>
       )}
 
+      {canManageInvites && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Owner access</Text>
+          <Text style={styles.cardText}>
+            Promote an existing account to owner so they can also generate and manage invite codes — no need to
+            share your bootstrap secret. They&apos;ll need to log out and back in for it to take effect.
+          </Text>
+          <TextInput
+            placeholder="Their account email"
+            placeholderTextColor={colors.textMuted}
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            value={promoteEmail}
+            onChangeText={setPromoteEmail}
+            style={styles.promoteInput}
+          />
+          <Pressable style={[styles.button, (promoting || !promoteEmail.trim()) && styles.buttonDisabled]} onPress={handlePromote} disabled={promoting || !promoteEmail.trim()}>
+            <Text style={styles.buttonText}>{promoting ? 'Promoting...' : 'Make owner'}</Text>
+          </Pressable>
+          {promoteStatus && <Text style={styles.status}>{promoteStatus}</Text>}
+        </View>
+      )}
+
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Survey</Text>
         <Text style={styles.cardText}>An optional check-in on body stats, movement, and how you manage notes and knowledge.</Text>
@@ -259,6 +302,7 @@ const createStyles = (colors: ThemeColors) =>
     inviteCode: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: 1 },
     inviteActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
     iconButton: { backgroundColor: colors.primary, borderRadius: 10, padding: 8 },
+    promoteInput: { backgroundColor: colors.background, borderRadius: 14, padding: 12, fontSize: 15, color: colors.text },
     revokeButton: { backgroundColor: colors.danger, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12 },
     revokeButtonText: { color: colors.onPrimary, fontWeight: '700', fontSize: 12 },
   });
