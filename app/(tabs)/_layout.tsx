@@ -2,6 +2,7 @@ import { Drawer } from 'expo-router/drawer';
 import {
   Activity,
   Calendar,
+  ChefHat,
   Dumbbell,
   FileText,
   Home,
@@ -82,6 +83,16 @@ export default function TabLayout() {
           title: 'Scan',
           drawerIcon: ({ color, size }) => <ScanBarcode size={size} color={color} />,
           headerTitle: 'Scan Food',
+        }}
+      />
+
+      {/* ── New: Saved recipes ── */}
+      <Drawer.Screen
+        name="recipes"
+        options={{
+          title: 'Recipes',
+          drawerIcon: ({ color, size }) => <ChefHat size={size} color={color} />,
+          headerTitle: 'Recipes',
         }}
       />
 

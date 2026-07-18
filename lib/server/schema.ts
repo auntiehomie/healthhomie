@@ -132,4 +132,24 @@ export const schemaStatements = [
     "createdAt" TEXT NOT NULL,
     PRIMARY KEY ("userId", date)
   );`,
+  `CREATE TABLE IF NOT EXISTS recipes (
+    id TEXT PRIMARY KEY,
+    "userId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    servings DOUBLE PRECISION NOT NULL DEFAULT 1,
+    "createdAt" TEXT NOT NULL,
+    "updatedAt" TEXT NOT NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS recipes_user_idx ON recipes("userId");`,
+  // No FK on "foodItemId" — same loose-reference convention as meal_entries.foodItemId, since
+  // food_items' primary key is composite ("userId", id) and every read already re-scopes by
+  // userId via the join, so a formal FK here wouldn't add real safety.
+  `CREATE TABLE IF NOT EXISTS recipe_ingredients (
+    id TEXT PRIMARY KEY,
+    "recipeId" TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+    "foodItemId" TEXT NOT NULL,
+    servings DOUBLE PRECISION NOT NULL DEFAULT 1,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0
+  );`,
+  `CREATE INDEX IF NOT EXISTS recipe_ingredients_recipe_idx ON recipe_ingredients("recipeId");`,
 ] as const;

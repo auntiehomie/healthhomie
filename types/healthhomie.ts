@@ -109,6 +109,22 @@ export type HealthMetricsDaily = {
   workouts?: number;
 };
 
+export type RecipeIngredient = {
+  id: string;
+  foodItemId: string;
+  servings: number;
+  food?: FoodItem;
+};
+
+export type Recipe = {
+  id: string;
+  name: string;
+  servings: number;
+  ingredients: RecipeIngredient[];
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type WeeklyCheckIn = {
   id: string;
   weekStart: string;
