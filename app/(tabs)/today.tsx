@@ -1,16 +1,18 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MacroRing } from '@/components/health/MacroRing';
 import { MetricCard } from '@/components/health/MetricCard';
 import { getUserProfile, listFoodItems, listMealEntries } from '@/lib/db/database';
+import { foodDisplayName } from '@/lib/domain/food';
 import { calculateDailyGoal } from '@/lib/domain/goals';
-import { summarizeDay, todayKey } from '@/lib/domain/nutrition';
+import { formatHour } from '@/lib/domain/mealType';
+import { scaleMacros, summarizeDay, todayKey } from '@/lib/domain/nutrition';
 import { readTodayHealthSnapshot } from '@/lib/services/healthkit';
 import { getLatestHealthSnapshot } from '@/lib/services/healthMetricsClient';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
-import type { DailyNutritionSummary, HealthSnapshot } from '@/types/healthhomie';
+import type { DailyNutritionSummary, FoodItem, HealthSnapshot, MealEntry } from '@/types/healthhomie';
 
 const CARBS_COLOR = '#d99a3f';
 const FAT_COLOR = '#8b5cf6';
@@ -21,6 +23,8 @@ export default function TodayScreen() {
   const [summary, setSummary] = useState<DailyNutritionSummary>({ date: todayKey(), entries: 0, calories: 0, proteinG: 0, carbsG: 0, fatG: 0 });
   const [goal, setGoal] = useState(calculateDailyGoal({ id: 'loading', goalType: 'improve-consistency', activityMultiplier: 1.2, createdAt: '', updatedAt: '' }));
   const [snapshot, setSnapshot] = useState<HealthSnapshot>({ date: todayKey() });
+  const [todayFoods, setTodayFoods] = useState<FoodItem[]>([]);
+  const [todayEntries, setTodayEntries] = useState<MealEntry[]>([]);
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -47,6 +51,8 @@ export default function TodayScreen() {
       setSnapshot(health);
       setSummary(summarizeDay(todayKey(), entries, foods));
       setGoal(calculateDailyGoal(profile, health));
+      setTodayFoods(foods);
+      setTodayEntries(entries.slice().sort((a, b) => (b.hour ?? -1) - (a.hour ?? -1)));
     }
     load().catch(console.warn);
     return () => { active = false; };
@@ -82,6 +88,29 @@ export default function TodayScreen() {
           <MacroRing label="Fat" actual={summary.fatG} target={goal.fatG} color={FAT_COLOR} />
         </View>
       </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Today&apos;s food</Text>
+        {todayEntries.length === 0 ? (
+          <Text style={styles.empty}>Nothing logged yet today.</Text>
+        ) : (
+          todayEntries.map((entry) => {
+            const food = todayFoods.find((item) => item.id === entry.foodItemId);
+            const macros = food ? scaleMacros(food, entry.servings) : null;
+            return (
+              <Pressable key={entry.id} style={styles.entryRow} onPress={() => router.push('/(tabs)/journal')}>
+                <View style={styles.entryDetails}>
+                  <Text style={styles.entryName}>{food ? foodDisplayName(food) : 'Food'}</Text>
+                  <Text style={styles.entryMeta}>
+                    {entry.hour != null ? formatHour(entry.hour) : entry.mealType} · {entry.servings} serving{entry.servings === 1 ? '' : 's'}
+                  </Text>
+                </View>
+                <Text style={styles.entryKcal}>{macros ? Math.round(macros.calories) : 0} kcal</Text>
+              </Pressable>
+            );
+          })
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -98,4 +127,10 @@ const createStyles = (colors: ThemeColors) =>
     section: { backgroundColor: colors.surface, borderRadius: 24, padding: 18, gap: 16 },
     sectionTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
     macroRow: { flexDirection: 'row', gap: 12 },
+    empty: { color: colors.textMuted, fontStyle: 'italic' },
+    entryRow: { backgroundColor: colors.surfaceAlt, borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+    entryDetails: { flex: 1, gap: 2 },
+    entryName: { color: colors.text, fontSize: 15, fontWeight: '800' },
+    entryMeta: { color: colors.textMuted, fontSize: 12, textTransform: 'capitalize' },
+    entryKcal: { color: colors.primary, fontWeight: '800' },
   });
