@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -212,6 +213,12 @@ export function ProductivityPage() {
           onChangeText={updateNote}
           textAlignVertical="top"
         />
+        <View style={styles.noteFooter}>
+          <Text style={styles.muted}>Saves automatically as you type</Text>
+          <Pressable style={styles.doneBtn} onPress={() => Keyboard.dismiss()}>
+            <Text style={styles.doneBtnText}>Done</Text>
+          </Pressable>
+        </View>
       </View>
     </ScrollView>
   );
@@ -249,4 +256,7 @@ const createStyles = (colors: ThemeColors) =>
     addBtn:       { backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
     addBtnText:   { color: colors.onPrimary, fontWeight: '700', fontSize: 14 },
     noteInput:    { backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: colors.text, fontSize: 15, borderWidth: 1, borderColor: colors.border, minHeight: 120 },
+    noteFooter:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    doneBtn:      { backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
+    doneBtnText:  { color: colors.onPrimary, fontWeight: '700', fontSize: 14 },
   });
