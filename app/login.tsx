@@ -24,7 +24,7 @@ export default function LoginScreen() {
         router.replace('/(tabs)');
       } else {
         await register(email.trim(), password, inviteCode);
-        router.replace('/survey?onboarding=true');
+        router.replace('/onboarding');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');

@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Drawer } from 'expo-router/drawer';
 import {
   Activity,
   Calendar,
@@ -8,91 +8,92 @@ import {
   ScanBarcode,
   Settings,
 } from 'lucide-react-native';
-import ScrollableTabBar from '@/components/ScrollableTabBar';
 import { useTheme } from '@/lib/theme/ThemeContext';
-
-const SIZE = 22;
 
 export default function TabLayout() {
   const { colors } = useTheme();
   return (
-    <Tabs
-      tabBar={(props) => <ScrollableTabBar {...props} />}
+    <Drawer
       screenOptions={{
-        headerStyle:      { backgroundColor: colors.surface },
-        headerTintColor:  colors.text,
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.text,
         headerTitleStyle: { fontWeight: '900' },
+        drawerStyle: { backgroundColor: colors.surface },
+        drawerActiveTintColor: colors.primary,
+        drawerActiveBackgroundColor: colors.surfaceAlt,
+        drawerInactiveTintColor: colors.text,
+        drawerLabelStyle: { fontWeight: '700', fontSize: 15, marginLeft: -8 },
       }}
     >
       {/* ── New: Home (swipeable Productivity + Health) ── */}
-      <Tabs.Screen
+      <Drawer.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <Home size={SIZE} color={color} />,
+          drawerIcon: ({ color, size }) => <Home size={size} color={color} />,
           headerTitle: 'Howdy Morning ☀️',
         }}
       />
 
       {/* ── Existing: Today (nutrition/macros) ── */}
-      <Tabs.Screen
+      <Drawer.Screen
         name="today"
         options={{
           title: 'Today',
-          tabBarIcon: ({ color }) => <Activity size={SIZE} color={color} />,
+          drawerIcon: ({ color, size }) => <Activity size={size} color={color} />,
           headerTitle: 'Today',
         }}
       />
 
       {/* ── Existing: Food journal ── */}
-      <Tabs.Screen
+      <Drawer.Screen
         name="journal"
         options={{
           title: 'Journal',
-          tabBarIcon: ({ color }) => <Calendar size={SIZE} color={color} />,
+          drawerIcon: ({ color, size }) => <Calendar size={size} color={color} />,
           headerTitle: 'Food Journal',
         }}
       />
 
       {/* ── New: Zettelkasten notes ── */}
-      <Tabs.Screen
+      <Drawer.Screen
         name="notes"
         options={{
           title: 'Notes',
-          tabBarIcon: ({ color }) => <FileText size={SIZE} color={color} />,
+          drawerIcon: ({ color, size }) => <FileText size={size} color={color} />,
           headerTitle: 'Notes 📝',
         }}
       />
 
       {/* ── Existing: Goals ── */}
-      <Tabs.Screen
+      <Drawer.Screen
         name="goals"
         options={{
           title: 'Goals',
-          tabBarIcon: ({ color }) => <Dumbbell size={SIZE} color={color} />,
+          drawerIcon: ({ color, size }) => <Dumbbell size={size} color={color} />,
           headerTitle: 'Goals',
         }}
       />
 
       {/* ── Existing: Barcode scan ── */}
-      <Tabs.Screen
+      <Drawer.Screen
         name="scan"
         options={{
           title: 'Scan',
-          tabBarIcon: ({ color }) => <ScanBarcode size={SIZE} color={color} />,
+          drawerIcon: ({ color, size }) => <ScanBarcode size={size} color={color} />,
           headerTitle: 'Scan Food',
         }}
       />
 
       {/* ── Existing: Settings ── */}
-      <Tabs.Screen
+      <Drawer.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color }) => <Settings size={SIZE} color={color} />,
+          drawerIcon: ({ color, size }) => <Settings size={size} color={color} />,
           headerTitle: 'Settings',
         }}
       />
-    </Tabs>
+    </Drawer>
   );
 }
