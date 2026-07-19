@@ -18,6 +18,28 @@ type OpenFoodFactsProduct = {
   serving_quantity_unit?: string;
 };
 
+export type RestaurantMenuItemSummary = {
+  id: number;
+  title: string;
+  restaurantChain: string;
+};
+
+type SpoonacularMenuItem = {
+  id: number;
+  title: string;
+  restaurantChain?: string;
+};
+
+type SpoonacularNutrient = { name: string; amount?: number };
+
+type SpoonacularMenuItemDetail = {
+  id: number;
+  title: string;
+  restaurantChain?: string;
+  servings?: { number?: number; size?: number | null; unit?: string | null };
+  nutrition?: { nutrients?: SpoonacularNutrient[] };
+};
+
 export async function searchUsdaFoods(query: string): Promise<FoodItem[]> {
   if (!query.trim()) return [];
   const response = await fetch(`/api/nutrition/search?q=${encodeURIComponent(query)}`);
@@ -28,6 +50,35 @@ export async function searchUsdaFoods(query: string): Promise<FoodItem[]> {
   }
   const payload = await response.json();
   return (payload.foods ?? []).map(mapUsdaFood);
+}
+
+export async function searchRestaurantFoods(query: string): Promise<RestaurantMenuItemSummary[]> {
+  if (!query.trim()) return [];
+  const response = await fetch(`/api/nutrition/restaurant-search?q=${encodeURIComponent(query)}`);
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    const detail = typeof payload.error === 'string' ? payload.error : null;
+    throw new Error(detail ? `Restaurant search failed: ${detail}` : `Restaurant search failed (${response.status}). Try again in a moment.`);
+  }
+  const payload = await response.json();
+  return ((payload.menuItems ?? []) as SpoonacularMenuItem[]).map((item) => ({
+    id: item.id,
+    title: item.title,
+    restaurantChain: item.restaurantChain ?? 'Restaurant',
+  }));
+}
+
+// Menu search results don't include nutrients — a separate detail lookup is required per item,
+// so this is only called once the user actually picks a result, not for every row in the list.
+export async function getRestaurantFoodItem(id: number): Promise<FoodItem> {
+  const response = await fetch(`/api/nutrition/restaurant-item?id=${id}`);
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    const detail = typeof payload.error === 'string' ? payload.error : null;
+    throw new Error(detail ? `Couldn't load menu item: ${detail}` : `Couldn't load menu item (${response.status}).`);
+  }
+  const payload = (await response.json()) as SpoonacularMenuItemDetail;
+  return mapSpoonacularMenuItem(payload);
 }
 
 export async function lookupBarcode(barcode: string): Promise<FoodItem | null> {
@@ -80,6 +131,30 @@ function mapOpenFoodFactsProduct(product: OpenFoodFactsProduct): FoodItem {
     fiberG: numberish(nutriments.fiber_serving ?? nutriments.fiber_100g),
     sugarG: numberish(nutriments.sugars_serving ?? nutriments.sugars_100g),
     sodiumMg: numberish(nutriments.sodium_serving ?? nutriments.sodium_100g) * 1000,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function mapSpoonacularMenuItem(item: SpoonacularMenuItemDetail): FoodItem {
+  const nutrients = item.nutrition?.nutrients ?? [];
+  const findNutrient = (name: string) => nutrients.find((n) => n.name.toLowerCase() === name.toLowerCase())?.amount ?? 0;
+  const now = new Date().toISOString();
+  return {
+    id: `spoonacular-${item.id}`,
+    name: item.title,
+    brand: item.restaurantChain,
+    servingSize: item.servings?.size ?? item.servings?.number ?? 1,
+    servingUnit: item.servings?.unit ?? 'serving',
+    source: 'spoonacular',
+    sourceId: String(item.id),
+    calories: findNutrient('Calories'),
+    proteinG: findNutrient('Protein'),
+    carbsG: findNutrient('Carbohydrates'),
+    fatG: findNutrient('Fat'),
+    fiberG: findNutrient('Fiber'),
+    sugarG: findNutrient('Sugar'),
+    sodiumMg: findNutrient('Sodium'),
     createdAt: now,
     updatedAt: now,
   };

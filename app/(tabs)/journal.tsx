@@ -9,7 +9,7 @@ import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries
 import { foodDisplayName } from '@/lib/domain/food';
 import { deriveMealType, formatHour } from '@/lib/domain/mealType';
 import { formatDateLabel, shiftDateKey, summarizeDay, todayKey } from '@/lib/domain/nutrition';
-import { searchUsdaFoods } from '@/lib/services/nutritionApi';
+import { getRestaurantFoodItem, searchRestaurantFoods, searchUsdaFoods, type RestaurantMenuItemSummary } from '@/lib/services/nutritionApi';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { ChevronLeft, ChevronRight, ScanBarcode, Trash2, X } from 'lucide-react-native';
@@ -26,6 +26,8 @@ export default function JournalScreen() {
   const [editingEntry, setEditingEntry] = useState<MealEntry | null>(null);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodItem[]>([]);
+  const [restaurantResults, setRestaurantResults] = useState<RestaurantMenuItemSummary[]>([]);
+  const [loadingItemId, setLoadingItemId] = useState<number | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -61,6 +63,7 @@ export default function JournalScreen() {
     });
     setActiveFood(null);
     setResults([]);
+    setRestaurantResults([]);
     setQuery('');
     await load();
   }
@@ -81,12 +84,28 @@ export default function JournalScreen() {
     if (!query.trim()) return;
     setSearching(true);
     setSearchError(null);
+    const [usda, restaurants] = await Promise.allSettled([searchUsdaFoods(query), searchRestaurantFoods(query)]);
+    setResults(usda.status === 'fulfilled' ? usda.value : []);
+    setRestaurantResults(restaurants.status === 'fulfilled' ? restaurants.value : []);
+    if (usda.status === 'rejected' && restaurants.status === 'rejected') {
+      setSearchError(usda.reason instanceof Error ? usda.reason.message : 'Search failed. Try again in a moment.');
+    } else if (usda.status === 'rejected') {
+      setSearchError(usda.reason instanceof Error ? usda.reason.message : 'USDA search failed.');
+    } else if (restaurants.status === 'rejected') {
+      setSearchError(restaurants.reason instanceof Error ? restaurants.reason.message : 'Restaurant search failed.');
+    }
+    setSearching(false);
+  }
+
+  async function selectRestaurantItem(item: RestaurantMenuItemSummary) {
+    setLoadingItemId(item.id);
+    setSearchError(null);
     try {
-      setResults(await searchUsdaFoods(query));
+      setActiveFood(await getRestaurantFoodItem(item.id));
     } catch (error) {
-      setSearchError(error instanceof Error ? error.message : 'Search failed. Check that USDA_FDC_API_KEY is configured.');
+      setSearchError(error instanceof Error ? error.message : "Couldn't load that item. Try again.");
     } finally {
-      setSearching(false);
+      setLoadingItemId(null);
     }
   }
 
@@ -177,6 +196,17 @@ ${message}`)) void removeEntry(entry);
           ))}
         </>
       )}
+
+      {restaurantResults.length > 0 && <Text style={styles.resultsLabel}>Restaurants</Text>}
+      {restaurantResults.map((item) => (
+        <Pressable key={item.id} onPress={() => selectRestaurantItem(item)} disabled={loadingItemId !== null} style={styles.foodRow}>
+          <View>
+            <Text style={styles.foodName}>{item.title}</Text>
+            <Text style={styles.foodMeta}>{item.restaurantChain}</Text>
+          </View>
+          {loadingItemId === item.id ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.foodMacros}>Tap for nutrition</Text>}
+        </Pressable>
+      ))}
 
       {results.length > 0 && <Text style={styles.resultsLabel}>USDA results</Text>}
       {results.map((food) => (
