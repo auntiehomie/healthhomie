@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -21,6 +21,15 @@ function getBacklinks(notes: Note[], target: Note): Note[] {
   return notes.filter(n => n.id !== target.id && n.content.includes(`[[${target.title}]]`));
 }
 
+function extractWikilinks(content: string): string[] {
+  const titles = new Set<string>();
+  for (const match of content.matchAll(/\[\[([^\]]+)\]\]/g)) {
+    const title = match[1].trim();
+    if (title) titles.add(title);
+  }
+  return Array.from(titles);
+}
+
 // ── Component ──────────────────────────────────────────────────────────────────
 type Screen = 'list' | 'edit';
 
@@ -35,6 +44,8 @@ export default function NotesScreen() {
   const [editContent, setEditContent] = useState('');
   const [editTags, setEditTags] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [forcedSelection, setForcedSelection] = useState<{ start: number; end: number } | undefined>(undefined);
+  const contentCursorRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
 
   useEffect(() => {
     loadNotes().then(n => { setNotes(n); setLoaded(true); });
@@ -91,6 +102,60 @@ export default function NotesScreen() {
     persistNote({ content: value });
   }
 
+  // Roam/Obsidian-style bracket pairing: typing "[" auto-inserts the matching "]" with the
+  // cursor left between them, and typing "]" right before one already there skips over it
+  // instead of duplicating. The insertion point comes from the tracked cursor position
+  // (contentCursorRef), not from diffing prev/value — a run of identical "]" characters makes
+  // diffing ambiguous (inserting mid-run is textually indistinguishable from appending at the
+  // end), so only the real, known cursor position can tell them apart.
+  function handleContentChange(value: string) {
+    const prev = editContent;
+    const cursor = contentCursorRef.current.start;
+    const isSingleInsert = value.length === prev.length + 1 && cursor >= 0 && cursor <= prev.length;
+
+    if (isSingleInsert) {
+      const inserted = value[cursor];
+      if (inserted === '[') {
+        const next = `${value.slice(0, cursor + 1)}]${value.slice(cursor + 1)}`;
+        contentCursorRef.current = { start: cursor + 1, end: cursor + 1 };
+        setForcedSelection(contentCursorRef.current);
+        updateContent(next);
+        return;
+      }
+      if (inserted === ']' && prev[cursor] === ']') {
+        contentCursorRef.current = { start: cursor + 1, end: cursor + 1 };
+        setForcedSelection(contentCursorRef.current);
+        return; // leave content as-is; the controlled `value` prop reverts the native duplicate
+      }
+      contentCursorRef.current = { start: cursor + 1, end: cursor + 1 };
+      updateContent(value);
+      return;
+    }
+
+    contentCursorRef.current = { start: value.length, end: value.length };
+    updateContent(value);
+  }
+
+  function handleContentSelectionChange(e: { nativeEvent: { selection: { start: number; end: number } } }) {
+    contentCursorRef.current = e.nativeEvent.selection;
+    if (forcedSelection) setForcedSelection(undefined);
+  }
+
+  function openOrCreateLinkedNote(title: string) {
+    const existing = notes.find(n => n.title.toLowerCase() === title.toLowerCase());
+    if (existing) { openNote(existing); return; }
+    const note: Note = {
+      id: genNoteId(),
+      title,
+      content: '',
+      tags: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    updateNotes([note, ...notes]);
+    openNote(note);
+  }
+
   function deleteNote() {
     if (!activeNote) return;
     Alert.alert('Delete note', `"${activeNote.title}" will be permanently deleted.`, [
@@ -125,6 +190,7 @@ export default function NotesScreen() {
   // ── Edit screen ──
   if (screen === 'edit' && activeNote) {
     const backlinks = getBacklinks(notes, activeNote);
+    const wikilinks = extractWikilinks(editContent);
     return (
       <View style={styles.editContainer}>
         {/* Toolbar */}
@@ -156,12 +222,29 @@ export default function NotesScreen() {
           <TextInput
             style={styles.contentInput}
             value={editContent}
-            onChangeText={updateContent}
+            onChangeText={handleContentChange}
+            selection={forcedSelection}
+            onSelectionChange={handleContentSelectionChange}
             multiline
             textAlignVertical="top"
             placeholder={'Write in plain text or markdown…\n\nLink to other notes with [[Note Title]]'}
             placeholderTextColor={colors.textMuted}
           />
+
+          {/* Outgoing wikilinks */}
+          {wikilinks.length > 0 && (
+            <View style={styles.backlinkPanel}>
+              <Text style={styles.backlinkTitle}>🔗 Links to</Text>
+              {wikilinks.map(title => {
+                const exists = notes.some(n => n.title.toLowerCase() === title.toLowerCase() && n.id !== activeNote.id);
+                return (
+                  <Pressable key={title} onPress={() => openOrCreateLinkedNote(title)}>
+                    <Text style={styles.backlinkItem}>{exists ? '→' : '+ create'} {title}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
 
           {/* Backlinks */}
           {backlinks.length > 0 && (
