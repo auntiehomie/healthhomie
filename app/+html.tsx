@@ -15,8 +15,8 @@ export default function Root({ children }: { children: ReactNode }) {
 
         {/* PWA: installable app metadata + update-detecting service worker (registered in components/UpdateBanner.tsx) */}
         <link rel="manifest" href="/manifest.webmanifest" />
-        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#5850ec" />
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#8b84f7" />
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#2563eb" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#3b82f6" />
         <link rel="apple-touch-icon" href="/pwa-icon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -39,10 +39,10 @@ export default function Root({ children }: { children: ReactNode }) {
 
 const responsiveBackground = `
 body {
-  background-color: #f5f6fa;
+  background-color: #f8fafc;
 }
 @media (prefers-color-scheme: dark) {
   body {
-    background-color: #0e0f14;
+    background-color: #020617;
   }
 }`;

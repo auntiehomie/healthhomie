@@ -154,4 +154,7 @@ export const schemaStatements = [
     "sortOrder" INTEGER NOT NULL DEFAULT 0
   );`,
   `CREATE INDEX IF NOT EXISTS recipe_ingredients_recipe_idx ON recipe_ingredients("recipeId");`,
+  // Nullable and additive — when set, this overrides the BMR/activity-derived calorie target;
+  // when null (the default), the goal stays fully computed as before.
+  `ALTER TABLE user_profile ADD COLUMN IF NOT EXISTS "calorieOverride" DOUBLE PRECISION;`,
 ] as const;

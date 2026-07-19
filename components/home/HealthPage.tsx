@@ -18,10 +18,10 @@ import { summarizeDay, todayKey } from '@/lib/domain/nutrition';
 import { connectOura, getOuraStatus, syncOura } from '@/lib/services/ouraClient';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 import type { DailyNutritionSummary } from '@/types/healthhomie';
 
-const CARBS_COLOR = '#d99a3f';
-const FAT_COLOR = '#8b5cf6';
+const FAT_COLOR = '#e2725a';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface OuraDaily {
@@ -73,7 +73,7 @@ export function HealthPage() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scoreColor = useCallback((score: number) => {
     if (score >= 70) return colors.success;
-    if (score >= 40) return '#d99a3f';
+    if (score >= 40) return colors.warning;
     return colors.danger;
   }, [colors]);
 
@@ -211,7 +211,7 @@ export function HealthPage() {
           </View>
           <View style={styles.macroRow}>
             <MacroRing label="Protein" actual={summary.proteinG} target={goal.proteinTargetG} color={colors.primary} />
-            <MacroRing label="Carbs" actual={summary.carbsG} target={goal.carbsG} color={CARBS_COLOR} />
+            <MacroRing label="Carbs" actual={summary.carbsG} target={goal.carbsG} color={colors.warning} />
             <MacroRing label="Fat" actual={summary.fatG} target={goal.fatG} color={FAT_COLOR} />
           </View>
         </View>
@@ -293,7 +293,7 @@ export function HealthPage() {
         <View style={styles.curveContainer}>
           {curve.map(block => (
             <View key={block.label} style={styles.barWrapper}>
-              <View style={[styles.bar, { height: Math.max(8, block.pct * 1.2), backgroundColor: block.pct >= 80 ? colors.primary : block.pct >= 60 ? '#d99a3f' : colors.textMuted }]} />
+              <View style={[styles.bar, { height: Math.max(8, block.pct * 1.2), backgroundColor: block.pct >= 80 ? colors.primary : block.pct >= 60 ? colors.warning : colors.textMuted }]} />
               <Text style={styles.barLabel}>{block.label}</Text>
             </View>
           ))}
@@ -352,7 +352,7 @@ export function HealthPage() {
         </View>
         <View style={styles.macroRow}>
           <MacroRing label="Protein" actual={summary.proteinG} target={goal.proteinTargetG} color={colors.primary} />
-          <MacroRing label="Carbs" actual={summary.carbsG} target={goal.carbsG} color={CARBS_COLOR} />
+          <MacroRing label="Carbs" actual={summary.carbsG} target={goal.carbsG} color={colors.warning} />
           <MacroRing label="Fat" actual={summary.fatG} target={goal.fatG} color={FAT_COLOR} />
         </View>
       </View>
@@ -372,8 +372,8 @@ const createStyles = (colors: ThemeColors) =>
     center:         { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30, gap: 16, backgroundColor: colors.background },
     hero:           { gap: 4, paddingTop: 10 },
     eyebrow:        { color: colors.primary, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, fontSize: 12 },
-    title:          { fontSize: 28, fontWeight: '900', color: colors.text, lineHeight: 34 },
-    cycleBanner:    { backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 14, borderLeftWidth: 4, borderLeftColor: '#d99a3f' },
+    title:          { ...typography.display2, color: colors.text },
+    cycleBanner:    { backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 14, borderLeftWidth: 4, borderLeftColor: colors.warning },
     cycleText:      { color: colors.text, fontSize: 14, fontWeight: '600' },
     scoreRow:       { flexDirection: 'row', gap: 12 },
     scoreCard:      { flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16, alignItems: 'center', gap: 4 },

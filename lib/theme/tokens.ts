@@ -9,38 +9,44 @@ export type ThemeColors = {
   onPrimary: string;
   danger: string;
   success: string;
+  warning: string;
   chipBackground: string;
   chipText: string;
 };
 
-// A cooler, neutral-gray-plus-indigo palette closer to Linear/Notion/Todoist than the
-// original warm cream-and-green look.
+// Monochromatic blue: every neutral (background/surface/border/text) is a blue-tinted gray from
+// the same hue family as the accent, rather than a true neutral gray — one hue, varying shades
+// and tints, per the "monochromatic" palette structure. danger/success/warning stay as their
+// conventional red/green/amber since overriding those hurts usability more than it helps
+// cohesion (error states in blue read as "not actually an error").
 export const lightColors: ThemeColors = {
-  background: '#f5f6fa',
+  background: '#f8fafc',
   surface: '#ffffff',
-  surfaceAlt: '#eef0f6',
-  border: '#e3e6ee',
-  text: '#15171f',
-  textMuted: '#5c6270',
-  primary: '#5850ec',
+  surfaceAlt: '#f1f5f9',
+  border: '#e2e8f0',
+  text: '#0f172a',
+  textMuted: '#64748b',
+  primary: '#2563eb',
   onPrimary: '#ffffff',
-  danger: '#dc4c4c',
-  success: '#1f9d63',
-  chipBackground: '#eef0f6',
-  chipText: '#383c48',
+  danger: '#dc2626',
+  success: '#059669',
+  warning: '#d97706',
+  chipBackground: '#f1f5f9',
+  chipText: '#334155',
 };
 
 export const darkColors: ThemeColors = {
-  background: '#0e0f14',
-  surface: '#181a22',
-  surfaceAlt: '#20232d',
-  border: '#2b2f3b',
-  text: '#f3f4f8',
-  textMuted: '#9aa0b1',
-  primary: '#8b84f7',
-  onPrimary: '#12131a',
-  danger: '#f2716f',
-  success: '#3ecb8c',
-  chipBackground: '#20232d',
-  chipText: '#d7d9e3',
+  background: '#020617',
+  surface: '#0f172a',
+  surfaceAlt: '#1e293b',
+  border: '#334155',
+  text: '#f8fafc',
+  textMuted: '#94a3b8',
+  primary: '#3b82f6',
+  onPrimary: '#ffffff',
+  danger: '#f87171',
+  success: '#34d399',
+  warning: '#fbbf24',
+  chipBackground: '#1e293b',
+  chipText: '#e2e8f0',
 };

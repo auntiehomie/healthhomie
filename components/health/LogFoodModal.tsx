@@ -5,6 +5,7 @@ import { foodDisplayName } from '@/lib/domain/food';
 import { scaleMacros } from '@/lib/domain/nutrition';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 import type { FoodItem } from '@/types/healthhomie';
 
 const GRAMS_PER_OUNCE = 28.3495;
@@ -190,8 +191,8 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     sheet: { backgroundColor: colors.background, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, gap: 16 },
-    title: { fontSize: 22, fontWeight: '800', color: colors.text },
-    subtitle: { color: colors.textMuted },
+    title: { ...typography.title2, color: colors.text },
+    subtitle: { ...typography.bodyMedium, color: colors.textMuted },
     modeToggle: { flexDirection: 'row', backgroundColor: colors.chipBackground, borderRadius: 999, padding: 4, gap: 4, alignSelf: 'flex-start' },
     modeChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
     modeChipActive: { backgroundColor: colors.primary },

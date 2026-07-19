@@ -6,6 +6,7 @@ import { getSurvey, saveSurvey, type SurveyInput, type SurveyResponse } from '@/
 import { decryptWithPassphrase, encryptWithPassphrase } from '@/lib/services/privacy';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 
 const MOVEMENT_OPTIONS = ['Sedentary', 'Lightly active', 'Moderately active', 'Very active', 'Extremely active'];
 const REVIEW_FREQUENCY_OPTIONS = ['Never', 'Rarely', 'Weekly', 'Daily'];
@@ -282,8 +283,8 @@ export default function SurveyScreen() {
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { padding: 20, gap: 16, backgroundColor: colors.background },
-    title: { fontSize: 32, fontWeight: '900', color: colors.text },
-    subtitle: { color: colors.textMuted, lineHeight: 20 },
+    title: { ...typography.display1, color: colors.text },
+    subtitle: { ...typography.bodyMedium, color: colors.textMuted },
     card: { backgroundColor: colors.surface, borderRadius: 24, padding: 18, gap: 10 },
     cardTitle: { fontSize: 20, fontWeight: '800', color: colors.text, marginBottom: 4 },
     label: { fontSize: 13, fontWeight: '700', color: colors.text, marginTop: 6 },

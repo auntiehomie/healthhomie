@@ -14,6 +14,7 @@ import {
 } from '@/lib/services/nutritionApi';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 import type { FoodItem } from '@/types/healthhomie';
 
 export default function RestaurantResultsScreen() {
@@ -122,8 +123,8 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     fill: { flex: 1 },
     container: { padding: 20, gap: 14, backgroundColor: colors.background },
-    title: { fontSize: 28, fontWeight: '900', color: colors.text },
-    subtitle: { color: colors.textMuted, fontSize: 15 },
+    title: { ...typography.display2, color: colors.text },
+    subtitle: { ...typography.bodyMedium, color: colors.textMuted },
     loadingIndicator: { marginTop: 20 },
     error: { color: colors.danger, fontWeight: '600' },
     empty: { color: colors.textMuted, fontStyle: 'italic' },

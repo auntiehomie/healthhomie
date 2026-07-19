@@ -66,6 +66,23 @@ export function shiftDateKey(date: string, days: number): string {
   return todayKey(shifted);
 }
 
+export function weekStartKey(date: string): string {
+  const d = new Date(`${date}T00:00:00`);
+  return shiftDateKey(date, -d.getDay());
+}
+
+export function weekDateKeys(weekStart: string): string[] {
+  return Array.from({ length: 7 }, (_, i) => shiftDateKey(weekStart, i));
+}
+
+export function formatWeekRangeLabel(weekStart: string): string {
+  const start = new Date(`${weekStart}T00:00:00`);
+  const end = new Date(`${shiftDateKey(weekStart, 6)}T00:00:00`);
+  const startLabel = start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const endLabel = end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return `${startLabel} – ${endLabel}`;
+}
+
 export function formatDateLabel(date: string): string {
   if (date === todayKey()) return 'Today';
   if (date === shiftDateKey(todayKey(), -1)) return 'Yesterday';

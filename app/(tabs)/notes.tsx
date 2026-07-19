@@ -11,6 +11,7 @@ import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedbac
 import { genNoteId, loadNotes, saveNotes, type Note } from '@/lib/db/notesStorage';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function fmtDate(iso: string): string {
@@ -320,7 +321,7 @@ const createStyles = (colors: ThemeColors) =>
     listHeader:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', padding: 20, paddingBottom: 12 },
     hero:              { gap: 2 },
     eyebrow:           { color: colors.primary, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, fontSize: 12 },
-    title:             { fontSize: 28, fontWeight: '900', color: colors.text },
+    title:             { ...typography.display2, color: colors.text },
     newBtn:            { backgroundColor: colors.primary, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8 },
     newBtnText:        { color: colors.onPrimary, fontWeight: '800', fontSize: 14 },
     searchInput:       { marginHorizontal: 20, marginBottom: 8, backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, color: colors.text, fontSize: 15, borderWidth: 1, borderColor: colors.border },
