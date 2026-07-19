@@ -1,6 +1,7 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { BarcodeScanner } from '@/components/health/BarcodeScanner';
 import { EditEntryModal } from '@/components/health/EditEntryModal';
 import { HourPicker } from '@/components/health/HourPicker';

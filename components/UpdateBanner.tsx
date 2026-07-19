@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { applyUpdate, registerServiceWorker, useUpdateAvailable } from '@/lib/services/pwaUpdate';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, StyleSheet, Text, TextInput, View } from 'react-native';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { foodDisplayName } from '@/lib/domain/food';
 import { scaleMacros } from '@/lib/domain/nutrition';
 import { useTheme } from '@/lib/theme/ThemeContext';

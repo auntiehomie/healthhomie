@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, StyleSheet, Text, TextInput, View } from 'react-native';
 import { HourPicker } from './HourPicker';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { foodDisplayName } from '@/lib/domain/food';
 import { deriveMealType } from '@/lib/domain/mealType';
 import { scaleMacros } from '@/lib/domain/nutrition';

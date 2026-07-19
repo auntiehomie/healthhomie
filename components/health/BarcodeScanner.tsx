@@ -1,6 +1,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useMemo, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { lookupBarcode } from '@/lib/services/nutritionApi';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';

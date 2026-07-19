@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { getSurvey, saveSurvey, type SurveyInput, type SurveyResponse } from '@/lib/services/surveyClient';
 import { decryptWithPassphrase, encryptWithPassphrase } from '@/lib/services/privacy';
 import { useTheme } from '@/lib/theme/ThemeContext';

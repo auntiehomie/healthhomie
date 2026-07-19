@@ -1,6 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { MacroRing } from '@/components/health/MacroRing';
 import { MetricCard } from '@/components/health/MetricCard';
 import { getUserProfile, listFoodItems, listMealEntries } from '@/lib/db/database';

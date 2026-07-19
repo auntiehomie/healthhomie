@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import { router } from 'expo-router';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { requestPasswordReset } from '@/lib/services/authClient';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
