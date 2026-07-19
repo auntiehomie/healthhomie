@@ -9,10 +9,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const apiKey = process.env.SPOONACULAR_API_KEY;
   if (!apiKey) return res.status(503).json({ error: 'SPOONACULAR_API_KEY is not configured.' });
 
+  const requested = Number(req.query.number);
+  const number = Number.isFinite(requested) ? Math.min(Math.max(Math.trunc(requested), 1), 50) : 20;
+
   const url = new URL(SPOONACULAR_MENU_SEARCH_URL);
   url.searchParams.set('apiKey', apiKey);
   url.searchParams.set('query', query);
-  url.searchParams.set('number', '20');
+  url.searchParams.set('number', String(number));
 
   const upstream = await fetch(url);
   const body = await upstream.text();

@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
@@ -10,7 +10,13 @@ import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries
 import { foodDisplayName } from '@/lib/domain/food';
 import { deriveMealType, formatHour } from '@/lib/domain/mealType';
 import { formatDateLabel, shiftDateKey, summarizeDay, todayKey } from '@/lib/domain/nutrition';
-import { getRestaurantFoodItem, searchRestaurantFoods, searchUsdaFoods, type RestaurantMenuItemSummary } from '@/lib/services/nutritionApi';
+import {
+  findClosestRestaurantMatch,
+  getRestaurantFoodItem,
+  searchRestaurantFoods,
+  searchUsdaFoods,
+  type RestaurantMenuItemSummary,
+} from '@/lib/services/nutritionApi';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { ChevronLeft, ChevronRight, ScanBarcode, Trash2, X } from 'lucide-react-native';
@@ -31,6 +37,8 @@ export default function JournalScreen() {
   const [loadingItemId, setLoadingItemId] = useState<number | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [aiMatching, setAiMatching] = useState(false);
+  const [aiNote, setAiNote] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -65,6 +73,7 @@ export default function JournalScreen() {
     setActiveFood(null);
     setResults([]);
     setRestaurantResults([]);
+    setAiNote(null);
     setQuery('');
     await load();
   }
@@ -85,6 +94,7 @@ export default function JournalScreen() {
     if (!query.trim()) return;
     setSearching(true);
     setSearchError(null);
+    setAiNote(null);
     const [usda, restaurants] = await Promise.allSettled([searchUsdaFoods(query), searchRestaurantFoods(query)]);
     setResults(usda.status === 'fulfilled' ? usda.value : []);
     setRestaurantResults(restaurants.status === 'fulfilled' ? restaurants.value : []);
@@ -107,6 +117,22 @@ export default function JournalScreen() {
       setSearchError(error instanceof Error ? error.message : "Couldn't load that item. Try again.");
     } finally {
       setLoadingItemId(null);
+    }
+  }
+
+  async function askAiForMatch() {
+    if (restaurantResults.length === 0) return;
+    setAiMatching(true);
+    setAiNote(null);
+    try {
+      const result = await findClosestRestaurantMatch(query, restaurantResults);
+      setAiNote(result.note);
+      const match = result.bestMatchId != null ? restaurantResults.find((r) => r.id === result.bestMatchId) : undefined;
+      if (match) await selectRestaurantItem(match);
+    } catch (error) {
+      setAiNote(error instanceof Error ? error.message : "Couldn't reach AI matching. Try again.");
+    } finally {
+      setAiMatching(false);
     }
   }
 
@@ -199,7 +225,7 @@ ${message}`)) void removeEntry(entry);
       )}
 
       {restaurantResults.length > 0 && <Text style={styles.resultsLabel}>Restaurants</Text>}
-      {restaurantResults.map((item) => (
+      {restaurantResults.slice(0, 3).map((item) => (
         <Pressable key={item.id} onPress={() => selectRestaurantItem(item)} disabled={loadingItemId !== null} style={styles.foodRow}>
           <View>
             <Text style={styles.foodName}>{item.title}</Text>
@@ -208,6 +234,24 @@ ${message}`)) void removeEntry(entry);
           {loadingItemId === item.id ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.foodMacros}>Tap for nutrition</Text>}
         </Pressable>
       ))}
+      {restaurantResults.length > 3 && (
+        <Pressable
+          style={styles.seeMoreButton}
+          onPress={() => router.push({ pathname: '/restaurant-results', params: { q: query, hour: String(selectedHour), date: selectedDate } })}
+        >
+          <Text style={styles.seeMoreButtonText}>See more restaurant results →</Text>
+        </Pressable>
+      )}
+      {restaurantResults.length > 0 && (
+        <Pressable style={styles.aiMatchLink} onPress={askAiForMatch} disabled={aiMatching}>
+          {aiMatching ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : (
+            <Text style={styles.aiMatchLinkText}>🤖 Can’t find it? Ask AI for the closest match</Text>
+          )}
+        </Pressable>
+      )}
+      {aiNote && <Text style={styles.aiNote}>{aiNote}</Text>}
 
       {results.length > 0 && <Text style={styles.resultsLabel}>USDA results</Text>}
       {results.map((food) => (
@@ -305,6 +349,11 @@ const createStyles = (colors: ThemeColors) =>
     foodName: { fontWeight: '800', color: colors.text, fontSize: 16 },
     foodMeta: { color: colors.textMuted, marginTop: 4 },
     foodMacros: { fontWeight: '800', color: colors.primary },
+    seeMoreButton: { alignItems: 'center', paddingVertical: 10 },
+    seeMoreButtonText: { color: colors.primary, fontWeight: '700' },
+    aiMatchLink: { alignItems: 'center', paddingVertical: 6 },
+    aiMatchLinkText: { color: colors.textMuted, fontWeight: '600', fontSize: 13 },
+    aiNote: { color: colors.textMuted, fontSize: 13, fontStyle: 'italic', textAlign: 'center' },
     entryRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
     entryDetails: { flex: 1, gap: 4 },
     entryName: { color: colors.text, fontSize: 16, fontWeight: '800' },
