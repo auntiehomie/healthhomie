@@ -38,7 +38,15 @@ const AFFIRMATIONS = [
   'One small step today compounds into something incredible.',
 ];
 
-const todayKey = () => new Date().toISOString().split('T')[0];
+// Local calendar date, not UTC — avoids the daily note/affirmation flipping at UTC midnight
+// (evening in US timezones) instead of local midnight.
+const todayKey = () => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 const randomAff = () => AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)];
 const dailyNoteId = (day: string) => `daily-${day}`;
 const dailyNoteTitle = (day: string) =>

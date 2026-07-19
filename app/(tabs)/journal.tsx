@@ -8,11 +8,11 @@ import { LogFoodModal } from '@/components/health/LogFoodModal';
 import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries, updateMealEntry, upsertFoodItem } from '@/lib/db/database';
 import { foodDisplayName } from '@/lib/domain/food';
 import { deriveMealType, formatHour } from '@/lib/domain/mealType';
-import { summarizeDay, todayKey } from '@/lib/domain/nutrition';
+import { formatDateLabel, shiftDateKey, summarizeDay, todayKey } from '@/lib/domain/nutrition';
 import { searchUsdaFoods } from '@/lib/services/nutritionApi';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
-import { ScanBarcode, Trash2, X } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, ScanBarcode, Trash2, X } from 'lucide-react-native';
 import type { FoodItem, MealEntry } from '@/types/healthhomie';
 
 export default function JournalScreen() {
@@ -20,6 +20,7 @@ export default function JournalScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [foods, setFoods] = useState<FoodItem[]>([]);
   const [entries, setEntries] = useState<MealEntry[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>(todayKey());
   const [selectedHour, setSelectedHour] = useState<number>(new Date().getHours());
   const [activeFood, setActiveFood] = useState<FoodItem | null>(null);
   const [editingEntry, setEditingEntry] = useState<MealEntry | null>(null);
@@ -30,13 +31,14 @@ export default function JournalScreen() {
   const [scannerOpen, setScannerOpen] = useState(false);
 
   const load = useCallback(async () => {
-    const [nextFoods, nextEntries] = await Promise.all([listFoodItems(), listMealEntries(todayKey())]);
+    const [nextFoods, nextEntries] = await Promise.all([listFoodItems(), listMealEntries(selectedDate)]);
     setFoods(nextFoods);
     setEntries(nextEntries);
-  }, []);
+  }, [selectedDate]);
 
   useFocusEffect(useCallback(() => { load().catch(console.warn); }, [load]));
-  const summary = useMemo(() => summarizeDay(todayKey(), entries, foods), [entries, foods]);
+  const summary = useMemo(() => summarizeDay(selectedDate, entries, foods), [entries, foods, selectedDate]);
+  const isToday = selectedDate === todayKey();
 
   // Foods you've already scanned/searched/logged before, plus saved recipes (source: 'custom') —
   // searched locally so recipes are actually reachable when logging, not just saved and forgotten.
@@ -53,7 +55,7 @@ export default function JournalScreen() {
       foodItemId: food.id,
       mealType: deriveMealType(selectedHour),
       hour: selectedHour,
-      date: todayKey(),
+      date: selectedDate,
       servings,
       createdAt: new Date().toISOString(),
     });
@@ -119,6 +121,22 @@ ${message}`)) void removeEntry(entry);
       <Text style={styles.title}>Food journal</Text>
       <Text style={styles.subtitle}>Search USDA foods or tap a saved food to log it.</Text>
 
+      <View style={styles.dateRow}>
+        <Pressable accessibilityLabel="Previous day" hitSlop={8} onPress={() => setSelectedDate((d) => shiftDateKey(d, -1))} style={styles.dateArrow}>
+          <ChevronLeft color={colors.text} size={20} />
+        </Pressable>
+        <Text style={styles.dateLabel}>{formatDateLabel(selectedDate)}</Text>
+        <Pressable
+          accessibilityLabel="Next day"
+          hitSlop={8}
+          disabled={isToday}
+          onPress={() => setSelectedDate((d) => shiftDateKey(d, 1))}
+          style={[styles.dateArrow, isToday && styles.dateArrowDisabled]}
+        >
+          <ChevronRight color={isToday ? colors.textMuted : colors.text} size={20} />
+        </Pressable>
+      </View>
+
       <View style={styles.summary}>
         <Text style={styles.summaryValue}>{Math.round(summary.calories)} kcal</Text>
         <Text style={styles.summaryText}>{Math.round(summary.proteinG)}g protein · {Math.round(summary.carbsG)}g carbs · {Math.round(summary.fatG)}g fat</Text>
@@ -171,8 +189,8 @@ ${message}`)) void removeEntry(entry);
         </Pressable>
       ))}
 
-      <Text style={styles.label}>Today’s entries</Text>
-      {entries.length === 0 ? <Text style={styles.empty}>Nothing logged yet. Search for a food above to start.</Text> : entries.map((entry) => {
+      <Text style={styles.label}>{isToday ? 'Today’s entries' : `${formatDateLabel(selectedDate)}’s entries`}</Text>
+      {entries.length === 0 ? <Text style={styles.empty}>Nothing logged {isToday ? 'yet' : 'for this day'}. Search for a food above to start.</Text> : entries.map((entry) => {
         const food = foods.find((item) => item.id === entry.foodItemId);
         const foodName = food ? foodDisplayName(food) : 'Food';
         return (
@@ -229,6 +247,10 @@ const createStyles = (colors: ThemeColors) =>
     container: { padding: 20, gap: 14, backgroundColor: colors.background },
     title: { fontSize: 32, fontWeight: '900', color: colors.text },
     subtitle: { color: colors.textMuted, lineHeight: 20 },
+    dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16 },
+    dateArrow: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.chipBackground, alignItems: 'center', justifyContent: 'center' },
+    dateArrowDisabled: { opacity: 0.4 },
+    dateLabel: { color: colors.text, fontWeight: '800', fontSize: 16, minWidth: 120, textAlign: 'center' },
     summary: { backgroundColor: colors.text, borderRadius: 24, padding: 18 },
     summaryValue: { color: colors.background, fontSize: 30, fontWeight: '900' },
     summaryText: { color: colors.background, opacity: 0.75 },
