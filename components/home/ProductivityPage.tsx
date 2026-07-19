@@ -48,6 +48,7 @@ const todayKey = () => {
   return `${year}-${month}-${day}`;
 };
 const randomAff = () => AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)];
+const greeting = () => (new Date().getHours() >= 17 ? 'howdy evenin' : 'howdy mornin');
 const dailyNoteId = (day: string) => `daily-${day}`;
 const dailyNoteTitle = (day: string) =>
   `Daily note — ${new Date(day + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
@@ -134,7 +135,7 @@ export function ProductivityPage() {
     <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
       {/* Header */}
       <View style={styles.hero}>
-        <Text style={styles.eyebrow}>good morning</Text>
+        <Text style={styles.eyebrow}>{greeting()}</Text>
         <Text style={styles.title}>How are you showing up today?</Text>
       </View>
 
@@ -217,9 +218,12 @@ export function ProductivityPage() {
         </View>
       </View>
 
-      {/* Morning Note */}
+      {/* Quick Notes */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>📝 Today&apos;s note</Text>
+        <View style={styles.noteHeaderRow}>
+          <Text style={styles.cardTitle}>📝 Quick notes</Text>
+          {morningNote.trim().length > 0 && <Text style={styles.savedLabel}>Saved automatically</Text>}
+        </View>
         <TextInput
           style={styles.noteInput}
           multiline
@@ -231,7 +235,7 @@ export function ProductivityPage() {
         />
         <View style={styles.noteFooter}>
           <Pressable onPress={() => router.push('/(tabs)/notes')}>
-            <Text style={styles.noteLink}>Saved to Notes, tagged &quot;daily&quot; →</Text>
+            <Text style={styles.noteLink}>View in Notes, tagged &quot;daily&quot; →</Text>
           </Pressable>
           <Pressable style={styles.doneBtn} onPress={() => Keyboard.dismiss()}>
             <Text style={styles.doneBtnText}>Done</Text>
@@ -273,6 +277,8 @@ const createStyles = (colors: ThemeColors) =>
     row:          { flexDirection: 'row', gap: 10, alignItems: 'center' },
     addBtn:       { backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
     addBtnText:   { color: colors.onPrimary, fontWeight: '700', fontSize: 14 },
+    noteHeaderRow:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    savedLabel:   { color: colors.textMuted, fontSize: 11, fontWeight: '600' },
     noteInput:    { backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: colors.text, fontSize: 15, borderWidth: 1, borderColor: colors.border, minHeight: 120 },
     noteFooter:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
     noteLink:     { color: colors.primary, fontWeight: '600', fontSize: 12, flexShrink: 1 },
