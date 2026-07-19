@@ -1,3 +1,4 @@
+import { apiUrl, getToken } from '@/lib/services/authClient';
 import type { FoodItem } from '@/types/healthhomie';
 
 type UsdaFood = {
@@ -52,9 +53,9 @@ export async function searchUsdaFoods(query: string): Promise<FoodItem[]> {
   return (payload.foods ?? []).map(mapUsdaFood);
 }
 
-export async function searchRestaurantFoods(query: string): Promise<RestaurantMenuItemSummary[]> {
+export async function searchRestaurantFoods(query: string, limit = 20): Promise<RestaurantMenuItemSummary[]> {
   if (!query.trim()) return [];
-  const response = await fetch(`/api/nutrition/restaurant-search?q=${encodeURIComponent(query)}`);
+  const response = await fetch(`/api/nutrition/restaurant-search?q=${encodeURIComponent(query)}&number=${limit}`);
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
     const detail = typeof payload.error === 'string' ? payload.error : null;
@@ -79,6 +80,28 @@ export async function getRestaurantFoodItem(id: number): Promise<FoodItem> {
   }
   const payload = (await response.json()) as SpoonacularMenuItemDetail;
   return mapSpoonacularMenuItem(payload);
+}
+
+// Asks the server to pick the closest match to `query` from a list of already-fetched real
+// search results — the AI only ever ranks/selects real candidates, it never invents an item or
+// estimates nutrition itself, so a match still comes from Spoonacular's real data.
+export async function findClosestRestaurantMatch(
+  query: string,
+  candidates: RestaurantMenuItemSummary[]
+): Promise<{ bestMatchId: number | null; note: string }> {
+  const token = await getToken();
+  if (!token) throw new Error('Not logged in.');
+  const response = await fetch(apiUrl('/api/ai/food-match'), {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ query, candidates }),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    const detail = typeof payload.error === 'string' ? payload.error : null;
+    throw new Error(detail ?? `AI matching failed (${response.status}).`);
+  }
+  return response.json();
 }
 
 export async function lookupBarcode(barcode: string): Promise<FoodItem | null> {
