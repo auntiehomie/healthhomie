@@ -2,13 +2,13 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { MacroRing } from '@/components/health/MacroRing';
 import { MetricCard } from '@/components/health/MetricCard';
 import { generateSuggestion, getCachedSuggestion } from '@/lib/services/aiSuggestionsClient';

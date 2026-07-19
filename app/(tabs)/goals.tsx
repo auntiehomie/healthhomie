@@ -1,6 +1,7 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { getUserProfile, saveUserProfile } from '@/lib/db/database';
 import { calculateDailyGoal, recommendWeeklyAdjustment } from '@/lib/domain/goals';
 import { useTheme } from '@/lib/theme/ThemeContext';

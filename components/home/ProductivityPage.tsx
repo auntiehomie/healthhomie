@@ -2,7 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Keyboard,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { getNoteById, upsertNoteById } from '@/lib/db/notesStorage';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';

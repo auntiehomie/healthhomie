@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { formatHour, HOURS } from '@/lib/domain/mealType';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect, router } from 'expo-router';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { Trash2 } from 'lucide-react-native';
 import { deleteRecipe, listRecipes } from '@/lib/db/database';
 import { recipePerServing } from '@/lib/domain/recipes';

@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect, router, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ScanBarcode, X } from 'lucide-react-native';
 import { BarcodeScanner } from '@/components/health/BarcodeScanner';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
 import { listRecipes, saveRecipe, upsertFoodItem } from '@/lib/db/database';
 import { foodDisplayName } from '@/lib/domain/food';

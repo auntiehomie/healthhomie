@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,6 +8,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { HealthPage } from '@/components/home/HealthPage';
 import { ProductivityPage } from '@/components/home/ProductivityPage';
 import { useTheme } from '@/lib/theme/ThemeContext';

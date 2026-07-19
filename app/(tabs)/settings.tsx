@@ -1,6 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { Link, router } from 'expo-router';
 import { Copy, Share2 } from 'lucide-react-native';
 import { requestHealthPermissions } from '@/lib/services/healthkit';
