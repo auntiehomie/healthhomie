@@ -9,7 +9,7 @@ import { LogFoodModal } from '@/components/health/LogFoodModal';
 import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries, updateMealEntry, upsertFoodItem } from '@/lib/db/database';
 import { foodDisplayName } from '@/lib/domain/food';
 import { deriveMealType, formatHour } from '@/lib/domain/mealType';
-import { formatDateLabel, shiftDateKey, summarizeDay, todayKey } from '@/lib/domain/nutrition';
+import { formatDateLabel, formatWeekRangeLabel, shiftDateKey, summarizeDay, todayKey, weekDateKeys, weekStartKey } from '@/lib/domain/nutrition';
 import {
   findClosestRestaurantMatch,
   getRestaurantFoodItem,
@@ -29,6 +29,10 @@ export default function JournalScreen() {
   const [foods, setFoods] = useState<FoodItem[]>([]);
   const [entries, setEntries] = useState<MealEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(todayKey());
+  const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
+  const [weekStart, setWeekStart] = useState<string>(weekStartKey(todayKey()));
+  const [weekEntries, setWeekEntries] = useState<MealEntry[]>([]);
+  const [weekLoading, setWeekLoading] = useState(false);
   const [selectedHour, setSelectedHour] = useState<number>(new Date().getHours());
   const [activeFood, setActiveFood] = useState<FoodItem | null>(null);
   const [editingEntry, setEditingEntry] = useState<MealEntry | null>(null);
@@ -51,6 +55,42 @@ export default function JournalScreen() {
   useFocusEffect(useCallback(() => { load().catch(console.warn); }, [load]));
   const summary = useMemo(() => summarizeDay(selectedDate, entries, foods), [entries, foods, selectedDate]);
   const isToday = selectedDate === todayKey();
+
+  const loadWeek = useCallback(async () => {
+    setWeekLoading(true);
+    try {
+      const [nextFoods, allEntries] = await Promise.all([listFoodItems(), listMealEntries()]);
+      setFoods(nextFoods);
+      setWeekEntries(allEntries);
+    } finally {
+      setWeekLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+    if (viewMode === 'week') loadWeek().catch(console.warn);
+  }, [viewMode, loadWeek]));
+
+  const weekDays = useMemo(() => weekDateKeys(weekStart), [weekStart]);
+  const weekDaySummaries = useMemo(
+    () => weekDays.map((date) => summarizeDay(date, weekEntries, foods)),
+    [weekDays, weekEntries, foods]
+  );
+  const weekTotal = useMemo(
+    () => weekDaySummaries.reduce((total, day) => ({
+      calories: total.calories + day.calories,
+      proteinG: total.proteinG + day.proteinG,
+      carbsG: total.carbsG + day.carbsG,
+      fatG: total.fatG + day.fatG,
+    }), { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 }),
+    [weekDaySummaries]
+  );
+  const isThisWeek = weekStart === weekStartKey(todayKey());
+
+  function openDay(date: string) {
+    setSelectedDate(date);
+    setViewMode('day');
+  }
 
   // Foods you've already scanned/searched/logged before, plus saved recipes (source: 'custom') —
   // searched locally so recipes are actually reachable when logging, not just saved and forgotten.
@@ -168,6 +208,56 @@ ${message}`)) void removeEntry(entry);
       <Text style={styles.title}>Food journal</Text>
       <Text style={styles.subtitle}>Search USDA foods or tap a saved food to log it.</Text>
 
+      <View style={styles.viewToggleRow}>
+        <Pressable style={[styles.viewToggle, viewMode === 'day' && styles.viewToggleActive]} onPress={() => setViewMode('day')}>
+          <Text style={[styles.viewToggleText, viewMode === 'day' && styles.viewToggleTextActive]}>Day</Text>
+        </Pressable>
+        <Pressable style={[styles.viewToggle, viewMode === 'week' && styles.viewToggleActive]} onPress={() => setViewMode('week')}>
+          <Text style={[styles.viewToggleText, viewMode === 'week' && styles.viewToggleTextActive]}>Week</Text>
+        </Pressable>
+      </View>
+
+      {viewMode === 'week' ? (
+        <>
+          <View style={styles.dateRow}>
+            <Pressable accessibilityLabel="Previous week" hitSlop={8} onPress={() => setWeekStart((w) => shiftDateKey(w, -7))} style={styles.dateArrow}>
+              <ChevronLeft color={colors.text} size={20} />
+            </Pressable>
+            <Text style={styles.dateLabel}>{isThisWeek ? 'This week' : formatWeekRangeLabel(weekStart)}</Text>
+            <Pressable
+              accessibilityLabel="Next week"
+              hitSlop={8}
+              disabled={isThisWeek}
+              onPress={() => setWeekStart((w) => shiftDateKey(w, 7))}
+              style={[styles.dateArrow, isThisWeek && styles.dateArrowDisabled]}
+            >
+              <ChevronRight color={isThisWeek ? colors.textMuted : colors.text} size={20} />
+            </Pressable>
+          </View>
+
+          <View style={styles.summary}>
+            <Text style={styles.summaryValue}>{Math.round(weekTotal.calories)} kcal total</Text>
+            <Text style={styles.summaryText}>{Math.round(weekTotal.proteinG)}g protein · {Math.round(weekTotal.carbsG)}g carbs · {Math.round(weekTotal.fatG)}g fat</Text>
+          </View>
+
+          {weekLoading && <ActivityIndicator color={colors.primary} />}
+
+          {weekDays.map((date, i) => {
+            const day = weekDaySummaries[i];
+            const isFuture = date > todayKey();
+            return (
+              <Pressable key={date} onPress={() => openDay(date)} disabled={isFuture} style={[styles.weekDayRow, isFuture && styles.weekDayRowFuture]}>
+                <View>
+                  <Text style={styles.weekDayLabel}>{formatDateLabel(date)}</Text>
+                  <Text style={styles.foodMeta}>{day.entries} entr{day.entries === 1 ? 'y' : 'ies'}</Text>
+                </View>
+                <Text style={styles.foodMacros}>{isFuture ? '—' : `${Math.round(day.calories)} kcal`}</Text>
+              </Pressable>
+            );
+          })}
+        </>
+      ) : (
+        <>
       <View style={styles.dateRow}>
         <Pressable accessibilityLabel="Previous day" hitSlop={8} onPress={() => setSelectedDate((d) => shiftDateKey(d, -1))} style={styles.dateArrow}>
           <ChevronLeft color={colors.text} size={20} />
@@ -286,6 +376,8 @@ ${message}`)) void removeEntry(entry);
           </Pressable>
         );
       })}
+        </>
+      )}
 
       <LogFoodModal key={activeFood?.id} food={activeFood} onClose={() => setActiveFood(null)} onConfirm={logFood} />
 
@@ -323,6 +415,14 @@ const createStyles = (colors: ThemeColors) =>
     container: { padding: 20, gap: 14, backgroundColor: colors.background },
     title: { ...typography.display1, color: colors.text },
     subtitle: { ...typography.bodyMedium, color: colors.textMuted },
+    viewToggleRow: { flexDirection: 'row', gap: 8, backgroundColor: colors.chipBackground, borderRadius: 14, padding: 4 },
+    viewToggle: { flex: 1, borderRadius: 10, paddingVertical: 8, alignItems: 'center' },
+    viewToggleActive: { backgroundColor: colors.primary },
+    viewToggleText: { color: colors.chipText, fontWeight: '700' },
+    viewToggleTextActive: { color: colors.onPrimary },
+    weekDayRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    weekDayRowFuture: { opacity: 0.5 },
+    weekDayLabel: { fontWeight: '800', color: colors.text, fontSize: 16 },
     dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16 },
     dateArrow: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.chipBackground, alignItems: 'center', justifyContent: 'center' },
     dateArrowDisabled: { opacity: 0.4 },

@@ -20,7 +20,8 @@ export function calculateDailyGoal(profile: UserProfile, snapshot?: HealthSnapsh
   const bmr = estimateBasalMetabolicRate(profile);
   const activeEnergy = snapshot?.activeEnergyKcal ?? 0;
   const tdee = bmr * profile.activityMultiplier + activeEnergy * 0.35;
-  const calories = Math.max(1300, round(tdee + GOAL_DELTAS[profile.goalType]));
+  const computedCalories = round(tdee + GOAL_DELTAS[profile.goalType]);
+  const calories = Math.max(1300, profile.calorieOverride ?? computedCalories);
   const weightKg = profile.currentWeightKg ?? snapshot?.weightKg ?? 75;
   const proteinTargetG = profile.goalType === 'gain-muscle' ? weightKg * 1.9 : weightKg * 1.6;
   const fatG = Math.max(45, (calories * 0.27) / 9);
@@ -37,7 +38,9 @@ export function calculateDailyGoal(profile: UserProfile, snapshot?: HealthSnapsh
     fatG: round(fatG),
     calorieFloor: round(calories - 100),
     calorieCeiling: round(calories + 100),
-    notes: 'Generated locally from profile, activity baseline, and Apple Health context when available.',
+    notes: profile.calorieOverride
+      ? 'Manually set. Protein/carbs/fat are still derived from this calorie target.'
+      : 'Generated locally from profile, activity baseline, and Apple Health context when available.',
   };
 }
 

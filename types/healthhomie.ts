@@ -53,6 +53,8 @@ export type UserProfile = {
   targetWeightKg?: number;
   goalType: GoalType;
   activityMultiplier: number;
+  /** Manual override for the daily calorie target; when unset, the goal is fully computed from BMR/activity. */
+  calorieOverride?: number;
   createdAt: string;
   updatedAt: string;
 };

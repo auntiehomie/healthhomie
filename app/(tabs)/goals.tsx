@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { getUserProfile, saveUserProfile } from '@/lib/db/database';
 import { calculateDailyGoal, recommendWeeklyAdjustment } from '@/lib/domain/goals';
@@ -21,6 +21,8 @@ export default function GoalsScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [goal, setGoal] = useState<NutritionGoal | null>(null);
+  const [editingCalories, setEditingCalories] = useState(false);
+  const [calorieInput, setCalorieInput] = useState('');
 
   const load = useCallback(async () => {
     const nextProfile = await getUserProfile();
@@ -38,6 +40,31 @@ export default function GoalsScreen() {
     setGoal(calculateDailyGoal(nextProfile));
   }
 
+  function startEditingCalories() {
+    setCalorieInput(String(Math.round(goal?.calories ?? 0)));
+    setEditingCalories(true);
+  }
+
+  async function saveCalorieOverride() {
+    if (!profile) return;
+    const value = Number(calorieInput);
+    if (!Number.isFinite(value) || value <= 0) return;
+    const nextProfile = { ...profile, calorieOverride: value, updatedAt: new Date().toISOString() };
+    await saveUserProfile(nextProfile);
+    setProfile(nextProfile);
+    setGoal(calculateDailyGoal(nextProfile));
+    setEditingCalories(false);
+  }
+
+  async function resetCalorieOverride() {
+    if (!profile) return;
+    const nextProfile = { ...profile, calorieOverride: undefined, updatedAt: new Date().toISOString() };
+    await saveUserProfile(nextProfile);
+    setProfile(nextProfile);
+    setGoal(calculateDailyGoal(nextProfile));
+    setEditingCalories(false);
+  }
+
   const sampleInsight = goal ? recommendWeeklyAdjustment({
     goal,
     checkIn: { weekStart: 'preview', averageCalories: goal.calories - 50, averageProteinG: goal.proteinTargetG * 0.92, averageWeightKg: profile?.currentWeightKg, adherencePct: 82 },
@@ -50,8 +77,39 @@ export default function GoalsScreen() {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Current target</Text>
-        <Text style={styles.big}>{Math.round(goal?.calories ?? 0)} kcal</Text>
+        {editingCalories ? (
+          <View style={styles.editRow}>
+            <TextInput
+              value={calorieInput}
+              onChangeText={setCalorieInput}
+              keyboardType="number-pad"
+              autoFocus
+              style={styles.calorieInput}
+            />
+            <Text style={styles.editUnit}>kcal</Text>
+          </View>
+        ) : (
+          <Pressable onPress={startEditingCalories}>
+            <Text style={styles.big}>{Math.round(goal?.calories ?? 0)} kcal</Text>
+          </Pressable>
+        )}
         <Text style={styles.macro}>{Math.round(goal?.proteinTargetG ?? 0)}g protein · {Math.round(goal?.carbsG ?? 0)}g carbs · {Math.round(goal?.fatG ?? 0)}g fat</Text>
+        {editingCalories ? (
+          <View style={styles.editActions}>
+            <Pressable style={styles.editButton} onPress={() => setEditingCalories(false)}>
+              <Text style={styles.editButtonText}>Cancel</Text>
+            </Pressable>
+            <Pressable style={[styles.editButton, styles.editButtonPrimary]} onPress={saveCalorieOverride}>
+              <Text style={styles.editButtonTextPrimary}>Save</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable onPress={profile?.calorieOverride ? resetCalorieOverride : startEditingCalories}>
+            <Text style={styles.editLink}>
+              {profile?.calorieOverride ? 'Manually set · tap to reset to calculated' : 'Tap to edit'}
+            </Text>
+          </Pressable>
+        )}
       </View>
 
       <Text style={styles.label}>Choose direction</Text>
@@ -83,6 +141,15 @@ const createStyles = (colors: ThemeColors) =>
     cardTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
     big: { fontSize: 40, fontWeight: '900', color: colors.primary },
     macro: { color: colors.textMuted },
+    editRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+    calorieInput: { fontSize: 40, fontWeight: '900', color: colors.primary, minWidth: 120, padding: 0 },
+    editUnit: { fontSize: 20, fontWeight: '700', color: colors.textMuted },
+    editLink: { color: colors.primary, fontWeight: '700', fontSize: 13, marginTop: 2 },
+    editActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
+    editButton: { flex: 1, borderRadius: 14, paddingVertical: 12, alignItems: 'center', backgroundColor: colors.chipBackground },
+    editButtonPrimary: { backgroundColor: colors.primary },
+    editButtonText: { color: colors.chipText, fontWeight: '800' },
+    editButtonTextPrimary: { color: colors.onPrimary, fontWeight: '800' },
     label: { color: colors.text, fontWeight: '800', marginTop: 8 },
     goalRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16 },
     goalRowActive: { backgroundColor: colors.primary },

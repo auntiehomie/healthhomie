@@ -36,12 +36,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 async function upsertProfile(userId: string, profile: UserProfile) {
   const sql = getSql();
   await sql`
-    INSERT INTO user_profile ("userId", age, sex, "heightCm", "currentWeightKg", "targetWeightKg", "goalType", "activityMultiplier", "createdAt", "updatedAt")
-    VALUES (${userId}, ${profile.age ?? null}, ${profile.sex ?? null}, ${profile.heightCm ?? null}, ${profile.currentWeightKg ?? null}, ${profile.targetWeightKg ?? null}, ${profile.goalType}, ${profile.activityMultiplier}, ${profile.createdAt}, ${profile.updatedAt})
+    INSERT INTO user_profile ("userId", age, sex, "heightCm", "currentWeightKg", "targetWeightKg", "goalType", "activityMultiplier", "calorieOverride", "createdAt", "updatedAt")
+    VALUES (${userId}, ${profile.age ?? null}, ${profile.sex ?? null}, ${profile.heightCm ?? null}, ${profile.currentWeightKg ?? null}, ${profile.targetWeightKg ?? null}, ${profile.goalType}, ${profile.activityMultiplier}, ${profile.calorieOverride ?? null}, ${profile.createdAt}, ${profile.updatedAt})
     ON CONFLICT ("userId") DO UPDATE SET
       age = EXCLUDED.age, sex = EXCLUDED.sex, "heightCm" = EXCLUDED."heightCm",
       "currentWeightKg" = EXCLUDED."currentWeightKg", "targetWeightKg" = EXCLUDED."targetWeightKg",
-      "goalType" = EXCLUDED."goalType", "activityMultiplier" = EXCLUDED."activityMultiplier", "updatedAt" = EXCLUDED."updatedAt"
+      "goalType" = EXCLUDED."goalType", "activityMultiplier" = EXCLUDED."activityMultiplier",
+      "calorieOverride" = EXCLUDED."calorieOverride", "updatedAt" = EXCLUDED."updatedAt"
   `;
 }
 
