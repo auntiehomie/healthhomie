@@ -11,6 +11,7 @@ import {
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { HealthPage } from '@/components/home/HealthPage';
 import { ProductivityPage } from '@/components/home/ProductivityPage';
+import { WeeklyReviewModal } from '@/components/home/WeeklyReviewModal';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 
@@ -63,6 +64,7 @@ export default function HomeScreen() {
           <HealthPage />
         </View>
       </ScrollView>
+      <WeeklyReviewModal />
     </View>
   );
 }
