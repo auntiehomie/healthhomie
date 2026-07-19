@@ -19,6 +19,7 @@ export default function TabLayout() {
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.text,
         headerTitleStyle: { fontWeight: '900' },
+        sceneStyle: { backgroundColor: colors.background },
         drawerStyle: { backgroundColor: colors.surface },
         drawerActiveTintColor: colors.primary,
         drawerActiveBackgroundColor: colors.surfaceAlt,
