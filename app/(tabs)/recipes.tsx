@@ -7,6 +7,7 @@ import { deleteRecipe, listRecipes } from '@/lib/db/database';
 import { recipePerServing } from '@/lib/domain/recipes';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 import type { Recipe } from '@/types/healthhomie';
 
 export default function RecipesScreen() {
@@ -109,8 +110,8 @@ const createStyles = (colors: ThemeColors) =>
     fill: { flex: 1 },
     container: { padding: 20, gap: 14, backgroundColor: colors.background },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
-    title: { fontSize: 32, fontWeight: '900', color: colors.text },
-    subtitle: { color: colors.textMuted, lineHeight: 20, maxWidth: 260 },
+    title: { ...typography.display1, color: colors.text },
+    subtitle: { ...typography.bodyMedium, color: colors.textMuted, maxWidth: 260 },
     newButton: { backgroundColor: colors.primary, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 },
     newButtonText: { color: colors.onPrimary, fontWeight: '800' },
     error: { color: colors.danger, fontWeight: '600' },

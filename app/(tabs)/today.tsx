@@ -13,10 +13,10 @@ import { readTodayHealthSnapshot } from '@/lib/services/healthkit';
 import { getLatestHealthSnapshot } from '@/lib/services/healthMetricsClient';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 import type { DailyNutritionSummary, FoodItem, HealthSnapshot, MealEntry } from '@/types/healthhomie';
 
-const CARBS_COLOR = '#d99a3f';
-const FAT_COLOR = '#8b5cf6';
+const FAT_COLOR = '#e2725a';
 
 export default function TodayScreen() {
   const { colors } = useTheme();
@@ -85,7 +85,7 @@ export default function TodayScreen() {
         <Text style={styles.sectionTitle}>Macros</Text>
         <View style={styles.macroRow}>
           <MacroRing label="Protein" actual={summary.proteinG} target={goal.proteinTargetG} color={colors.primary} />
-          <MacroRing label="Carbs" actual={summary.carbsG} target={goal.carbsG} color={CARBS_COLOR} />
+          <MacroRing label="Carbs" actual={summary.carbsG} target={goal.carbsG} color={colors.warning} />
           <MacroRing label="Fat" actual={summary.fatG} target={goal.fatG} color={FAT_COLOR} />
         </View>
       </View>
@@ -122,8 +122,8 @@ const createStyles = (colors: ThemeColors) =>
     container: { padding: 20, gap: 20, backgroundColor: colors.background },
     hero: { gap: 8, paddingTop: 10 },
     eyebrow: { color: colors.primary, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 },
-    title: { fontSize: 34, lineHeight: 38, fontWeight: '900', color: colors.text },
-    subtitle: { color: colors.textMuted, fontSize: 16 },
+    title: { ...typography.display1, color: colors.text },
+    subtitle: { ...typography.bodyMedium, color: colors.textMuted },
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
     section: { backgroundColor: colors.surface, borderRadius: 24, padding: 18, gap: 16 },
     sectionTitle: { fontSize: 20, fontWeight: '800', color: colors.text },

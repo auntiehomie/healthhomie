@@ -5,6 +5,7 @@ import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedbac
 import { resetPassword } from '@/lib/services/authClient';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 
 export default function ResetPasswordScreen() {
   const { colors } = useTheme();
@@ -85,8 +86,8 @@ export default function ResetPasswordScreen() {
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flexGrow: 1, padding: 24, gap: 14, backgroundColor: colors.background, justifyContent: 'center' },
-    title: { fontSize: 28, fontWeight: '900', color: colors.text, textAlign: 'center' },
-    subtitle: { color: colors.textMuted, textAlign: 'center', marginBottom: 12 },
+    title: { ...typography.display2, color: colors.text, textAlign: 'center' },
+    subtitle: { ...typography.bodyMedium, color: colors.textMuted, textAlign: 'center', marginBottom: 12 },
     input: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, fontSize: 16, color: colors.text },
     error: { color: colors.danger, fontWeight: '600', textAlign: 'center' },
     button: { backgroundColor: colors.primary, borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 8 },

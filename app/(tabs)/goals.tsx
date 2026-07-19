@@ -6,6 +6,7 @@ import { getUserProfile, saveUserProfile } from '@/lib/db/database';
 import { calculateDailyGoal, recommendWeeklyAdjustment } from '@/lib/domain/goals';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 import type { GoalType, NutritionGoal, UserProfile } from '@/types/healthhomie';
 
 const goalTypes: { key: GoalType; label: string; helper: string }[] = [
@@ -76,8 +77,8 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     fill: { flex: 1 },
     container: { padding: 20, gap: 14, backgroundColor: colors.background },
-    title: { fontSize: 32, fontWeight: '900', color: colors.text },
-    subtitle: { color: colors.textMuted, lineHeight: 20 },
+    title: { ...typography.display1, color: colors.text },
+    subtitle: { ...typography.bodyMedium, color: colors.textMuted },
     card: { backgroundColor: colors.surface, borderRadius: 24, padding: 18, gap: 8 },
     cardTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
     big: { fontSize: 40, fontWeight: '900', color: colors.primary },

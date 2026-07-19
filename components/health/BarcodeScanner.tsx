@@ -5,6 +5,7 @@ import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedbac
 import { lookupBarcode } from '@/lib/services/nutritionApi';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 import type { FoodItem } from '@/types/healthhomie';
 
 /** Camera + Open Food Facts lookup. Calls onFound once per distinct barcode; a miss or error un-blocks that barcode so the same one can be retried. */
@@ -93,7 +94,7 @@ const createStyles = (colors: ThemeColors) =>
     // the height to this ordinary wrapper instead, and letting CameraView absolutely-fill it,
     // sidesteps that fight entirely.
     cameraWrapper: { height: 340, borderRadius: 24, overflow: 'hidden', position: 'relative' },
-    subtitle: { color: colors.textMuted, lineHeight: 20 },
+    subtitle: { ...typography.bodyMedium, color: colors.textMuted },
     error: { color: colors.danger, fontWeight: '600' },
     button: { backgroundColor: colors.primary, padding: 16, borderRadius: 16, alignItems: 'center' },
     buttonText: { color: colors.onPrimary, fontWeight: '800' },

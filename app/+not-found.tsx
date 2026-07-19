@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 
 export default function NotFoundScreen() {
   const { colors } = useTheme();
@@ -21,6 +22,6 @@ export default function NotFoundScreen() {
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, backgroundColor: colors.background },
-    title: { fontSize: 20, fontWeight: '800', color: colors.text },
+    title: { ...typography.title2, color: colors.text },
     link: { marginTop: 15, paddingVertical: 15, color: colors.primary, fontWeight: '800' },
   });

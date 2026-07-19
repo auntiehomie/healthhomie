@@ -13,6 +13,7 @@ import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedbac
 import { getNoteById, upsertNoteById } from '@/lib/db/notesStorage';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Mood = 'great' | 'good' | 'meh' | 'tired' | 'stressed';
@@ -252,7 +253,7 @@ const createStyles = (colors: ThemeColors) =>
     container:    { padding: 20, gap: 16, backgroundColor: colors.background, paddingBottom: 40 },
     hero:         { gap: 4, paddingTop: 10 },
     eyebrow:      { color: colors.primary, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, fontSize: 12 },
-    title:        { fontSize: 28, fontWeight: '900', color: colors.text, lineHeight: 34 },
+    title:        { ...typography.display2, color: colors.text },
     affBox:       { backgroundColor: colors.primary, borderRadius: 16, padding: 18, gap: 6 },
     affText:      { color: colors.onPrimary, fontSize: 16, fontWeight: '600', lineHeight: 22 },
     affHint:      { color: colors.onPrimary, opacity: 0.7, fontSize: 11 },

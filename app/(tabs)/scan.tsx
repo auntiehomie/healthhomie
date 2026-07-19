@@ -9,6 +9,7 @@ import { deriveMealType, formatHour } from '@/lib/domain/mealType';
 import { todayKey } from '@/lib/domain/nutrition';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 import type { FoodItem } from '@/types/healthhomie';
 
 export default function ScanScreen() {
@@ -58,7 +59,7 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     fill: { flex: 1 },
     container: { padding: 20, gap: 14, backgroundColor: colors.background },
-    title: { fontSize: 32, fontWeight: '900', color: colors.text },
-    subtitle: { color: colors.textMuted, lineHeight: 20 },
+    title: { ...typography.display1, color: colors.text },
+    subtitle: { ...typography.bodyMedium, color: colors.textMuted },
     loggedMessage: { color: colors.success, fontWeight: '700', textAlign: 'center' },
   });

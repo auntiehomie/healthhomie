@@ -12,6 +12,7 @@ import { router } from 'expo-router';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 
 const SLIDES = [
   {
@@ -116,7 +117,7 @@ const createStyles = (colors: ThemeColors) =>
     pager: { flex: 1 },
     slide: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 16 },
     emoji: { fontSize: 64 },
-    title: { fontSize: 26, fontWeight: '900', color: colors.text, textAlign: 'center' },
+    title: { ...typography.title1, color: colors.text, textAlign: 'center' },
     body: { fontSize: 16, color: colors.textMuted, textAlign: 'center', lineHeight: 24 },
     footer: { padding: 24, gap: 20, alignItems: 'center' },
     dots: { flexDirection: 'row', gap: 8 },

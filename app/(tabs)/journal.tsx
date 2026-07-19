@@ -19,6 +19,7 @@ import {
 } from '@/lib/services/nutritionApi';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 import { ChevronLeft, ChevronRight, ScanBarcode, Trash2, X } from 'lucide-react-native';
 import type { FoodItem, MealEntry } from '@/types/healthhomie';
 
@@ -320,8 +321,8 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     fill: { flex: 1 },
     container: { padding: 20, gap: 14, backgroundColor: colors.background },
-    title: { fontSize: 32, fontWeight: '900', color: colors.text },
-    subtitle: { color: colors.textMuted, lineHeight: 20 },
+    title: { ...typography.display1, color: colors.text },
+    subtitle: { ...typography.bodyMedium, color: colors.textMuted },
     dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16 },
     dateArrow: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.chipBackground, alignItems: 'center', justifyContent: 'center' },
     dateArrowDisabled: { opacity: 0.4 },

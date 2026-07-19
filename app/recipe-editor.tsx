@@ -11,6 +11,7 @@ import { recipePerServing, recipeTotals } from '@/lib/domain/recipes';
 import { searchUsdaFoods } from '@/lib/services/nutritionApi';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 import type { FoodItem, RecipeIngredient } from '@/types/healthhomie';
 
 export default function RecipeEditorScreen() {
@@ -227,14 +228,14 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { padding: 20, gap: 14, backgroundColor: colors.background, paddingBottom: 60 },
     centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    title: { fontSize: 28, fontWeight: '900', color: colors.text },
+    title: { ...typography.display2, color: colors.text },
     nameInput: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, fontSize: 18, fontWeight: '700', color: colors.text },
     yieldRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     label: { color: colors.text, fontWeight: '800', marginTop: 4 },
     yieldInput: { backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 16, color: colors.text, width: 70, textAlign: 'center' },
     totalsCard: { backgroundColor: colors.surfaceAlt, borderRadius: 20, padding: 16, gap: 10 },
     totalsTitle: { fontWeight: '800', color: colors.text, fontSize: 15 },
-    totalsSubtitle: { color: colors.textMuted, fontSize: 12 },
+    totalsSubtitle: { ...typography.caption, color: colors.textMuted },
     macroGrid: { flexDirection: 'row', gap: 10 },
     macroStat: { flex: 1, backgroundColor: colors.surface, borderRadius: 14, padding: 10, alignItems: 'center', gap: 2 },
     macroValue: { fontSize: 16, fontWeight: '800', color: colors.text },

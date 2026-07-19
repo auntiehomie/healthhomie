@@ -12,6 +12,7 @@ import { promoteToOwner } from '@/lib/services/adminClient';
 import { createInviteCode, InviteForbiddenError, listInviteCodes, revokeInviteCode, type InviteCode } from '@/lib/services/inviteClient';
 import { useTheme, type ThemePreference } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 
 function inviteStatus(invite: InviteCode): string {
   if (invite.revokedAt) return 'Revoked';
@@ -312,8 +313,8 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     fill: { flex: 1 },
     container: { padding: 20, gap: 16, backgroundColor: colors.background },
-    title: { fontSize: 32, fontWeight: '900', color: colors.text },
-    subtitle: { color: colors.textMuted, lineHeight: 20 },
+    title: { ...typography.display1, color: colors.text },
+    subtitle: { ...typography.bodyMedium, color: colors.textMuted },
     card: { backgroundColor: colors.surface, borderRadius: 24, padding: 18, gap: 10 },
     cardTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
     cardText: { color: colors.textMuted, lineHeight: 20 },

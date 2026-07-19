@@ -7,6 +7,7 @@ import { deriveMealType } from '@/lib/domain/mealType';
 import { scaleMacros } from '@/lib/domain/nutrition';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { typography } from '@/lib/theme/typography';
 import type { FoodItem, MealEntry } from '@/types/healthhomie';
 
 /** Keyed by entry.id from the caller so switching entries remounts this with fresh state. */
@@ -90,7 +91,7 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     sheet: { backgroundColor: colors.background, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, gap: 16 },
-    title: { fontSize: 22, fontWeight: '800', color: colors.text },
+    title: { ...typography.title2, color: colors.text },
     label: { color: colors.text, fontWeight: '800' },
     amountInput: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, fontSize: 20, fontWeight: '700', color: colors.text },
     amountInputInvalid: { borderWidth: 2, borderColor: colors.danger },
