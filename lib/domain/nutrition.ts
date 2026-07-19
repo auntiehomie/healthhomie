@@ -51,8 +51,25 @@ export function summarizeDay(date: string, entries: MealEntry[], foods: FoodItem
   };
 }
 
+// Local calendar date, not UTC — using toISOString() here would flip "today" at UTC midnight,
+// which is evening in US timezones and made logged food vanish from "today" hours too early.
 export function todayKey(date = new Date()): string {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function shiftDateKey(date: string, days: number): string {
+  const shifted = new Date(`${date}T00:00:00`);
+  shifted.setDate(shifted.getDate() + days);
+  return todayKey(shifted);
+}
+
+export function formatDateLabel(date: string): string {
+  if (date === todayKey()) return 'Today';
+  if (date === shiftDateKey(todayKey(), -1)) return 'Yesterday';
+  return new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 export function round(value: number): number {
