@@ -17,5 +17,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const upstream = await fetch(url);
   const body = await upstream.text();
+  if (!upstream.ok) {
+    console.error(`USDA search failed (${upstream.status}) for query "${query}":`, body.slice(0, 500));
+  }
   res.status(upstream.status).setHeader('content-type', upstream.headers.get('content-type') ?? 'application/json').send(body);
 }

@@ -21,7 +21,11 @@ type OpenFoodFactsProduct = {
 export async function searchUsdaFoods(query: string): Promise<FoodItem[]> {
   if (!query.trim()) return [];
   const response = await fetch(`/api/nutrition/search?q=${encodeURIComponent(query)}`);
-  if (!response.ok) throw new Error('USDA search failed');
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    const detail = typeof payload.error === 'string' ? payload.error : typeof payload.message === 'string' ? payload.message : null;
+    throw new Error(detail ? `USDA search failed: ${detail}` : `USDA search failed (${response.status}). Try again in a moment.`);
+  }
   const payload = await response.json();
   return (payload.foods ?? []).map(mapUsdaFood);
 }
