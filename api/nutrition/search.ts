@@ -2,6 +2,62 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const USDA_SEARCH_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
 const OFF_SEARCH_URL = 'https://world.openfoodfacts.org/cgi/search.pl';
+const FATSECRET_TOKEN_URL = 'https://oauth.fatsecret.com/connect/token';
+const FATSECRET_SEARCH_URL = 'https://platform.fatsecret.com/rest/foods/search/v1';
+
+type FatSecretFood = { food_id: string; food_name: string; brand_name?: string; food_description?: string };
+
+// Cached across warm invocations of this function instance so a fresh token isn't fetched on
+// every fallback search - FatSecret's client_credentials tokens are valid for 24h.
+let cachedFatSecretToken: { token: string; expiresAt: number } | null = null;
+
+async function getFatSecretToken(clientId: string, clientSecret: string): Promise<string | null> {
+  if (cachedFatSecretToken && cachedFatSecretToken.expiresAt > Date.now()) return cachedFatSecretToken.token;
+  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+  const response = await fetch(FATSECRET_TOKEN_URL, {
+    method: 'POST',
+    headers: { authorization: `Basic ${basicAuth}`, 'content-type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=client_credentials&scope=basic',
+  });
+  if (!response.ok) {
+    console.error(`FatSecret token request failed (${response.status}):`, (await response.text().catch(() => '')).slice(0, 300));
+    return null;
+  }
+  const payload = await response.json();
+  const expiresInMs = (typeof payload.expires_in === 'number' ? payload.expires_in : 3600) * 1000;
+  cachedFatSecretToken = { token: payload.access_token, expiresAt: Date.now() + expiresInMs - 60_000 };
+  return cachedFatSecretToken.token;
+}
+
+// Third and last fallback tier - only reached once both USDA and Open Food Facts have failed.
+// Returns null (not an error) when FATSECRET_CLIENT_ID/SECRET aren't configured, or when the
+// request fails after retrying, so the caller can fall through to the original USDA error.
+async function searchFatSecretFallback(query: string): Promise<FatSecretFood[] | null> {
+  const clientId = process.env.FATSECRET_CLIENT_ID;
+  const clientSecret = process.env.FATSECRET_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return null;
+
+  const token = await getFatSecretToken(clientId, clientSecret);
+  if (!token) return null;
+
+  const url = new URL(FATSECRET_SEARCH_URL);
+  url.searchParams.set('search_expression', query);
+  url.searchParams.set('max_results', '20');
+  url.searchParams.set('format', 'json');
+
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const response = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
+    if (response.ok) {
+      const payload = await response.json();
+      const foods = payload.foods?.food;
+      if (!foods) return [];
+      return Array.isArray(foods) ? foods : [foods];
+    }
+    console.error(`FatSecret search failed (${response.status}) attempt ${attempt} for query "${query}":`, (await response.text().catch(() => '')).slice(0, 300));
+    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+  }
+  return null;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const query = String(req.query.q ?? '').trim();
@@ -68,6 +124,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   } catch (fallbackError) {
     console.error('Open Food Facts fallback also failed:', fallbackError);
+  }
+
+  // Both USDA and Open Food Facts are down - last resort is FatSecret's search, which also
+  // covers generic (non-branded) foods that Open Food Facts doesn't have. Silently skipped if
+  // FATSECRET_CLIENT_ID/SECRET aren't configured.
+  try {
+    const fatSecretFoods = await searchFatSecretFallback(query);
+    if (fatSecretFoods) {
+      res.status(200).json({ source: 'fatsecret', foods: fatSecretFoods });
+      return;
+    }
+  } catch (fatSecretError) {
+    console.error('FatSecret fallback also failed:', fatSecretError);
   }
 
   res.status(upstream.status).setHeader('content-type', upstream.headers.get('content-type') ?? 'application/json').send(body);

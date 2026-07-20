@@ -344,11 +344,7 @@ ${message}`)) void removeEntry(entry);
       )}
       {aiNote && <Text style={styles.aiNote}>{aiNote}</Text>}
 
-      {results.length > 0 && (
-        <Text style={styles.resultsLabel}>
-          {results.every((food) => food.source === 'open-food-facts') ? 'Results (USDA unavailable — showing Open Food Facts)' : 'USDA results'}
-        </Text>
-      )}
+      {results.length > 0 && <Text style={styles.resultsLabel}>{resultsSourceLabel(results)}</Text>}
       {results.map((food) => (
         <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
           <View>
@@ -411,6 +407,13 @@ ${message}`)) void removeEntry(entry);
       </Modal>
     </ScrollView>
   );
+}
+
+function resultsSourceLabel(results: FoodItem[]): string {
+  if (results.every((food) => food.source === 'usda')) return 'USDA results';
+  if (results.every((food) => food.source === 'open-food-facts')) return 'Results (USDA unavailable — showing Open Food Facts)';
+  if (results.every((food) => food.source === 'fatsecret')) return 'Results (USDA & Open Food Facts unavailable — showing FatSecret)';
+  return 'Results';
 }
 
 const createStyles = (colors: ThemeColors) =>

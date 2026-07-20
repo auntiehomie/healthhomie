@@ -19,6 +19,13 @@ type OpenFoodFactsProduct = {
   serving_quantity_unit?: string;
 };
 
+type FatSecretFood = {
+  food_id: string;
+  food_name: string;
+  brand_name?: string;
+  food_description?: string;
+};
+
 export type RestaurantMenuItemSummary = {
   id: number;
   title: string;
@@ -54,6 +61,11 @@ export async function searchUsdaFoods(query: string): Promise<FoodItem[]> {
     return ((payload.products ?? []) as OpenFoodFactsProduct[])
       .filter((product) => product.product_name && product.code)
       .map(mapOpenFoodFactsProduct);
+  }
+  if (payload.source === 'fatsecret') {
+    return ((payload.foods ?? []) as FatSecretFood[])
+      .filter((food) => food.food_id && food.food_name)
+      .map(mapFatSecretFood);
   }
   return (payload.foods ?? []).map(mapUsdaFood);
 }
@@ -159,6 +171,46 @@ function mapOpenFoodFactsProduct(product: OpenFoodFactsProduct): FoodItem {
     fiberG: numberish(nutriments.fiber_serving ?? nutriments.fiber_100g),
     sugarG: numberish(nutriments.sugars_serving ?? nutriments.sugars_100g),
     sodiumMg: numberish(nutriments.sodium_serving ?? nutriments.sodium_100g) * 1000,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+// FatSecret's search results only include a human-readable summary like
+// "Per 100g - Calories: 52kcal | Fat: 0.17g | Carbs: 13.81g | Protein: 0.26g" rather than
+// structured nutrients, so it's parsed with a tolerant regex - any field it can't find is left
+// as 0, matching how missing nutrients degrade gracefully everywhere else in this file.
+function parseFatSecretDescription(description?: string): { servingLabel: string; calories: number; proteinG: number; carbsG: number; fatG: number } {
+  const parsed = { servingLabel: 'serving', calories: 0, proteinG: 0, carbsG: 0, fatG: 0 };
+  if (!description) return parsed;
+  const servingMatch = description.match(/^Per\s+([^-]+)-/i);
+  if (servingMatch) parsed.servingLabel = servingMatch[1].trim();
+  const grab = (label: string) => Number(description.match(new RegExp(`${label}:\\s*([\\d.]+)`, 'i'))?.[1] ?? 0);
+  parsed.calories = grab('Calories');
+  parsed.fatG = grab('Fat');
+  parsed.carbsG = grab('Carbs');
+  parsed.proteinG = grab('Protein');
+  return parsed;
+}
+
+function mapFatSecretFood(food: FatSecretFood): FoodItem {
+  const parsed = parseFatSecretDescription(food.food_description);
+  const now = new Date().toISOString();
+  return {
+    id: `fatsecret-${food.food_id}`,
+    name: food.food_name,
+    brand: food.brand_name,
+    servingSize: 1,
+    servingUnit: parsed.servingLabel,
+    source: 'fatsecret',
+    sourceId: String(food.food_id),
+    calories: parsed.calories,
+    proteinG: parsed.proteinG,
+    carbsG: parsed.carbsG,
+    fatG: parsed.fatG,
+    fiberG: 0,
+    sugarG: 0,
+    sodiumMg: 0,
     createdAt: now,
     updatedAt: now,
   };
