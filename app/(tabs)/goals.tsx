@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { getUserProfile, saveUserProfile } from '@/lib/db/database';
 import { calculateDailyGoal, recommendWeeklyAdjustment } from '@/lib/domain/goals';
@@ -23,6 +23,12 @@ export default function GoalsScreen() {
   const [goal, setGoal] = useState<NutritionGoal | null>(null);
   const [editingCalories, setEditingCalories] = useState(false);
   const [calorieInput, setCalorieInput] = useState('');
+  const [savingCalories, setSavingCalories] = useState(false);
+
+  function reportError(title: string, message: string) {
+    if (Platform.OS === 'web') window.alert(`${title}: ${message}`);
+    else Alert.alert(title, message);
+  }
 
   const load = useCallback(async () => {
     const nextProfile = await getUserProfile();
@@ -35,9 +41,13 @@ export default function GoalsScreen() {
   async function chooseGoal(goalType: GoalType) {
     if (!profile) return;
     const nextProfile = { ...profile, goalType, updatedAt: new Date().toISOString() };
-    await saveUserProfile(nextProfile);
-    setProfile(nextProfile);
-    setGoal(calculateDailyGoal(nextProfile));
+    try {
+      await saveUserProfile(nextProfile);
+      setProfile(nextProfile);
+      setGoal(calculateDailyGoal(nextProfile));
+    } catch (err) {
+      reportError('Couldn’t update goal', err instanceof Error ? err.message : 'Please try again.');
+    }
   }
 
   function startEditingCalories() {
@@ -48,21 +58,38 @@ export default function GoalsScreen() {
   async function saveCalorieOverride() {
     if (!profile) return;
     const value = Number(calorieInput);
-    if (!Number.isFinite(value) || value <= 0) return;
+    if (!Number.isFinite(value) || value <= 0) {
+      reportError('Invalid calorie target', 'Enter a number greater than 0.');
+      return;
+    }
     const nextProfile = { ...profile, calorieOverride: value, updatedAt: new Date().toISOString() };
-    await saveUserProfile(nextProfile);
-    setProfile(nextProfile);
-    setGoal(calculateDailyGoal(nextProfile));
-    setEditingCalories(false);
+    setSavingCalories(true);
+    try {
+      await saveUserProfile(nextProfile);
+      setProfile(nextProfile);
+      setGoal(calculateDailyGoal(nextProfile));
+      setEditingCalories(false);
+    } catch (err) {
+      reportError('Couldn’t save calorie target', err instanceof Error ? err.message : 'Please try again.');
+    } finally {
+      setSavingCalories(false);
+    }
   }
 
   async function resetCalorieOverride() {
     if (!profile) return;
     const nextProfile = { ...profile, calorieOverride: undefined, updatedAt: new Date().toISOString() };
-    await saveUserProfile(nextProfile);
-    setProfile(nextProfile);
-    setGoal(calculateDailyGoal(nextProfile));
-    setEditingCalories(false);
+    setSavingCalories(true);
+    try {
+      await saveUserProfile(nextProfile);
+      setProfile(nextProfile);
+      setGoal(calculateDailyGoal(nextProfile));
+      setEditingCalories(false);
+    } catch (err) {
+      reportError('Couldn’t reset calorie target', err instanceof Error ? err.message : 'Please try again.');
+    } finally {
+      setSavingCalories(false);
+    }
   }
 
   const sampleInsight = goal ? recommendWeeklyAdjustment({
@@ -96,11 +123,11 @@ export default function GoalsScreen() {
         <Text style={styles.macro}>{Math.round(goal?.proteinTargetG ?? 0)}g protein · {Math.round(goal?.carbsG ?? 0)}g carbs · {Math.round(goal?.fatG ?? 0)}g fat</Text>
         {editingCalories ? (
           <View style={styles.editActions}>
-            <Pressable style={styles.editButton} onPress={() => setEditingCalories(false)}>
+            <Pressable style={styles.editButton} onPress={() => setEditingCalories(false)} disabled={savingCalories}>
               <Text style={styles.editButtonText}>Cancel</Text>
             </Pressable>
-            <Pressable style={[styles.editButton, styles.editButtonPrimary]} onPress={saveCalorieOverride}>
-              <Text style={styles.editButtonTextPrimary}>Save</Text>
+            <Pressable style={[styles.editButton, styles.editButtonPrimary]} onPress={saveCalorieOverride} disabled={savingCalories}>
+              <Text style={styles.editButtonTextPrimary}>{savingCalories ? 'Saving…' : 'Save'}</Text>
             </Pressable>
           </View>
         ) : (
