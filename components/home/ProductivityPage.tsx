@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Keyboard,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,17 +9,17 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
-import { getNoteById, upsertNoteById } from '@/lib/db/notesStorage';
+import { createNote, loadNotes, type Note } from '@/lib/db/notesStorage';
+import { getDayPeriod, type DayPeriod } from '@/lib/domain/dayPeriod';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Mood = 'great' | 'good' | 'meh' | 'tired' | 'stressed';
-type MoodPeriod = 'morning' | 'midday' | 'evening';
-type MoodLog = Partial<Record<MoodPeriod, Mood>>;
-type MoodMessages = Partial<Record<MoodPeriod, string>>;
-interface RoutineItem { text: string; done: boolean }
+type MoodLog = Partial<Record<DayPeriod, Mood>>;
+type MoodMessages = Partial<Record<DayPeriod, string>>;
+interface RoutineItem { id: string; text: string; done: boolean }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const MOODS: { key: Mood; emoji: string; label: string }[] = [
@@ -33,7 +32,7 @@ const MOODS: { key: Mood; emoji: string; label: string }[] = [
 
 // Three independent check-ins per day rather than one — each logs separately and, once
 // logged, the picker collapses into a period-appropriate message instead of staying open.
-const MOOD_PERIODS: Record<MoodPeriod, { title: string; icon: string; messages: string[] }> = {
+const MOOD_PERIODS: Record<DayPeriod, { title: string; icon: string; messages: string[] }> = {
   morning: {
     title: "Today's mood",
     icon: '☀️',
@@ -66,12 +65,17 @@ const MOOD_PERIODS: Record<MoodPeriod, { title: string; icon: string; messages: 
   },
 };
 
-function getMoodPeriod(date = new Date()): MoodPeriod {
-  const hour = date.getHours();
-  if (hour < 12) return 'morning';
-  if (hour < 18) return 'midday';
-  return 'evening';
-}
+const PRIORITIES_HELPER: Record<DayPeriod, string> = {
+  morning: 'Set your 3 things for today.',
+  midday: "How's it going? Keep chipping away.",
+  evening: 'Wrap up what you can — the rest can wait for tomorrow.',
+};
+
+const ROUTINE_HELPER: Record<DayPeriod, string> = {
+  morning: 'Knock these out to start strong.',
+  midday: "Still time to check these off.",
+  evening: 'Last call before the day wraps.',
+};
 
 const AFFIRMATIONS = [
   'You are capable of amazing things — trust the process.',
@@ -95,9 +99,8 @@ const todayKey = () => {
 };
 const randomAff = () => AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)];
 const greeting = () => (new Date().getHours() >= 17 ? 'howdy evenin' : 'howdy mornin');
-const dailyNoteId = (day: string) => `daily-${day}`;
-const dailyNoteTitle = (day: string) =>
-  `Daily note — ${new Date(day + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+const genRoutineId = () => `r${Date.now()}${Math.floor(Math.random() * 1000)}`;
+const QUICK_NOTE_TAG = 'quick-note';
 
 // ── Storage helpers ────────────────────────────────────────────────────────────
 async function load<T>(key: string, fallback: T): Promise<T> {
@@ -120,7 +123,8 @@ export function ProductivityPage() {
   const [water, setWater] = useState(0);
   const [routine, setRoutine] = useState<RoutineItem[]>([]);
   const [routineInput, setRoutineInput] = useState('');
-  const [morningNote, setMorningNote] = useState('');
+  const [quickNoteInput, setQuickNoteInput] = useState('');
+  const [todaysQuickNotes, setTodaysQuickNotes] = useState<Note[]>([]);
   const [affirmation, setAffirmation] = useState(randomAff());
   const [loaded, setLoaded] = useState(false);
 
@@ -128,24 +132,31 @@ export function ProductivityPage() {
   useEffect(() => {
     (async () => {
       const day = todayKey();
-      const [ml, mm, p, w, r, note, a] = await Promise.all([
+      const [ml, mm, p, w, rawRoutine, allNotes, a] = await Promise.all([
         load<MoodLog>('moodLog_' + day, {}),
         load<MoodMessages>('moodMessages_' + day, {}),
         load<string[]>('priorities_' + day, ['', '', '']),
         load<number>('water_' + day, 0),
         load<RoutineItem[]>('routine', []),
-        getNoteById(dailyNoteId(day)),
+        loadNotes(),
         load<string>('affirmation_' + day, randomAff()),
       ]);
+      // Backfill ids for routine items saved before they carried one, then persist so future
+      // loads read a stable id straight away.
+      const r = rawRoutine.map((item, i) => ({ ...item, id: item.id ?? `${genRoutineId()}-${i}` }));
+      if (r.some((item, i) => item.id !== rawRoutine[i]?.id)) void save('routine', r);
+
       setMoodLog(ml); setMoodMessages(mm); setPriorities(p); setWater(w);
-      setRoutine(r); setMorningNote(note?.content ?? ''); setAffirmation(a);
+      setRoutine(r);
+      setTodaysQuickNotes(allNotes.filter(n => n.tags.includes(QUICK_NOTE_TAG) && n.createdAt.slice(0, 10) === day));
+      setAffirmation(a);
       setLoaded(true);
     })();
   }, []);
 
   const day = todayKey();
 
-  const updateMood = useCallback((period: MoodPeriod, m: Mood) => {
+  const updateMood = useCallback((period: DayPeriod, m: Mood) => {
     const pool = MOOD_PERIODS[period].messages;
     const message = pool[Math.floor(Math.random() * pool.length)];
     setMoodLog(prev => { const next = { ...prev, [period]: m }; void save('moodLog_' + day, next); return next; });
@@ -159,19 +170,23 @@ export function ProductivityPage() {
   }, [day]);
   const addRoutine = useCallback(() => {
     if (!routineInput.trim()) return;
-    setRoutine(prev => { const n = [...prev, { text: routineInput.trim(), done: false }]; void save('routine', n); return n; });
+    setRoutine(prev => { const n = [...prev, { id: genRoutineId(), text: routineInput.trim(), done: false }]; void save('routine', n); return n; });
     setRoutineInput('');
   }, [routineInput]);
-  const toggleRoutine = useCallback((i: number) => {
-    setRoutine(prev => { const n = prev.map((r, idx) => idx === i ? { ...r, done: !r.done } : r); void save('routine', n); return n; });
+  const toggleRoutine = useCallback((id: string) => {
+    setRoutine(prev => { const n = prev.map(r => r.id === id ? { ...r, done: !r.done } : r); void save('routine', n); return n; });
   }, []);
-  const deleteRoutine = useCallback((i: number) => {
-    setRoutine(prev => { const n = prev.filter((_, idx) => idx !== i); void save('routine', n); return n; });
+  const deleteRoutine = useCallback((id: string) => {
+    setRoutine(prev => { const n = prev.filter(r => r.id !== id); void save('routine', n); return n; });
   }, []);
-  const updateNote = useCallback((v: string) => {
-    setMorningNote(v);
-    void upsertNoteById(dailyNoteId(day), { title: dailyNoteTitle(day), content: v, tags: ['daily'] });
-  }, [day]);
+  const addQuickNote = useCallback(async () => {
+    const content = quickNoteInput.trim();
+    if (!content) return;
+    const title = content.length > 40 ? `${content.slice(0, 40)}…` : content;
+    const note = await createNote({ title, content, tags: ['daily', QUICK_NOTE_TAG] });
+    setTodaysQuickNotes(prev => [note, ...prev]);
+    setQuickNoteInput('');
+  }, [quickNoteInput]);
   const newAffirmation = useCallback(() => {
     const a = randomAff(); setAffirmation(a); void save('affirmation_' + day, a);
   }, [day]);
@@ -182,10 +197,12 @@ export function ProductivityPage() {
     </View>
   );
 
-  const currentPeriod = getMoodPeriod();
+  const currentPeriod = getDayPeriod();
   const periodConfig = MOOD_PERIODS[currentPeriod];
   const loggedMood = moodLog[currentPeriod];
   const loggedMoodObj = loggedMood ? MOODS.find(m => m.key === loggedMood) : undefined;
+  const openRoutine = routine.filter(r => !r.done);
+  const completedRoutine = routine.filter(r => r.done);
 
   return (
     <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
@@ -223,6 +240,7 @@ export function ProductivityPage() {
       {/* Top 3 Priorities */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>🎯 Top 3 priorities today</Text>
+        <Text style={styles.muted}>{PRIORITIES_HELPER[currentPeriod]}</Text>
         {[0, 1, 2].map(i => (
           <TextInput
             key={i}
@@ -249,21 +267,38 @@ export function ProductivityPage() {
         <Text style={styles.muted}>{water} / 8{water >= 8 ? ' 🎉' : ''}</Text>
       </View>
 
-      {/* Morning Routine */}
+      {/* Morning Routine — open items first, checked ones move down into Completed */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>✅ Morning routine</Text>
+        <Text style={styles.muted}>{ROUTINE_HELPER[currentPeriod]}</Text>
         {routine.length === 0 && <Text style={styles.muted}>Add your morning routine steps below</Text>}
-        {routine.map((item, i) => (
-          <View key={i} style={styles.routineRow}>
-            <Pressable onPress={() => toggleRoutine(i)} style={styles.checkbox}>
-              <Text style={styles.checkboxText}>{item.done ? '✅' : '⬜'}</Text>
+        {openRoutine.map(item => (
+          <View key={item.id} style={styles.routineRow}>
+            <Pressable onPress={() => toggleRoutine(item.id)} style={styles.checkbox}>
+              <Text style={styles.checkboxText}>⬜</Text>
             </Pressable>
-            <Text style={[styles.routineText, item.done && styles.routineDone]}>{item.text}</Text>
-            <Pressable onPress={() => deleteRoutine(i)}>
+            <Text style={styles.routineText}>{item.text}</Text>
+            <Pressable onPress={() => deleteRoutine(item.id)}>
               <Text style={styles.deleteBtn}>✕</Text>
             </Pressable>
           </View>
         ))}
+        {completedRoutine.length > 0 && (
+          <>
+            <Text style={styles.completedLabel}>Completed ({completedRoutine.length})</Text>
+            {completedRoutine.map(item => (
+              <View key={item.id} style={styles.routineRow}>
+                <Pressable onPress={() => toggleRoutine(item.id)} style={styles.checkbox}>
+                  <Text style={styles.checkboxText}>✅</Text>
+                </Pressable>
+                <Text style={[styles.routineText, styles.routineDone]}>{item.text}</Text>
+                <Pressable onPress={() => deleteRoutine(item.id)}>
+                  <Text style={styles.deleteBtn}>✕</Text>
+                </Pressable>
+              </View>
+            ))}
+          </>
+        )}
         <View style={styles.row}>
           <TextInput
             style={[styles.input, { flex: 1 }]}
@@ -280,29 +315,36 @@ export function ProductivityPage() {
         </View>
       </View>
 
-      {/* Quick Notes */}
+      {/* Quick Notes — each Add creates its own note, so nothing gets overwritten */}
       <View style={styles.card}>
-        <View style={styles.noteHeaderRow}>
-          <Text style={styles.cardTitle}>📝 Quick notes</Text>
-          {morningNote.trim().length > 0 && <Text style={styles.savedLabel}>Saved automatically</Text>}
-        </View>
+        <Text style={styles.cardTitle}>📝 Quick notes</Text>
         <TextInput
           style={styles.noteInput}
           multiline
           placeholder="Brain dump, intentions, anything…"
           placeholderTextColor={colors.textMuted}
-          value={morningNote}
-          onChangeText={updateNote}
+          value={quickNoteInput}
+          onChangeText={setQuickNoteInput}
           textAlignVertical="top"
         />
-        <View style={styles.noteFooter}>
-          <Pressable onPress={() => router.push('/(tabs)/notes')}>
-            <Text style={styles.noteLink}>View in Notes, tagged &quot;daily&quot; →</Text>
+        <View style={styles.row}>
+          <Pressable onPress={() => router.push('/(tabs)/notes')} style={{ flex: 1 }}>
+            <Text style={styles.noteLink}>View all in Notes →</Text>
           </Pressable>
-          <Pressable style={styles.doneBtn} onPress={() => Keyboard.dismiss()}>
-            <Text style={styles.doneBtnText}>Done</Text>
+          <Pressable style={[styles.addBtn, !quickNoteInput.trim() && styles.addBtnDisabled]} onPress={addQuickNote} disabled={!quickNoteInput.trim()}>
+            <Text style={styles.addBtnText}>Add</Text>
           </Pressable>
         </View>
+        {todaysQuickNotes.length > 0 && (
+          <>
+            <Text style={styles.completedLabel}>Today’s quick notes ({todaysQuickNotes.length})</Text>
+            {todaysQuickNotes.map(note => (
+              <Pressable key={note.id} onPress={() => router.push('/(tabs)/notes')} style={styles.quickNoteRow}>
+                <Text style={styles.quickNoteText} numberOfLines={1}>{note.content}</Text>
+              </Pressable>
+            ))}
+          </>
+        )}
       </View>
     </ScrollView>
   );
@@ -337,14 +379,13 @@ const createStyles = (colors: ThemeColors) =>
     routineText:  { flex: 1, fontSize: 15, color: colors.text },
     routineDone:  { textDecorationLine: 'line-through', color: colors.textMuted },
     deleteBtn:    { color: colors.textMuted, fontSize: 16, paddingHorizontal: 6 },
+    completedLabel:{ color: colors.textMuted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 },
     row:          { flexDirection: 'row', gap: 10, alignItems: 'center' },
     addBtn:       { backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
+    addBtnDisabled:{ opacity: 0.5 },
     addBtnText:   { color: colors.onPrimary, fontWeight: '700', fontSize: 14 },
-    noteHeaderRow:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    savedLabel:   { color: colors.textMuted, fontSize: 11, fontWeight: '600' },
-    noteInput:    { backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: colors.text, fontSize: 15, borderWidth: 1, borderColor: colors.border, minHeight: 120 },
-    noteFooter:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+    noteInput:    { backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: colors.text, fontSize: 15, borderWidth: 1, borderColor: colors.border, minHeight: 80 },
     noteLink:     { color: colors.primary, fontWeight: '600', fontSize: 12, flexShrink: 1 },
-    doneBtn:      { backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
-    doneBtnText:  { color: colors.onPrimary, fontWeight: '700', fontSize: 14 },
+    quickNoteRow: { backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.border },
+    quickNoteText:{ color: colors.text, fontSize: 14 },
   });
