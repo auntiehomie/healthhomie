@@ -15,10 +15,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   url.searchParams.set('pageSize', '20');
   url.searchParams.set('dataType', 'Foundation,SR Legacy,Survey (FNDDS),Branded');
 
-  const upstream = await fetch(url);
-  const body = await upstream.text();
+  // USDA's gateway intermittently drops requests with a bare "nginx 400 Bad Request" HTML
+  // page (not a real JSON error from their API) even for identical, valid requests - a couple
+  // of quick retries clears it almost every time.
+  let upstream: Response;
+  let body: string;
+  let attempt = 0;
+  do {
+    upstream = await fetch(url);
+    body = await upstream.text();
+    attempt += 1;
+    const looksLikeGatewayFlake = !upstream.ok && !(upstream.headers.get('content-type') ?? '').includes('json');
+    if (!looksLikeGatewayFlake || attempt > 2) break;
+    await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+  } while (attempt <= 2);
+
   if (!upstream.ok) {
-    console.error(`USDA search failed (${upstream.status}) for query "${query}":`, body.slice(0, 500));
+    console.error(`USDA search failed (${upstream.status}) after ${attempt} attempt(s) for query "${query}":`, body.slice(0, 500));
   }
   res.status(upstream.status).setHeader('content-type', upstream.headers.get('content-type') ?? 'application/json').send(body);
 }
