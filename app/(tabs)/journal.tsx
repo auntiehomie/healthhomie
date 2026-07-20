@@ -344,7 +344,11 @@ ${message}`)) void removeEntry(entry);
       )}
       {aiNote && <Text style={styles.aiNote}>{aiNote}</Text>}
 
-      {results.length > 0 && <Text style={styles.resultsLabel}>USDA results</Text>}
+      {results.length > 0 && (
+        <Text style={styles.resultsLabel}>
+          {results.every((food) => food.source === 'open-food-facts') ? 'Results (USDA unavailable — showing Open Food Facts)' : 'USDA results'}
+        </Text>
+      )}
       {results.map((food) => (
         <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
           <View>

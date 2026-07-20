@@ -50,6 +50,11 @@ export async function searchUsdaFoods(query: string): Promise<FoodItem[]> {
     throw new Error(detail ? `USDA search failed: ${detail}` : `USDA search failed (${response.status}). Try again in a moment.`);
   }
   const payload = await response.json();
+  if (payload.source === 'openfoodfacts') {
+    return ((payload.products ?? []) as OpenFoodFactsProduct[])
+      .filter((product) => product.product_name && product.code)
+      .map(mapOpenFoodFactsProduct);
+  }
   return (payload.foods ?? []).map(mapUsdaFood);
 }
 
