@@ -39,22 +39,10 @@ export async function getNoteById(id: string): Promise<Note | null> {
   return notes.find((n) => n.id === id) ?? null;
 }
 
-/**
- * Creates the note if missing, or updates it in place if it already exists — used for the Home
- * tab's daily quick-capture note, keyed by a stable id so retyping the same day never creates
- * duplicate entries in the Notes tab.
- */
-export async function upsertNoteById(id: string, fields: { title: string; content: string; tags?: string[] }): Promise<void> {
+export async function createNote(fields: { title: string; content: string; tags?: string[] }): Promise<Note> {
   const notes = await loadNotes();
   const now = new Date().toISOString();
-  const existing = notes.find((n) => n.id === id);
-
-  if (existing) {
-    const updated: Note = { ...existing, title: fields.title, content: fields.content, tags: fields.tags ?? existing.tags, updatedAt: now };
-    await saveNotes(notes.map((n) => (n.id === id ? updated : n)));
-    return;
-  }
-
-  const created: Note = { id, title: fields.title, content: fields.content, tags: fields.tags ?? [], createdAt: now, updatedAt: now };
-  await saveNotes([created, ...notes]);
+  const note: Note = { id: genNoteId(), title: fields.title, content: fields.content, tags: fields.tags ?? [], createdAt: now, updatedAt: now };
+  await saveNotes([note, ...notes]);
+  return note;
 }
