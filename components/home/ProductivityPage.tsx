@@ -17,16 +17,61 @@ import { typography } from '@/lib/theme/typography';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Mood = 'great' | 'good' | 'meh' | 'tired' | 'stressed';
+type MoodPeriod = 'morning' | 'midday' | 'evening';
+type MoodLog = Partial<Record<MoodPeriod, Mood>>;
+type MoodMessages = Partial<Record<MoodPeriod, string>>;
 interface RoutineItem { text: string; done: boolean }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
-const MOODS: { key: Mood; emoji: string; label: string; note: string }[] = [
-  { key: 'great',    emoji: '🤩', label: 'Great',    note: "You're on fire today 🔥 Let's make it count!" },
-  { key: 'good',     emoji: '😊', label: 'Good',     note: 'Solid start! Keep that momentum 💪' },
-  { key: 'meh',      emoji: '😐', label: 'Meh',      note: 'Meh days still move forward. One thing at a time.' },
-  { key: 'tired',    emoji: '😴', label: 'Tired',    note: 'Rest is productive too. Be gentle with yourself 🌙' },
-  { key: 'stressed', emoji: '😤', label: 'Stressed', note: "Breathe. You've handled hard days before. Start small." },
+const MOODS: { key: Mood; emoji: string; label: string }[] = [
+  { key: 'great',    emoji: '🤩', label: 'Great' },
+  { key: 'good',     emoji: '😊', label: 'Good' },
+  { key: 'meh',      emoji: '😐', label: 'Meh' },
+  { key: 'tired',    emoji: '😴', label: 'Tired' },
+  { key: 'stressed', emoji: '😤', label: 'Stressed' },
 ];
+
+// Three independent check-ins per day rather than one — each logs separately and, once
+// logged, the picker collapses into a period-appropriate message instead of staying open.
+const MOOD_PERIODS: Record<MoodPeriod, { title: string; icon: string; messages: string[] }> = {
+  morning: {
+    title: "Today's mood",
+    icon: '☀️',
+    messages: [
+      'New day, clean slate — make it count. 🌅',
+      "You've got everything you need to make today good.",
+      'Start small, start now. Momentum builds from motion.',
+      "However you're feeling, you showed up. That's the hard part.",
+    ],
+  },
+  midday: {
+    title: 'Midday check-in',
+    icon: '🌤️',
+    messages: [
+      'Halfway there — keep the momentum going into tonight.',
+      "Strong finish starts now. You've got this.",
+      'The evening is yours to shape. Keep going.',
+      'One check-in down. Keep showing up for yourself.',
+    ],
+  },
+  evening: {
+    title: "How you're feeling as the day ends",
+    icon: '🌙',
+    messages: [
+      'However today went, you showed up. That counts.',
+      "Rest well — tomorrow's a fresh start.",
+      'You made it through. Be proud of that.',
+      'Let today go. You did enough.',
+    ],
+  },
+};
+
+function getMoodPeriod(date = new Date()): MoodPeriod {
+  const hour = date.getHours();
+  if (hour < 12) return 'morning';
+  if (hour < 18) return 'midday';
+  return 'evening';
+}
 
 const AFFIRMATIONS = [
   'You are capable of amazing things — trust the process.',
@@ -69,7 +114,8 @@ async function save(key: string, value: unknown) {
 export function ProductivityPage() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const [mood, setMood] = useState<Mood | null>(null);
+  const [moodLog, setMoodLog] = useState<MoodLog>({});
+  const [moodMessages, setMoodMessages] = useState<MoodMessages>({});
   const [priorities, setPriorities] = useState(['', '', '']);
   const [water, setWater] = useState(0);
   const [routine, setRoutine] = useState<RoutineItem[]>([]);
@@ -82,15 +128,16 @@ export function ProductivityPage() {
   useEffect(() => {
     (async () => {
       const day = todayKey();
-      const [m, p, w, r, note, a] = await Promise.all([
-        load<Mood | null>('mood_' + day, null),
+      const [ml, mm, p, w, r, note, a] = await Promise.all([
+        load<MoodLog>('moodLog_' + day, {}),
+        load<MoodMessages>('moodMessages_' + day, {}),
         load<string[]>('priorities_' + day, ['', '', '']),
         load<number>('water_' + day, 0),
         load<RoutineItem[]>('routine', []),
         getNoteById(dailyNoteId(day)),
         load<string>('affirmation_' + day, randomAff()),
       ]);
-      setMood(m); setPriorities(p); setWater(w);
+      setMoodLog(ml); setMoodMessages(mm); setPriorities(p); setWater(w);
       setRoutine(r); setMorningNote(note?.content ?? ''); setAffirmation(a);
       setLoaded(true);
     })();
@@ -98,7 +145,12 @@ export function ProductivityPage() {
 
   const day = todayKey();
 
-  const updateMood = useCallback((m: Mood) => { setMood(m); void save('mood_' + day, m); }, [day]);
+  const updateMood = useCallback((period: MoodPeriod, m: Mood) => {
+    const pool = MOOD_PERIODS[period].messages;
+    const message = pool[Math.floor(Math.random() * pool.length)];
+    setMoodLog(prev => { const next = { ...prev, [period]: m }; void save('moodLog_' + day, next); return next; });
+    setMoodMessages(prev => { const next = { ...prev, [period]: message }; void save('moodMessages_' + day, next); return next; });
+  }, [day]);
   const updatePri = useCallback((i: number, v: string) => {
     setPriorities(prev => { const n = [...prev]; n[i] = v; void save('priorities_' + day, n); return n; });
   }, [day]);
@@ -130,7 +182,10 @@ export function ProductivityPage() {
     </View>
   );
 
-  const moodObj = MOODS.find(m => m.key === mood);
+  const currentPeriod = getMoodPeriod();
+  const periodConfig = MOOD_PERIODS[currentPeriod];
+  const loggedMood = moodLog[currentPeriod];
+  const loggedMoodObj = loggedMood ? MOODS.find(m => m.key === loggedMood) : undefined;
 
   return (
     <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
@@ -146,17 +201,23 @@ export function ProductivityPage() {
         <Text style={styles.affHint}>tap to refresh ✨</Text>
       </Pressable>
 
-      {/* Mood */}
+      {/* Mood check-in — three independent slots across the day, current one only */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>☀️ Today&apos;s mood</Text>
-        <View style={styles.moodRow}>
-          {MOODS.map(m => (
-            <Pressable key={m.key} style={[styles.moodBtn, mood === m.key && styles.moodBtnActive]} onPress={() => updateMood(m.key)}>
-              <Text style={styles.moodEmoji}>{m.emoji}</Text>
-            </Pressable>
-          ))}
-        </View>
-        {moodObj && <Text style={styles.moodNote}>{moodObj.note}</Text>}
+        <Text style={styles.cardTitle}>{periodConfig.icon} {periodConfig.title}</Text>
+        {loggedMoodObj ? (
+          <View style={styles.moodCollapsed}>
+            <Text style={styles.moodCollapsedEmoji}>{loggedMoodObj.emoji}</Text>
+            <Text style={styles.moodCollapsedText}>{moodMessages[currentPeriod]}</Text>
+          </View>
+        ) : (
+          <View style={styles.moodRow}>
+            {MOODS.map(m => (
+              <Pressable key={m.key} style={styles.moodBtn} onPress={() => updateMood(currentPeriod, m.key)}>
+                <Text style={styles.moodEmoji}>{m.emoji}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* Top 3 Priorities */}
@@ -261,9 +322,10 @@ const createStyles = (colors: ThemeColors) =>
     cardTitle:    { fontSize: 16, fontWeight: '800', color: colors.text },
     moodRow:      { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
     moodBtn:      { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.border },
-    moodBtnActive:{ borderColor: colors.primary, backgroundColor: colors.surfaceAlt },
     moodEmoji:    { fontSize: 24 },
-    moodNote:     { color: colors.textMuted, fontSize: 13 },
+    moodCollapsed:     { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    moodCollapsedEmoji:{ fontSize: 32 },
+    moodCollapsedText: { flex: 1, color: colors.text, fontSize: 15, lineHeight: 21 },
     input:        { backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: colors.text, fontSize: 15, borderWidth: 1, borderColor: colors.border },
     waterRow:     { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     glass:        { fontSize: 28, opacity: 0.25 },
