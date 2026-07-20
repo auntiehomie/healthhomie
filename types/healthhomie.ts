@@ -10,7 +10,7 @@ export type MacroNutrients = {
   sodiumMg?: number;
 };
 
-export type FoodSource = 'manual' | 'usda' | 'open-food-facts' | 'custom' | 'spoonacular';
+export type FoodSource = 'manual' | 'usda' | 'open-food-facts' | 'custom' | 'spoonacular' | 'fatsecret';
 
 export type FoodItem = MacroNutrients & {
   id: string;
