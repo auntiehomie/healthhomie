@@ -101,6 +101,7 @@ const randomAff = () => AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.len
 const greeting = () => (new Date().getHours() >= 17 ? 'howdy evenin' : 'howdy mornin');
 const genRoutineId = () => `r${Date.now()}${Math.floor(Math.random() * 1000)}`;
 const QUICK_NOTE_TAG = 'quick-note';
+const ROUTINE_LOG_TAG = 'routine-log';
 
 // ── Storage helpers ────────────────────────────────────────────────────────────
 async function load<T>(key: string, fallback: T): Promise<T> {
@@ -179,6 +180,22 @@ export function ProductivityPage() {
   const deleteRoutine = useCallback((id: string) => {
     setRoutine(prev => { const n = prev.filter(r => r.id !== id); void save('routine', n); return n; });
   }, []);
+  // The routine list is a single reusable template (not per-day), so completed items just stay
+  // checked forever unless cleared - this archives them as a dated record in Notes, then resets
+  // them to unchecked so the same template is ready to go again.
+  const archiveCompletedRoutine = useCallback(async () => {
+    const completed = routine.filter(r => r.done);
+    if (completed.length === 0) return;
+    const dateLabel = new Date(`${day}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const title = `Completed routine — ${dateLabel}`;
+    const content = completed.map(r => `✅ ${r.text}`).join('\n');
+    await createNote({ title, content, tags: ['daily', ROUTINE_LOG_TAG] });
+    setRoutine(prev => {
+      const n = prev.map(r => (r.done ? { ...r, done: false } : r));
+      void save('routine', n);
+      return n;
+    });
+  }, [routine, day]);
   const addQuickNote = useCallback(async () => {
     const content = quickNoteInput.trim();
     if (!content) return;
@@ -285,7 +302,12 @@ export function ProductivityPage() {
         ))}
         {completedRoutine.length > 0 && (
           <>
-            <Text style={styles.completedLabel}>Completed ({completedRoutine.length})</Text>
+            <View style={styles.completedHeaderRow}>
+              <Text style={styles.completedLabel}>Completed ({completedRoutine.length})</Text>
+              <Pressable onPress={archiveCompletedRoutine}>
+                <Text style={styles.noteLink}>Archive to Notes →</Text>
+              </Pressable>
+            </View>
             {completedRoutine.map(item => (
               <View key={item.id} style={styles.routineRow}>
                 <Pressable onPress={() => toggleRoutine(item.id)} style={styles.checkbox}>
@@ -380,6 +402,7 @@ const createStyles = (colors: ThemeColors) =>
     routineDone:  { textDecorationLine: 'line-through', color: colors.textMuted },
     deleteBtn:    { color: colors.textMuted, fontSize: 16, paddingHorizontal: 6 },
     completedLabel:{ color: colors.textMuted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 },
+    completedHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
     row:          { flexDirection: 'row', gap: 10, alignItems: 'center' },
     addBtn:       { backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
     addBtnDisabled:{ opacity: 0.5 },
