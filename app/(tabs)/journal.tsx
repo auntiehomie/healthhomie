@@ -315,6 +315,17 @@ ${message}`)) void removeEntry(entry);
         </>
       )}
 
+      {results.length > 0 && <Text style={styles.resultsLabel}>{resultsSourceLabel(results)}</Text>}
+      {results.map((food) => (
+        <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
+          <View>
+            <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
+            <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.source}</Text>
+          </View>
+          <Text style={styles.foodMacros}>{Math.round(food.calories)} kcal</Text>
+        </Pressable>
+      ))}
+
       {restaurantResults.length > 0 && <Text style={styles.resultsLabel}>Restaurants</Text>}
       {restaurantResults.slice(0, 3).map((item) => (
         <Pressable key={item.id} onPress={() => selectRestaurantItem(item)} disabled={loadingItemId !== null} style={styles.foodRow}>
@@ -338,22 +349,11 @@ ${message}`)) void removeEntry(entry);
           {aiMatching ? (
             <ActivityIndicator color={colors.primary} />
           ) : (
-            <Text style={styles.aiMatchLinkText}>🤖 Can’t find it? Ask AI for the closest match</Text>
+            <Text style={styles.aiMatchLinkText}>🤖 Not one of these restaurant items? Ask AI for the closest match</Text>
           )}
         </Pressable>
       )}
       {aiNote && <Text style={styles.aiNote}>{aiNote}</Text>}
-
-      {results.length > 0 && <Text style={styles.resultsLabel}>{resultsSourceLabel(results)}</Text>}
-      {results.map((food) => (
-        <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
-          <View>
-            <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
-            <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.source}</Text>
-          </View>
-          <Text style={styles.foodMacros}>{Math.round(food.calories)} kcal</Text>
-        </Pressable>
-      ))}
 
       <Text style={styles.label}>{isToday ? 'Today’s entries' : `${formatDateLabel(selectedDate)}’s entries`}</Text>
       {entries.length === 0 ? <Text style={styles.empty}>Nothing logged {isToday ? 'yet' : 'for this day'}. Search for a food above to start.</Text> : entries.map((entry) => {
