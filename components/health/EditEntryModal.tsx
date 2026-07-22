@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Modal, StyleSheet, Text, TextInput, View } from 'react-native';
 import { HourPicker } from './HourPicker';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
+import { upsertFoodItem } from '@/lib/db/database';
 import { foodDisplayName } from '@/lib/domain/food';
 import { deriveMealType } from '@/lib/domain/mealType';
 import { scaleMacros } from '@/lib/domain/nutrition';
@@ -26,6 +27,8 @@ export function EditEntryModal({
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [hour, setHour] = useState(entry?.hour ?? new Date().getHours());
   const [servingsText, setServingsText] = useState(entry ? String(entry.servings) : '1');
+  const [favorite, setFavorite] = useState(() => food?.favorite ?? false);
+  const [savingFavorite, setSavingFavorite] = useState(false);
 
   if (!entry) return null;
 
@@ -33,11 +36,32 @@ export function EditEntryModal({
   const valid = Number.isFinite(servings) && servings > 0;
   const macros = valid && food ? scaleMacros(food, servings) : null;
 
+  async function toggleFavorite() {
+    if (!food || savingFavorite) return;
+    const next = !favorite;
+    setFavorite(next);
+    setSavingFavorite(true);
+    try {
+      await upsertFoodItem({ ...food, favorite: next, updatedAt: new Date().toISOString() });
+    } catch {
+      setFavorite(!next);
+    } finally {
+      setSavingFavorite(false);
+    }
+  }
+
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
-          <Text style={styles.title}>{food ? foodDisplayName(food) : 'Edit entry'}</Text>
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, styles.titleText]}>{food ? foodDisplayName(food) : 'Edit entry'}</Text>
+            {food && (
+              <Pressable accessibilityLabel={favorite ? 'Remove from quick add' : 'Save for quick add'} onPress={toggleFavorite} style={styles.favoriteButton}>
+                <Text style={styles.favoriteIcon}>{favorite ? '⭐' : '☆'}</Text>
+              </Pressable>
+            )}
+          </View>
 
           <HourPicker selectedHour={hour} onSelectHour={setHour} />
 
@@ -92,6 +116,10 @@ const createStyles = (colors: ThemeColors) =>
     backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     sheet: { backgroundColor: colors.background, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, gap: 16 },
     title: { ...typography.title2, color: colors.text },
+    titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    titleText: { flex: 1 },
+    favoriteButton: { padding: 4 },
+    favoriteIcon: { fontSize: 26 },
     label: { color: colors.text, fontWeight: '800' },
     amountInput: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, fontSize: 20, fontWeight: '700', color: colors.text },
     amountInputInvalid: { borderWidth: 2, borderColor: colors.danger },
