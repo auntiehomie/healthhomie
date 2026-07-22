@@ -54,13 +54,19 @@ export function BarcodeScanner({ onFound }: { onFound: (food: FoodItem) => void 
       if (food) {
         onFound(food);
         setStatus('Point the camera at a barcode.');
+        setLastBarcode(null);
       } else {
         setStatus('No match for that barcode in Open Food Facts or USDA yet. Try another.');
-        setLastBarcode(null);
+        // Camera keeps re-detecting a barcode still in frame many times a second - clearing
+        // lastBarcode right away let a failed lookup fire again immediately, over and over,
+        // which hammered Open Food Facts hard enough to get us rate-limited (confirmed via 26
+        // requests for one barcode in 10 seconds in production logs). A cooldown lets the same
+        // barcode be retried, just not on literally the next frame.
+        setTimeout(() => setLastBarcode((current) => (current === data ? null : current)), 4000);
       }
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Lookup failed. Try again.');
-      setLastBarcode(null);
+      setTimeout(() => setLastBarcode((current) => (current === data ? null : current)), 4000);
     } finally {
       setLooking(false);
     }
