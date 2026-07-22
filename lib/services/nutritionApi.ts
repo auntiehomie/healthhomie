@@ -124,8 +124,13 @@ export async function findClosestRestaurantMatch(
 export async function lookupBarcode(barcode: string): Promise<FoodItem | null> {
   const response = await fetch(`/api/foodfacts/barcode/${encodeURIComponent(barcode)}`);
   if (response.status === 404) return null;
-  if (!response.ok) throw new Error('Barcode lookup failed');
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    const detail = typeof payload.error === 'string' ? payload.error : null;
+    throw new Error(detail ?? `Barcode lookup failed (${response.status}).`);
+  }
   const payload = await response.json();
+  if (payload.source === 'usda') return mapUsdaFood(payload.food);
   return mapOpenFoodFactsProduct(payload.product);
 }
 
