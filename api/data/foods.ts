@@ -17,14 +17,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const food = (req.body ?? {}) as FoodItem;
       if (!food.id || !food.name) return res.status(400).json({ error: 'id and name are required.' });
       await sql`
-        INSERT INTO food_items (id, "userId", name, brand, barcode, "servingSize", "servingUnit", source, "sourceId", calories, "proteinG", "carbsG", "fatG", "fiberG", "sugarG", "sodiumMg", "createdAt", "updatedAt")
-        VALUES (${food.id}, ${userId}, ${food.name}, ${food.brand ?? null}, ${food.barcode ?? null}, ${food.servingSize}, ${food.servingUnit}, ${food.source}, ${food.sourceId ?? null}, ${food.calories}, ${food.proteinG}, ${food.carbsG}, ${food.fatG}, ${food.fiberG ?? null}, ${food.sugarG ?? null}, ${food.sodiumMg ?? null}, ${food.createdAt}, ${food.updatedAt})
+        INSERT INTO food_items (id, "userId", name, brand, barcode, "servingSize", "servingUnit", source, "sourceId", calories, "proteinG", "carbsG", "fatG", "fiberG", "sugarG", "sodiumMg", favorite, "createdAt", "updatedAt")
+        VALUES (${food.id}, ${userId}, ${food.name}, ${food.brand ?? null}, ${food.barcode ?? null}, ${food.servingSize}, ${food.servingUnit}, ${food.source}, ${food.sourceId ?? null}, ${food.calories}, ${food.proteinG}, ${food.carbsG}, ${food.fatG}, ${food.fiberG ?? null}, ${food.sugarG ?? null}, ${food.sodiumMg ?? null}, ${food.favorite ?? false}, ${food.createdAt}, ${food.updatedAt})
         ON CONFLICT ("userId", id) DO UPDATE SET
           name = EXCLUDED.name, brand = EXCLUDED.brand, barcode = EXCLUDED.barcode,
           "servingSize" = EXCLUDED."servingSize", "servingUnit" = EXCLUDED."servingUnit",
           source = EXCLUDED.source, "sourceId" = EXCLUDED."sourceId",
           calories = EXCLUDED.calories, "proteinG" = EXCLUDED."proteinG", "carbsG" = EXCLUDED."carbsG", "fatG" = EXCLUDED."fatG",
-          "fiberG" = EXCLUDED."fiberG", "sugarG" = EXCLUDED."sugarG", "sodiumMg" = EXCLUDED."sodiumMg", "updatedAt" = EXCLUDED."updatedAt"
+          "fiberG" = EXCLUDED."fiberG", "sugarG" = EXCLUDED."sugarG", "sodiumMg" = EXCLUDED."sodiumMg", favorite = EXCLUDED.favorite, "updatedAt" = EXCLUDED."updatedAt"
       `;
       return res.status(204).end();
     }

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Modal, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
+import { upsertFoodItem } from '@/lib/db/database';
 import { foodDisplayName } from '@/lib/domain/food';
 import { scaleMacros } from '@/lib/domain/nutrition';
 import { useTheme } from '@/lib/theme/ThemeContext';
@@ -38,8 +39,24 @@ export function LogFoodModal({
   const [massUnit, setMassUnit] = useState<MassUnit>('g');
   const [volumeUnit, setVolumeUnit] = useState<VolumeUnit>('ml');
   const [servingsText, setServingsText] = useState('1');
+  const [favorite, setFavorite] = useState(() => food?.favorite ?? false);
+  const [savingFavorite, setSavingFavorite] = useState(false);
 
   if (!food) return null;
+
+  async function toggleFavorite() {
+    if (!food || savingFavorite) return;
+    const next = !favorite;
+    setFavorite(next);
+    setSavingFavorite(true);
+    try {
+      await upsertFoodItem({ ...food, favorite: next, updatedAt: new Date().toISOString() });
+    } catch {
+      setFavorite(!next);
+    } finally {
+      setSavingFavorite(false);
+    }
+  }
 
   const amount = Number(amountText);
   const validAmount = Number.isFinite(amount) && amount > 0;
@@ -84,7 +101,12 @@ export function LogFoodModal({
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
-          <Text style={styles.title}>{foodDisplayName(food)}</Text>
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, styles.titleText]}>{foodDisplayName(food)}</Text>
+            <Pressable accessibilityLabel={favorite ? 'Remove from quick add' : 'Save for quick add'} onPress={toggleFavorite} style={styles.favoriteButton}>
+              <Text style={styles.favoriteIcon}>{favorite ? '⭐' : '☆'}</Text>
+            </Pressable>
+          </View>
           <Text style={styles.subtitle}>Base: {food.servingSize}{food.servingUnit} · {Math.round(food.calories)} kcal</Text>
 
           {hasServingsToggle && (
@@ -192,6 +214,10 @@ const createStyles = (colors: ThemeColors) =>
     backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     sheet: { backgroundColor: colors.background, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, gap: 16 },
     title: { ...typography.title2, color: colors.text },
+    titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    titleText: { flex: 1 },
+    favoriteButton: { padding: 4 },
+    favoriteIcon: { fontSize: 26 },
     subtitle: { ...typography.bodyMedium, color: colors.textMuted },
     modeToggle: { flexDirection: 'row', backgroundColor: colors.chipBackground, borderRadius: 999, padding: 4, gap: 4, alignSelf: 'flex-start' },
     modeChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },

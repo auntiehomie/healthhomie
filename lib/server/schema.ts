@@ -157,4 +157,7 @@ export const schemaStatements = [
   // Nullable and additive — when set, this overrides the BMR/activity-derived calorie target;
   // when null (the default), the goal stays fully computed as before.
   `ALTER TABLE user_profile ADD COLUMN IF NOT EXISTS "calorieOverride" DOUBLE PRECISION;`,
+  // Lets a user pin a food (scanned, searched, or logged) for quick re-adding later without
+  // re-scanning/re-searching it every time.
+  `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS favorite BOOLEAN NOT NULL DEFAULT false;`,
 ] as const;
