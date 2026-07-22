@@ -8,7 +8,7 @@ import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
 import type { FoodItem } from '@/types/healthhomie';
 
-/** Camera + Open Food Facts lookup. Calls onFound once per distinct barcode; a miss or error un-blocks that barcode so the same one can be retried. */
+/** Camera + barcode lookup (Open Food Facts, falling back to USDA's branded database). Calls onFound once per distinct barcode; a miss or error un-blocks that barcode so the same one can be retried. */
 export function BarcodeScanner({ onFound }: { onFound: (food: FoodItem) => void }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -32,7 +32,7 @@ export function BarcodeScanner({ onFound }: { onFound: (food: FoodItem) => void 
     }
     return (
       <View style={styles.container}>
-        <Text style={styles.subtitle}>Camera access lets Howdy Morning look up barcodes through Open Food Facts.</Text>
+        <Text style={styles.subtitle}>Camera access lets Howdy Morning look up barcodes through Open Food Facts and USDA.</Text>
         {cameraError && <Text style={styles.error}>{cameraError}</Text>}
         <Pressable
           style={styles.button}
@@ -55,7 +55,7 @@ export function BarcodeScanner({ onFound }: { onFound: (food: FoodItem) => void 
         onFound(food);
         setStatus('Point the camera at a barcode.');
       } else {
-        setStatus('No Open Food Facts match for that barcode yet. Try another.');
+        setStatus('No match for that barcode in Open Food Facts or USDA yet. Try another.');
         setLastBarcode(null);
       }
     } catch (error) {
