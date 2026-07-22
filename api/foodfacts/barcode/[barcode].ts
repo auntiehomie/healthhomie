@@ -25,6 +25,18 @@ async function fetchJsonWithRetry(url: string, init: RequestInit, attempts = 3):
   return { ok: false, status: lastStatus || 502 };
 }
 
+// A camera reading a barcode as EAN-13 prepends a single "0" to the 12-digit UPC-A encoded
+// underneath it, but USDA's branded data (and barcodes in general) aren't consistent about which
+// form gets stored - confirmed live: a real product's gtinUpc was stored as the 12-digit form
+// while the scanner reported the 13-digit EAN-13 form, so an exact string match on the raw
+// scanned value silently missed a genuine hit. Try both directions.
+function barcodeVariants(barcode: string): string[] {
+  const variants = [barcode];
+  if (barcode.length === 13 && barcode.startsWith('0')) variants.push(barcode.slice(1));
+  if (barcode.length === 12) variants.push(`0${barcode}`);
+  return variants;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const barcode = String(req.query.barcode ?? '').trim();
   if (!barcode) return res.status(400).json({ error: 'Missing barcode.' });
@@ -43,23 +55,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Fall back to USDA's branded database, searching by the barcode text itself - it's matched
-  // against the gtinUpc field, so only trust an exact match rather than whatever the search
-  // engine's relevance ranking surfaces first.
+  // against the gtinUpc field, so only trust an exact match (against any digit-padding variant)
+  // rather than whatever the search engine's relevance ranking surfaces first.
   const apiKey = process.env.USDA_FDC_API_KEY;
   if (apiKey) {
-    const usdaUrl = new URL(USDA_SEARCH_URL);
-    usdaUrl.searchParams.set('api_key', apiKey);
-    usdaUrl.searchParams.set('query', barcode);
-    usdaUrl.searchParams.set('pageSize', '10');
-    usdaUrl.searchParams.set('dataType', 'Branded');
+    const variants = barcodeVariants(barcode);
+    for (const variant of variants) {
+      const usdaUrl = new URL(USDA_SEARCH_URL);
+      usdaUrl.searchParams.set('api_key', apiKey);
+      usdaUrl.searchParams.set('query', variant);
+      usdaUrl.searchParams.set('pageSize', '10');
+      usdaUrl.searchParams.set('dataType', 'Branded');
 
-    const usda = await fetchJsonWithRetry(usdaUrl.toString(), {});
-    if (usda.ok) {
-      const payload = usda.body as { foods?: { gtinUpc?: string }[] };
-      const match = payload.foods?.find((food) => food.gtinUpc === barcode);
-      if (match) return res.status(200).json({ source: 'usda', food: match });
-    } else {
-      console.error(`USDA barcode fallback failed (${usda.status}) for "${barcode}"`);
+      const usda = await fetchJsonWithRetry(usdaUrl.toString(), {});
+      if (usda.ok) {
+        const payload = usda.body as { foods?: { gtinUpc?: string }[] };
+        const match = payload.foods?.find((food) => food.gtinUpc && variants.includes(food.gtinUpc));
+        if (match) return res.status(200).json({ source: 'usda', food: match });
+      } else {
+        console.error(`USDA barcode fallback failed (${usda.status}) for "${variant}"`);
+      }
     }
   }
 
