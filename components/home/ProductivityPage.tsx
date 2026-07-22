@@ -19,7 +19,7 @@ import { typography } from '@/lib/theme/typography';
 type Mood = 'great' | 'good' | 'meh' | 'tired' | 'stressed';
 type MoodLog = Partial<Record<DayPeriod, Mood>>;
 type MoodMessages = Partial<Record<DayPeriod, string>>;
-interface RoutineItem { id: string; text: string; done: boolean }
+interface RoutineItem { id: string; text: string }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const MOODS: { key: Mood; emoji: string; label: string }[] = [
@@ -123,6 +123,7 @@ export function ProductivityPage() {
   const [priorities, setPriorities] = useState(['', '', '']);
   const [water, setWater] = useState(0);
   const [routine, setRoutine] = useState<RoutineItem[]>([]);
+  const [routineDoneIds, setRoutineDoneIds] = useState<string[]>([]);
   const [routineInput, setRoutineInput] = useState('');
   const [quickNoteInput, setQuickNoteInput] = useState('');
   const [todaysQuickNotes, setTodaysQuickNotes] = useState<Note[]>([]);
@@ -133,22 +134,32 @@ export function ProductivityPage() {
   useEffect(() => {
     (async () => {
       const day = todayKey();
-      const [ml, mm, p, w, rawRoutine, allNotes, a] = await Promise.all([
+      const [ml, mm, p, w, template, doneIds, legacyRoutine, allNotes, a] = await Promise.all([
         load<MoodLog>('moodLog_' + day, {}),
         load<MoodMessages>('moodMessages_' + day, {}),
         load<string[]>('priorities_' + day, ['', '', '']),
         load<number>('water_' + day, 0),
-        load<RoutineItem[]>('routine', []),
+        load<RoutineItem[]>('routineTemplate', []),
+        load<string[]>('routineDone_' + day, []),
+        load<(RoutineItem & { done?: boolean })[]>('routine', []),
         loadNotes(),
         load<string>('affirmation_' + day, randomAff()),
       ]);
-      // Backfill ids for routine items saved before they carried one, then persist so future
-      // loads read a stable id straight away.
-      const r = rawRoutine.map((item, i) => ({ ...item, id: item.id ?? `${genRoutineId()}-${i}` }));
-      if (r.some((item, i) => item.id !== rawRoutine[i]?.id)) void save('routine', r);
+
+      let r = template;
+      // One-time migration from the old single-list "routine" key (items carried their own
+      // `done` flag, so completed items never cleared) - carry the item texts forward as the
+      // new reusable template, but not the done state, since we don't know which day it was
+      // from and today's completion is tracked separately now.
+      if (r.length === 0 && legacyRoutine.length > 0) {
+        r = legacyRoutine.map((item, i) => ({ id: item.id ?? `${genRoutineId()}-${i}`, text: item.text }));
+        void save('routineTemplate', r);
+        void AsyncStorage.removeItem('morning_routine');
+      }
 
       setMoodLog(ml); setMoodMessages(mm); setPriorities(p); setWater(w);
       setRoutine(r);
+      setRoutineDoneIds(doneIds);
       setTodaysQuickNotes(allNotes.filter(n => n.tags.includes(QUICK_NOTE_TAG) && n.createdAt.slice(0, 10) === day));
       setAffirmation(a);
       setLoaded(true);
@@ -171,31 +182,39 @@ export function ProductivityPage() {
   }, [day]);
   const addRoutine = useCallback(() => {
     if (!routineInput.trim()) return;
-    setRoutine(prev => { const n = [...prev, { id: genRoutineId(), text: routineInput.trim(), done: false }]; void save('routine', n); return n; });
+    setRoutine(prev => { const n = [...prev, { id: genRoutineId(), text: routineInput.trim() }]; void save('routineTemplate', n); return n; });
     setRoutineInput('');
   }, [routineInput]);
   const toggleRoutine = useCallback((id: string) => {
-    setRoutine(prev => { const n = prev.map(r => r.id === id ? { ...r, done: !r.done } : r); void save('routine', n); return n; });
-  }, []);
+    setRoutineDoneIds(prev => {
+      const n = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      void save('routineDone_' + day, n);
+      return n;
+    });
+  }, [day]);
   const deleteRoutine = useCallback((id: string) => {
-    setRoutine(prev => { const n = prev.filter(r => r.id !== id); void save('routine', n); return n; });
-  }, []);
-  // The routine list is a single reusable template (not per-day), so completed items just stay
-  // checked forever unless cleared - this archives them as a dated record in Notes, then resets
-  // them to unchecked so the same template is ready to go again.
+    setRoutine(prev => { const n = prev.filter(r => r.id !== id); void save('routineTemplate', n); return n; });
+    setRoutineDoneIds(prev => {
+      if (!prev.includes(id)) return prev;
+      const n = prev.filter(x => x !== id);
+      void save('routineDone_' + day, n);
+      return n;
+    });
+  }, [day]);
+  // The routine template is reusable day to day - completion is tracked separately per date, so
+  // it already resets on its own tomorrow. This is an optional manual "log it now" action: saves
+  // a dated record of what's completed so far today to Notes, then clears today's checkmarks in
+  // case you want a fresh sweep before the day is even over.
   const archiveCompletedRoutine = useCallback(async () => {
-    const completed = routine.filter(r => r.done);
+    const completed = routine.filter(r => routineDoneIds.includes(r.id));
     if (completed.length === 0) return;
     const dateLabel = new Date(`${day}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
     const title = `Completed routine — ${dateLabel}`;
     const content = completed.map(r => `✅ ${r.text}`).join('\n');
     await createNote({ title, content, tags: ['daily', ROUTINE_LOG_TAG] });
-    setRoutine(prev => {
-      const n = prev.map(r => (r.done ? { ...r, done: false } : r));
-      void save('routine', n);
-      return n;
-    });
-  }, [routine, day]);
+    setRoutineDoneIds([]);
+    void save('routineDone_' + day, []);
+  }, [routine, routineDoneIds, day]);
   const addQuickNote = useCallback(async () => {
     const content = quickNoteInput.trim();
     if (!content) return;
@@ -218,8 +237,8 @@ export function ProductivityPage() {
   const periodConfig = MOOD_PERIODS[currentPeriod];
   const loggedMood = moodLog[currentPeriod];
   const loggedMoodObj = loggedMood ? MOODS.find(m => m.key === loggedMood) : undefined;
-  const openRoutine = routine.filter(r => !r.done);
-  const completedRoutine = routine.filter(r => r.done);
+  const openRoutine = routine.filter(r => !routineDoneIds.includes(r.id));
+  const completedRoutine = routine.filter(r => routineDoneIds.includes(r.id));
 
   return (
     <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
