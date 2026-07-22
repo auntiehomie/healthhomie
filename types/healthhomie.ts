@@ -21,6 +21,8 @@ export type FoodItem = MacroNutrients & {
   servingUnit: string;
   source: FoodSource;
   sourceId?: string;
+  /** Pinned by the user for quick re-adding without re-scanning/re-searching. */
+  favorite?: boolean;
   createdAt: string;
   updatedAt: string;
 };

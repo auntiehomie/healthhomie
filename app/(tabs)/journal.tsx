@@ -100,6 +100,11 @@ export default function JournalScreen() {
     return foods.filter((food) => food.name.toLowerCase().includes(q) || food.brand?.toLowerCase().includes(q)).slice(0, 8);
   }, [foods, query]);
 
+  // Explicitly starred foods (via the star in LogFoodModal) - shown up front, unlike
+  // myFoodMatches, so a food you scan/search often enough to save doesn't need re-scanning or
+  // re-typing its name every time.
+  const quickAddFoods = useMemo(() => foods.filter((food) => food.favorite), [foods]);
+
   async function logFood(food: FoodItem, servings: number) {
     await upsertFoodItem(food);
     await addMealEntry({
@@ -280,6 +285,21 @@ ${message}`)) void removeEntry(entry);
       </View>
 
       <HourPicker selectedHour={selectedHour} onSelectHour={setSelectedHour} />
+
+      {quickAddFoods.length > 0 && (
+        <>
+          <Text style={styles.label}>⭐ Quick add</Text>
+          {quickAddFoods.map((food) => (
+            <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
+              <View>
+                <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
+                <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.source}</Text>
+              </View>
+              <Text style={styles.foodMacros}>{Math.round(food.calories)} kcal</Text>
+            </Pressable>
+          ))}
+        </>
+      )}
 
       <Text style={styles.label}>Search foods</Text>
       <View style={styles.searchRow}>
