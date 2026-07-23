@@ -212,6 +212,7 @@ export default function NotesScreen() {
             onChangeText={updateTitle}
             placeholder="Note title…"
             placeholderTextColor={colors.textMuted}
+            multiline
           />
           <TextInput
             style={styles.tagsInput}
