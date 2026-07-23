@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Modal, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { upsertFoodItem } from '@/lib/db/database';
 import { foodDisplayName } from '@/lib/domain/food';
@@ -27,6 +28,7 @@ export function LogFoodModal({
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   const unitLower = food?.servingUnit.toLowerCase() ?? '';
   const isMass = unitLower === 'g';
   const isVolume = unitLower === 'ml';
@@ -100,7 +102,7 @@ export function LogFoodModal({
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: 24 + insets.bottom }]}>
           <View style={styles.titleRow}>
             <Text style={[styles.title, styles.titleText]}>{foodDisplayName(food)}</Text>
             <Pressable accessibilityLabel={favorite ? 'Remove from quick add' : 'Save for quick add'} onPress={toggleFavorite} style={styles.favoriteButton}>

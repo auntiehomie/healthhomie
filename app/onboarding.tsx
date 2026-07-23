@@ -9,6 +9,7 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
@@ -50,6 +51,7 @@ const SLIDES = [
 export default function OnboardingScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
@@ -74,7 +76,7 @@ export default function OnboardingScreen() {
 
   return (
     <View style={styles.wrapper}>
-      <Pressable style={styles.skip} onPress={finish}>
+      <Pressable style={[styles.skip, { top: insets.top + 16 }]} onPress={finish}>
         <Text style={styles.skipText}>Skip</Text>
       </Pressable>
 
@@ -112,7 +114,7 @@ export default function OnboardingScreen() {
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     wrapper: { flex: 1, backgroundColor: colors.background },
-    skip: { position: 'absolute', top: 56, right: 20, zIndex: 1, padding: 8 },
+    skip: { position: 'absolute', right: 20, zIndex: 1, padding: 8 },
     skipText: { color: colors.textMuted, fontWeight: '700', fontSize: 15 },
     pager: { flex: 1 },
     slide: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 16 },

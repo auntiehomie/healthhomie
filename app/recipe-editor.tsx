@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect, router, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScanBarcode, X } from 'lucide-react-native';
 import { BarcodeScanner } from '@/components/health/BarcodeScanner';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
@@ -18,6 +19,7 @@ import type { FoodItem, RecipeIngredient } from '@/types/healthhomie';
 export default function RecipeEditorScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEditing = !!id;
 
@@ -196,7 +198,7 @@ export default function RecipeEditorScreen() {
       <LogFoodModal key={activeFood?.id} food={activeFood} onClose={() => setActiveFood(null)} onConfirm={addIngredient} />
 
       <Modal visible={scannerOpen} animationType="slide" onRequestClose={() => setScannerOpen(false)}>
-        <View style={styles.scannerScreen}>
+        <View style={[styles.scannerScreen, { paddingTop: insets.top + 20 }]}>
           <View style={styles.scannerHeader}>
             <Text style={styles.scannerTitle}>Scan a barcode</Text>
             <Pressable accessibilityLabel="Close scanner" hitSlop={8} onPress={() => setScannerOpen(false)}>
@@ -256,7 +258,7 @@ const createStyles = (colors: ThemeColors) =>
     saveButton: { backgroundColor: colors.primary, borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 8 },
     saveButtonDisabled: { opacity: 0.6 },
     saveButtonText: { color: colors.onPrimary, fontWeight: '800', fontSize: 16 },
-    scannerScreen: { flex: 1, backgroundColor: colors.background, padding: 20, paddingTop: 60, gap: 16 },
+    scannerScreen: { flex: 1, backgroundColor: colors.background, padding: 20, gap: 16 },
     scannerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     scannerTitle: { fontSize: 22, fontWeight: '900', color: colors.text },
   });

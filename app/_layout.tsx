@@ -2,6 +2,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { getToken } from '@/lib/services/authClient';
 import { ThemeProvider, useTheme } from '@/lib/theme/ThemeContext';
 import { UpdateBanner } from '@/components/UpdateBanner';
@@ -9,9 +10,11 @@ import { UpdateBanner } from '@/components/UpdateBanner';
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider>
-        <AppShell />
-      </ThemeProvider>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <AppShell />
+        </ThemeProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
