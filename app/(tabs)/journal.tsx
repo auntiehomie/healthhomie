@@ -291,7 +291,7 @@ ${message}`)) void removeEntry(entry);
           <Text style={styles.label}>⭐ Quick add</Text>
           {quickAddFoods.map((food) => (
             <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
-              <View>
+              <View style={styles.foodInfo}>
                 <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
                 <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.source}</Text>
               </View>
@@ -325,7 +325,7 @@ ${message}`)) void removeEntry(entry);
           <Text style={styles.resultsLabel}>My foods & recipes</Text>
           {myFoodMatches.map((food) => (
             <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
-              <View>
+              <View style={styles.foodInfo}>
                 <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
                 <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.id.startsWith('recipe-') ? 'recipe' : food.source}</Text>
               </View>
@@ -338,7 +338,7 @@ ${message}`)) void removeEntry(entry);
       {results.length > 0 && <Text style={styles.resultsLabel}>{resultsSourceLabel(results)}</Text>}
       {results.map((food) => (
         <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
-          <View>
+          <View style={styles.foodInfo}>
             <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
             <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.source}</Text>
           </View>
@@ -349,7 +349,7 @@ ${message}`)) void removeEntry(entry);
       {restaurantResults.length > 0 && <Text style={styles.resultsLabel}>Restaurants</Text>}
       {restaurantResults.slice(0, 3).map((item) => (
         <Pressable key={item.id} onPress={() => selectRestaurantItem(item)} disabled={loadingItemId !== null} style={styles.foodRow}>
-          <View>
+          <View style={styles.foodInfo}>
             <Text style={styles.foodName}>{item.title}</Text>
             <Text style={styles.foodMeta}>{item.restaurantChain}</Text>
           </View>
@@ -474,9 +474,10 @@ const createStyles = (colors: ThemeColors) =>
     scannerTitle: { fontSize: 22, fontWeight: '900', color: colors.text },
     error: { color: colors.danger, fontWeight: '600' },
     foodRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    foodName: { fontWeight: '800', color: colors.text, fontSize: 16 },
+    foodInfo: { flex: 1, marginRight: 12 },
+    foodName: { fontWeight: '800', color: colors.text, fontSize: 16, flexWrap: 'wrap' },
     foodMeta: { color: colors.textMuted, marginTop: 4 },
-    foodMacros: { fontWeight: '800', color: colors.primary },
+    foodMacros: { fontWeight: '800', color: colors.primary, flexShrink: 0 },
     seeMoreButton: { alignItems: 'center', paddingVertical: 10 },
     seeMoreButtonText: { color: colors.primary, fontWeight: '700' },
     aiMatchLink: { alignItems: 'center', paddingVertical: 6 },

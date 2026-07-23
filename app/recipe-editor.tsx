@@ -179,7 +179,7 @@ export default function RecipeEditorScreen() {
       {searchError && <Text style={styles.error}>{searchError}</Text>}
       {results.map((food) => (
         <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
-          <View>
+          <View style={styles.foodInfo}>
             <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
             <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.source}</Text>
           </View>
@@ -253,9 +253,10 @@ const createStyles = (colors: ThemeColors) =>
     scanButton: { backgroundColor: colors.primary, borderRadius: 16, width: 52, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     error: { color: colors.danger, fontWeight: '600' },
     foodRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    foodName: { fontWeight: '800', color: colors.text, fontSize: 16 },
+    foodInfo: { flex: 1, marginRight: 12 },
+    foodName: { fontWeight: '800', color: colors.text, fontSize: 16, flexWrap: 'wrap' },
     foodMeta: { color: colors.textMuted, marginTop: 4 },
-    foodMacros: { fontWeight: '800', color: colors.primary },
+    foodMacros: { fontWeight: '800', color: colors.primary, flexShrink: 0 },
     saveButton: { backgroundColor: colors.primary, borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 8 },
     saveButtonDisabled: { opacity: 0.6 },
     saveButtonText: { color: colors.onPrimary, fontWeight: '800', fontSize: 16 },
