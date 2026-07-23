@@ -52,6 +52,15 @@ export default function NotesScreen() {
     loadNotes().then(n => { setNotes(n); setLoaded(true); });
   }, []);
 
+  // Both scan every note's content - cheap at a handful of notes, but scale with total note
+  // count, and backlinks/wikilinks recompute on every keystroke via persistNote/setEditContent,
+  // so they're memoized rather than left to rerun on renders that don't actually change them.
+  const backlinks = useMemo(
+    () => (activeNote ? getBacklinks(notes, activeNote) : []),
+    [notes, activeNote]
+  );
+  const wikilinks = useMemo(() => extractWikilinks(editContent), [editContent]);
+
   const updateNotes = useCallback((next: Note[]) => {
     setNotes(next); void saveNotes(next);
   }, []);
@@ -175,12 +184,12 @@ export default function NotesScreen() {
     setScreen('list'); setActiveNote(null);
   }
 
-  const filtered = notes.filter(n =>
+  const filtered = useMemo(() => notes.filter(n =>
     !search ||
     n.title.toLowerCase().includes(search.toLowerCase()) ||
     n.content.toLowerCase().includes(search.toLowerCase()) ||
     n.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))
-  );
+  ), [notes, search]);
 
   if (!loaded) return (
     <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -190,8 +199,6 @@ export default function NotesScreen() {
 
   // ── Edit screen ──
   if (screen === 'edit' && activeNote) {
-    const backlinks = getBacklinks(notes, activeNote);
-    const wikilinks = extractWikilinks(editContent);
     return (
       <View style={styles.editContainer}>
         {/* Toolbar */}
