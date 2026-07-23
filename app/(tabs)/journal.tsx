@@ -22,7 +22,7 @@ import {
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
-import { ChevronLeft, ChevronRight, ScanBarcode, Trash2, X } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, ScanBarcode, Search, Trash2, X } from 'lucide-react-native';
 import type { FoodItem, MealEntry } from '@/types/healthhomie';
 
 export default function JournalScreen() {
@@ -41,6 +41,7 @@ export default function JournalScreen() {
   const [editingEntry, setEditingEntry] = useState<MealEntry | null>(null);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodItem[]>([]);
+  const [showAllResults, setShowAllResults] = useState(false);
   const [restaurantResults, setRestaurantResults] = useState<RestaurantMenuItemSummary[]>([]);
   const [loadingItemId, setLoadingItemId] = useState<number | null>(null);
   const [searching, setSearching] = useState(false);
@@ -144,6 +145,7 @@ export default function JournalScreen() {
     setSearching(true);
     setSearchError(null);
     setAiNote(null);
+    setShowAllResults(false);
     const [usda, restaurants] = await Promise.allSettled([searchUsdaFoods(query), searchRestaurantFoods(query)]);
     setResults(usda.status === 'fulfilled' ? usda.value : []);
     setRestaurantResults(restaurants.status === 'fulfilled' ? restaurants.value : []);
@@ -314,8 +316,8 @@ ${message}`)) void removeEntry(entry);
           returnKeyType="search"
           style={[styles.input, styles.searchInput]}
         />
-        <Pressable style={styles.searchButton} onPress={runSearch} disabled={searching}>
-          {searching ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.searchButtonText}>Search</Text>}
+        <Pressable accessibilityLabel="Search foods" style={styles.searchButton} onPress={runSearch} disabled={searching}>
+          {searching ? <ActivityIndicator color={colors.onPrimary} /> : <Search color={colors.onPrimary} size={20} />}
         </Pressable>
         <Pressable accessibilityLabel="Scan a barcode" style={styles.scanButton} onPress={() => setScannerOpen(true)}>
           <ScanBarcode color={colors.onPrimary} size={20} />
@@ -339,7 +341,7 @@ ${message}`)) void removeEntry(entry);
       )}
 
       {results.length > 0 && <Text style={styles.resultsLabel}>{resultsSourceLabel(results)}</Text>}
-      {results.map((food) => (
+      {(showAllResults ? results : results.slice(0, 3)).map((food) => (
         <FoodRow
           key={food.id}
           title={foodDisplayName(food)}
@@ -348,6 +350,11 @@ ${message}`)) void removeEntry(entry);
           onPress={() => setActiveFood(food)}
         />
       ))}
+      {!showAllResults && results.length > 3 && (
+        <Pressable style={styles.seeMoreButton} onPress={() => setShowAllResults(true)}>
+          <Text style={styles.seeMoreButtonText}>See {results.length - 3} more result{results.length - 3 === 1 ? '' : 's'} →</Text>
+        </Pressable>
+      )}
 
       {restaurantResults.length > 0 && <Text style={styles.resultsLabel}>Restaurants</Text>}
       {restaurantResults.slice(0, 3).map((item) => (
@@ -471,8 +478,7 @@ const createStyles = (colors: ThemeColors) =>
     input: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, fontSize: 18, color: colors.text },
     searchRow: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
     searchInput: { flex: 1, minWidth: 0 },
-    searchButton: { backgroundColor: colors.primary, borderRadius: 16, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-    searchButtonText: { color: colors.onPrimary, fontWeight: '800' },
+    searchButton: { backgroundColor: colors.primary, borderRadius: 16, width: 52, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     scanButton: { backgroundColor: colors.primary, borderRadius: 16, width: 52, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     scannerScreen: { flex: 1, backgroundColor: colors.background, padding: 20, gap: 16 },
     scannerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
