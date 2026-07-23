@@ -98,7 +98,13 @@ const todayKey = () => {
   return `${year}-${month}-${day}`;
 };
 const randomAff = () => AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)];
-const greeting = () => (new Date().getHours() >= 17 ? 'howdy evenin' : 'howdy mornin');
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 6) return "Howdy Mornin' 😴";
+  if (hour < 12) return "Howdy Mornin' 🌞";
+  if (hour < 18) return "Howdy Mornin' 😎";
+  return "Howdy Evenin' 🌝";
+}
 const genRoutineId = () => `r${Date.now()}${Math.floor(Math.random() * 1000)}`;
 const QUICK_NOTE_TAG = 'quick-note';
 const ROUTINE_LOG_TAG = 'routine-log';
@@ -244,8 +250,7 @@ export function ProductivityPage() {
     <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
       {/* Header */}
       <View style={styles.hero}>
-        <Text style={styles.eyebrow}>{greeting()}</Text>
-        <Text style={styles.title}>How are you showing up today?</Text>
+        <Text style={styles.title}>{greeting()}</Text>
       </View>
 
       {/* Affirmation */}
@@ -396,7 +401,6 @@ const createStyles = (colors: ThemeColors) =>
     fill:         { flex: 1 },
     container:    { padding: 20, gap: 16, backgroundColor: colors.background, paddingBottom: 40 },
     hero:         { gap: 4, paddingTop: 10 },
-    eyebrow:      { color: colors.primary, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, fontSize: 12 },
     title:        { ...typography.display2, color: colors.text },
     affBox:       { backgroundColor: colors.primary, borderRadius: 16, padding: 18, gap: 6 },
     affText:      { color: colors.onPrimary, fontSize: 16, fontWeight: '600', lineHeight: 22 },
