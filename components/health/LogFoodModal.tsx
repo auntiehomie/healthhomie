@@ -217,7 +217,7 @@ const createStyles = (colors: ThemeColors) =>
     titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     titleText: { flex: 1 },
     favoriteButton: { padding: 4 },
-    favoriteIcon: { fontSize: 26 },
+    favoriteIcon: { fontSize: 40, color: colors.primary },
     subtitle: { ...typography.bodyMedium, color: colors.textMuted },
     modeToggle: { flexDirection: 'row', backgroundColor: colors.chipBackground, borderRadius: 999, padding: 4, gap: 4, alignSelf: 'flex-start' },
     modeChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
