@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text } from 'react-native';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
+import { FoodRow } from '@/components/health/FoodRow';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
 import { addMealEntry, createId, upsertFoodItem } from '@/lib/db/database';
 import { deriveMealType } from '@/lib/domain/mealType';
@@ -94,13 +95,15 @@ export default function RestaurantResultsScreen() {
       {!loading && results.length === 0 && !loadError && <Text style={styles.empty}>No restaurant results for this search.</Text>}
 
       {results.map((item) => (
-        <Pressable key={item.id} onPress={() => selectItem(item)} disabled={loadingItemId !== null} style={styles.foodRow}>
-          <View style={styles.foodInfo}>
-            <Text style={styles.foodName}>{item.title}</Text>
-            <Text style={styles.foodMeta}>{item.restaurantChain}</Text>
-          </View>
-          {loadingItemId === item.id ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.foodMacros}>Tap for nutrition</Text>}
-        </Pressable>
+        <FoodRow
+          key={item.id}
+          title={item.title}
+          meta={item.restaurantChain}
+          rightLabel="Tap for nutrition"
+          loading={loadingItemId === item.id}
+          disabled={loadingItemId !== null}
+          onPress={() => selectItem(item)}
+        />
       ))}
 
       {results.length > 0 && (
@@ -128,11 +131,6 @@ const createStyles = (colors: ThemeColors) =>
     loadingIndicator: { marginTop: 20 },
     error: { color: colors.danger, fontWeight: '600' },
     empty: { color: colors.textMuted, fontStyle: 'italic' },
-    foodRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    foodInfo: { flex: 1, marginRight: 12 },
-    foodName: { fontWeight: '800', color: colors.text, fontSize: 16, flexWrap: 'wrap' },
-    foodMeta: { color: colors.textMuted, marginTop: 4 },
-    foodMacros: { fontWeight: '800', color: colors.primary, flexShrink: 0 },
     aiMatchLink: { alignItems: 'center', paddingVertical: 6 },
     aiMatchLinkText: { color: colors.textMuted, fontWeight: '600', fontSize: 13 },
     aiNote: { color: colors.textMuted, fontSize: 13, fontStyle: 'italic', textAlign: 'center' },

@@ -4,6 +4,7 @@ import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, View
 import { ScanBarcode, X } from 'lucide-react-native';
 import { BarcodeScanner } from '@/components/health/BarcodeScanner';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
+import { FoodRow } from '@/components/health/FoodRow';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
 import { listRecipes, saveRecipe, upsertFoodItem } from '@/lib/db/database';
 import { foodDisplayName } from '@/lib/domain/food';
@@ -178,13 +179,13 @@ export default function RecipeEditorScreen() {
       </View>
       {searchError && <Text style={styles.error}>{searchError}</Text>}
       {results.map((food) => (
-        <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
-          <View style={styles.foodInfo}>
-            <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
-            <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.source}</Text>
-          </View>
-          <Text style={styles.foodMacros}>{Math.round(food.calories)} kcal</Text>
-        </Pressable>
+        <FoodRow
+          key={food.id}
+          title={foodDisplayName(food)}
+          meta={`${food.servingSize}${food.servingUnit} · ${food.source}`}
+          rightLabel={`${Math.round(food.calories)} kcal`}
+          onPress={() => setActiveFood(food)}
+        />
       ))}
 
       {error && <Text style={styles.error}>{error}</Text>}
@@ -252,11 +253,6 @@ const createStyles = (colors: ThemeColors) =>
     searchButtonText: { color: colors.onPrimary, fontWeight: '800' },
     scanButton: { backgroundColor: colors.primary, borderRadius: 16, width: 52, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     error: { color: colors.danger, fontWeight: '600' },
-    foodRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    foodInfo: { flex: 1, marginRight: 12 },
-    foodName: { fontWeight: '800', color: colors.text, fontSize: 16, flexWrap: 'wrap' },
-    foodMeta: { color: colors.textMuted, marginTop: 4 },
-    foodMacros: { fontWeight: '800', color: colors.primary, flexShrink: 0 },
     saveButton: { backgroundColor: colors.primary, borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 8 },
     saveButtonDisabled: { opacity: 0.6 },
     saveButtonText: { color: colors.onPrimary, fontWeight: '800', fontSize: 16 },

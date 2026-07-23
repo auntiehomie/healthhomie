@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { BarcodeScanner } from '@/components/health/BarcodeScanner';
 import { EditEntryModal } from '@/components/health/EditEntryModal';
+import { FoodRow } from '@/components/health/FoodRow';
 import { HourPicker } from '@/components/health/HourPicker';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
 import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries, updateMealEntry, upsertFoodItem } from '@/lib/db/database';
@@ -290,13 +291,13 @@ ${message}`)) void removeEntry(entry);
         <>
           <Text style={styles.label}>⭐ Quick add</Text>
           {quickAddFoods.map((food) => (
-            <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
-              <View style={styles.foodInfo}>
-                <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
-                <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.source}</Text>
-              </View>
-              <Text style={styles.foodMacros}>{Math.round(food.calories)} kcal</Text>
-            </Pressable>
+            <FoodRow
+              key={food.id}
+              title={foodDisplayName(food)}
+              meta={`${food.servingSize}${food.servingUnit} · ${food.source}`}
+              rightLabel={`${Math.round(food.calories)} kcal`}
+              onPress={() => setActiveFood(food)}
+            />
           ))}
         </>
       )}
@@ -324,37 +325,39 @@ ${message}`)) void removeEntry(entry);
         <>
           <Text style={styles.resultsLabel}>My foods & recipes</Text>
           {myFoodMatches.map((food) => (
-            <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
-              <View style={styles.foodInfo}>
-                <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
-                <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.id.startsWith('recipe-') ? 'recipe' : food.source}</Text>
-              </View>
-              <Text style={styles.foodMacros}>{Math.round(food.calories)} kcal</Text>
-            </Pressable>
+            <FoodRow
+              key={food.id}
+              title={foodDisplayName(food)}
+              meta={`${food.servingSize}${food.servingUnit} · ${food.id.startsWith('recipe-') ? 'recipe' : food.source}`}
+              rightLabel={`${Math.round(food.calories)} kcal`}
+              onPress={() => setActiveFood(food)}
+            />
           ))}
         </>
       )}
 
       {results.length > 0 && <Text style={styles.resultsLabel}>{resultsSourceLabel(results)}</Text>}
       {results.map((food) => (
-        <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
-          <View style={styles.foodInfo}>
-            <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
-            <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.source}</Text>
-          </View>
-          <Text style={styles.foodMacros}>{Math.round(food.calories)} kcal</Text>
-        </Pressable>
+        <FoodRow
+          key={food.id}
+          title={foodDisplayName(food)}
+          meta={`${food.servingSize}${food.servingUnit} · ${food.source}`}
+          rightLabel={`${Math.round(food.calories)} kcal`}
+          onPress={() => setActiveFood(food)}
+        />
       ))}
 
       {restaurantResults.length > 0 && <Text style={styles.resultsLabel}>Restaurants</Text>}
       {restaurantResults.slice(0, 3).map((item) => (
-        <Pressable key={item.id} onPress={() => selectRestaurantItem(item)} disabled={loadingItemId !== null} style={styles.foodRow}>
-          <View style={styles.foodInfo}>
-            <Text style={styles.foodName}>{item.title}</Text>
-            <Text style={styles.foodMeta}>{item.restaurantChain}</Text>
-          </View>
-          {loadingItemId === item.id ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.foodMacros}>Tap for nutrition</Text>}
-        </Pressable>
+        <FoodRow
+          key={item.id}
+          title={item.title}
+          meta={item.restaurantChain}
+          rightLabel="Tap for nutrition"
+          loading={loadingItemId === item.id}
+          disabled={loadingItemId !== null}
+          onPress={() => selectRestaurantItem(item)}
+        />
       ))}
       {restaurantResults.length > 3 && (
         <Pressable
@@ -473,9 +476,6 @@ const createStyles = (colors: ThemeColors) =>
     scannerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     scannerTitle: { fontSize: 22, fontWeight: '900', color: colors.text },
     error: { color: colors.danger, fontWeight: '600' },
-    foodRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    foodInfo: { flex: 1, marginRight: 12 },
-    foodName: { fontWeight: '800', color: colors.text, fontSize: 16, flexWrap: 'wrap' },
     foodMeta: { color: colors.textMuted, marginTop: 4 },
     foodMacros: { fontWeight: '800', color: colors.primary, flexShrink: 0 },
     seeMoreButton: { alignItems: 'center', paddingVertical: 10 },
