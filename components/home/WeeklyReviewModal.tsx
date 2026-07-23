@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Animated, Modal, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { getUserProfile, listFoodItems, listMealEntries, saveUserProfile } from '@/lib/db/database';
 import { loadNotes, type Note } from '@/lib/db/notesStorage';
@@ -138,55 +138,57 @@ export function WeeklyReviewModal() {
           <Text style={styles.title}>Your week in review</Text>
           <Text style={styles.subtitle}>{formatRangeLabel(range.start, range.end)}</Text>
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>🍽️ Food & health</Text>
-            <Text style={styles.big}>{Math.round(weekSummary.avgCalories)} kcal/day avg</Text>
-            <Text style={styles.meta}>{Math.round(weekSummary.avgProteinG)}g protein · {Math.round(weekSummary.avgCarbsG)}g carbs · {Math.round(weekSummary.avgFatG)}g fat</Text>
-            <Text style={styles.meta}>Logged {weekSummary.daysLogged} of 7 days</Text>
-            {insight && (
-              <>
-                <Text style={styles.insightText}>{insight.insight}</Text>
-                {insight.recommendedCalorieDelta !== 0 && (
-                  <Text style={styles.insightDelta}>
-                    Suggested delta: {insight.recommendedCalorieDelta > 0 ? '+' : ''}{insight.recommendedCalorieDelta} kcal
-                  </Text>
-                )}
-              </>
-            )}
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>📝 Notes this week</Text>
-            {weekNotes.length === 0 ? (
-              <Text style={styles.meta}>No notes written this week.</Text>
-            ) : (
-              <>
-                <Text style={styles.meta}>{weekNotes.length} note{weekNotes.length === 1 ? '' : 's'}</Text>
-                {weekNotes.slice(0, 4).map((note) => (
-                  <Text key={note.id} style={styles.noteTitle} numberOfLines={1}>• {note.title}</Text>
-                ))}
-              </>
-            )}
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>⚖️ Update your weight</Text>
-            <View style={styles.weightRow}>
-              <TextInput
-                value={weightInput}
-                onChangeText={(value) => { setWeightInput(value); setWeightSaved(false); }}
-                keyboardType="decimal-pad"
-                placeholder="kg"
-                placeholderTextColor={colors.textMuted}
-                style={styles.weightInput}
-              />
-              <Pressable style={styles.weightSaveButton} onPress={saveWeight}>
-                <Text style={styles.weightSaveButtonText}>Save</Text>
-              </Pressable>
+          <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>🍽️ Food & health</Text>
+              <Text style={styles.big}>{Math.round(weekSummary.avgCalories)} kcal/day avg</Text>
+              <Text style={styles.meta}>{Math.round(weekSummary.avgProteinG)}g protein · {Math.round(weekSummary.avgCarbsG)}g carbs · {Math.round(weekSummary.avgFatG)}g fat</Text>
+              <Text style={styles.meta}>Logged {weekSummary.daysLogged} of 7 days</Text>
+              {insight && (
+                <>
+                  <Text style={styles.insightText}>{insight.insight}</Text>
+                  {insight.recommendedCalorieDelta !== 0 && (
+                    <Text style={styles.insightDelta}>
+                      Suggested delta: {insight.recommendedCalorieDelta > 0 ? '+' : ''}{insight.recommendedCalorieDelta} kcal
+                    </Text>
+                  )}
+                </>
+              )}
             </View>
-            {weightSaved && <Text style={styles.savedText}>Saved</Text>}
-            {currentWeightKg == null && !weightSaved && <Text style={styles.meta}>No weight on file yet.</Text>}
-          </View>
+
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>📝 Notes this week</Text>
+              {weekNotes.length === 0 ? (
+                <Text style={styles.meta}>No notes written this week.</Text>
+              ) : (
+                <>
+                  <Text style={styles.meta}>{weekNotes.length} note{weekNotes.length === 1 ? '' : 's'}</Text>
+                  {weekNotes.slice(0, 4).map((note) => (
+                    <Text key={note.id} style={styles.noteTitle} numberOfLines={1}>• {note.title}</Text>
+                  ))}
+                </>
+              )}
+            </View>
+
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>⚖️ Update your weight</Text>
+              <View style={styles.weightRow}>
+                <TextInput
+                  value={weightInput}
+                  onChangeText={(value) => { setWeightInput(value); setWeightSaved(false); }}
+                  keyboardType="decimal-pad"
+                  placeholder="kg"
+                  placeholderTextColor={colors.textMuted}
+                  style={styles.weightInput}
+                />
+                <Pressable style={styles.weightSaveButton} onPress={saveWeight}>
+                  <Text style={styles.weightSaveButtonText}>Save</Text>
+                </Pressable>
+              </View>
+              {weightSaved && <Text style={styles.savedText}>Saved</Text>}
+              {currentWeightKg == null && !weightSaved && <Text style={styles.meta}>No weight on file yet.</Text>}
+            </View>
+          </ScrollView>
 
           <View style={styles.actionRow}>
             <Pressable style={styles.secondaryButton} onPress={goToGoals}>
@@ -208,6 +210,8 @@ const createStyles = (colors: ThemeColors) =>
     sheet: { backgroundColor: colors.background, borderRadius: 28, padding: 22, gap: 14, maxHeight: '90%' },
     title: { ...typography.title1, color: colors.text },
     subtitle: { ...typography.bodyMedium, color: colors.textMuted },
+    scroll: { flexGrow: 0 },
+    scrollContent: { gap: 14 },
     card: { backgroundColor: colors.surface, borderRadius: 20, padding: 16, gap: 6 },
     cardTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
     big: { fontSize: 22, fontWeight: '900', color: colors.primary, marginTop: 2 },

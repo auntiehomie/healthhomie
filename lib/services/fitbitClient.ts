@@ -1,51 +1,16 @@
-import { Platform } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
-import { apiUrl, getToken } from '@/lib/services/authClient';
+import { createHealthProviderClient } from '@/lib/services/healthProviderClient';
 import type { HealthMetricsDaily } from '@/types/healthhomie';
 
+const client = createHealthProviderClient('fitbit', 'Fitbit');
+
 export async function connectFitbit(): Promise<{ connected: boolean; reason?: string }> {
-  const token = await getToken();
-  if (!token) return { connected: false, reason: 'Log in first.' };
-
-  const startResponse = await fetch(apiUrl('/api/fitbit/start'), {
-    method: 'POST',
-    headers: { authorization: `Bearer ${token}` },
-  });
-  if (!startResponse.ok) return { connected: false, reason: 'Could not start the Fitbit connection.' };
-  const { authorizeUrl } = await startResponse.json();
-
-  if (Platform.OS === 'web') {
-    window.location.assign(authorizeUrl);
-    return { connected: false };
-  }
-
-  const redirectUrl = apiUrl('/fitbit/connected');
-  const result = await WebBrowser.openAuthSessionAsync(authorizeUrl, redirectUrl);
-  if (result.type !== 'success' || !('url' in result) || !result.url) {
-    return { connected: false, reason: 'Fitbit connection was cancelled.' };
-  }
-  const parsed = new URL(result.url);
-  const error = parsed.searchParams.get('error');
-  if (error) return { connected: false, reason: `Fitbit connection failed (${error}).` };
-  return { connected: parsed.searchParams.get('connected') === 'true' };
+  return client.connect();
 }
 
 export async function syncFitbit(): Promise<{ synced: number; reason?: string; metrics?: HealthMetricsDaily[] }> {
-  const token = await getToken();
-  if (!token) return { synced: 0, reason: 'Log in first.' };
-
-  const response = await fetch(apiUrl('/api/fitbit/sync'), { method: 'POST', headers: { authorization: `Bearer ${token}` } });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) return { synced: 0, reason: payload.error ?? 'Fitbit sync failed.' };
-  return { synced: payload.metrics?.length ?? 0, metrics: payload.metrics };
+  return client.sync();
 }
 
 export async function getFitbitStatus(): Promise<{ connected: boolean; lastSyncedAt?: string }> {
-  const token = await getToken();
-  if (!token) return { connected: false };
-
-  const response = await fetch(apiUrl('/api/data/health-connections?provider=fitbit'), { headers: { authorization: `Bearer ${token}` } });
-  if (!response.ok) return { connected: false };
-  const payload = await response.json();
-  return { connected: payload.connection?.status === 'connected', lastSyncedAt: payload.connection?.lastSyncedAt ?? undefined };
+  return client.getStatus();
 }

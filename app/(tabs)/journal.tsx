@@ -1,9 +1,11 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { BarcodeScanner } from '@/components/health/BarcodeScanner';
 import { EditEntryModal } from '@/components/health/EditEntryModal';
+import { FoodRow } from '@/components/health/FoodRow';
 import { HourPicker } from '@/components/health/HourPicker';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
 import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries, updateMealEntry, upsertFoodItem } from '@/lib/db/database';
@@ -20,12 +22,13 @@ import {
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
-import { ChevronLeft, ChevronRight, ScanBarcode, Trash2, X } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, ScanBarcode, Search, Trash2, X } from 'lucide-react-native';
 import type { FoodItem, MealEntry } from '@/types/healthhomie';
 
 export default function JournalScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   const [foods, setFoods] = useState<FoodItem[]>([]);
   const [entries, setEntries] = useState<MealEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(todayKey());
@@ -38,6 +41,7 @@ export default function JournalScreen() {
   const [editingEntry, setEditingEntry] = useState<MealEntry | null>(null);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodItem[]>([]);
+  const [showAllResults, setShowAllResults] = useState(false);
   const [restaurantResults, setRestaurantResults] = useState<RestaurantMenuItemSummary[]>([]);
   const [loadingItemId, setLoadingItemId] = useState<number | null>(null);
   const [searching, setSearching] = useState(false);
@@ -141,6 +145,7 @@ export default function JournalScreen() {
     setSearching(true);
     setSearchError(null);
     setAiNote(null);
+    setShowAllResults(false);
     const [usda, restaurants] = await Promise.allSettled([searchUsdaFoods(query), searchRestaurantFoods(query)]);
     setResults(usda.status === 'fulfilled' ? usda.value : []);
     setRestaurantResults(restaurants.status === 'fulfilled' ? restaurants.value : []);
@@ -290,13 +295,13 @@ ${message}`)) void removeEntry(entry);
         <>
           <Text style={styles.label}>⭐ Quick add</Text>
           {quickAddFoods.map((food) => (
-            <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
-              <View style={styles.foodInfo}>
-                <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
-                <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.source}</Text>
-              </View>
-              <Text style={styles.foodMacros}>{Math.round(food.calories)} kcal</Text>
-            </Pressable>
+            <FoodRow
+              key={food.id}
+              title={foodDisplayName(food)}
+              meta={`${food.servingSize}${food.servingUnit} · ${food.source}`}
+              rightLabel={`${Math.round(food.calories)} kcal`}
+              onPress={() => setActiveFood(food)}
+            />
           ))}
         </>
       )}
@@ -311,8 +316,8 @@ ${message}`)) void removeEntry(entry);
           returnKeyType="search"
           style={[styles.input, styles.searchInput]}
         />
-        <Pressable style={styles.searchButton} onPress={runSearch} disabled={searching}>
-          {searching ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.searchButtonText}>Search</Text>}
+        <Pressable accessibilityLabel="Search foods" style={styles.searchButton} onPress={runSearch} disabled={searching}>
+          {searching ? <ActivityIndicator color={colors.onPrimary} /> : <Search color={colors.onPrimary} size={20} />}
         </Pressable>
         <Pressable accessibilityLabel="Scan a barcode" style={styles.scanButton} onPress={() => setScannerOpen(true)}>
           <ScanBarcode color={colors.onPrimary} size={20} />
@@ -324,37 +329,44 @@ ${message}`)) void removeEntry(entry);
         <>
           <Text style={styles.resultsLabel}>My foods & recipes</Text>
           {myFoodMatches.map((food) => (
-            <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
-              <View style={styles.foodInfo}>
-                <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
-                <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.id.startsWith('recipe-') ? 'recipe' : food.source}</Text>
-              </View>
-              <Text style={styles.foodMacros}>{Math.round(food.calories)} kcal</Text>
-            </Pressable>
+            <FoodRow
+              key={food.id}
+              title={foodDisplayName(food)}
+              meta={`${food.servingSize}${food.servingUnit} · ${food.id.startsWith('recipe-') ? 'recipe' : food.source}`}
+              rightLabel={`${Math.round(food.calories)} kcal`}
+              onPress={() => setActiveFood(food)}
+            />
           ))}
         </>
       )}
 
       {results.length > 0 && <Text style={styles.resultsLabel}>{resultsSourceLabel(results)}</Text>}
-      {results.map((food) => (
-        <Pressable key={food.id} onPress={() => setActiveFood(food)} style={styles.foodRow}>
-          <View style={styles.foodInfo}>
-            <Text style={styles.foodName}>{foodDisplayName(food)}</Text>
-            <Text style={styles.foodMeta}>{food.servingSize}{food.servingUnit} · {food.source}</Text>
-          </View>
-          <Text style={styles.foodMacros}>{Math.round(food.calories)} kcal</Text>
-        </Pressable>
+      {(showAllResults ? results : results.slice(0, 3)).map((food) => (
+        <FoodRow
+          key={food.id}
+          title={foodDisplayName(food)}
+          meta={`${food.servingSize}${food.servingUnit} · ${food.source}`}
+          rightLabel={`${Math.round(food.calories)} kcal`}
+          onPress={() => setActiveFood(food)}
+        />
       ))}
+      {!showAllResults && results.length > 3 && (
+        <Pressable style={styles.seeMoreButton} onPress={() => setShowAllResults(true)}>
+          <Text style={styles.seeMoreButtonText}>See {results.length - 3} more result{results.length - 3 === 1 ? '' : 's'} →</Text>
+        </Pressable>
+      )}
 
       {restaurantResults.length > 0 && <Text style={styles.resultsLabel}>Restaurants</Text>}
       {restaurantResults.slice(0, 3).map((item) => (
-        <Pressable key={item.id} onPress={() => selectRestaurantItem(item)} disabled={loadingItemId !== null} style={styles.foodRow}>
-          <View style={styles.foodInfo}>
-            <Text style={styles.foodName}>{item.title}</Text>
-            <Text style={styles.foodMeta}>{item.restaurantChain}</Text>
-          </View>
-          {loadingItemId === item.id ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.foodMacros}>Tap for nutrition</Text>}
-        </Pressable>
+        <FoodRow
+          key={item.id}
+          title={item.title}
+          meta={item.restaurantChain}
+          rightLabel="Tap for nutrition"
+          loading={loadingItemId === item.id}
+          disabled={loadingItemId !== null}
+          onPress={() => selectRestaurantItem(item)}
+        />
       ))}
       {restaurantResults.length > 3 && (
         <Pressable
@@ -410,7 +422,7 @@ ${message}`)) void removeEntry(entry);
       />
 
       <Modal visible={scannerOpen} animationType="slide" onRequestClose={() => setScannerOpen(false)}>
-        <View style={styles.scannerScreen}>
+        <View style={[styles.scannerScreen, { paddingTop: insets.top + 20 }]}>
           <View style={styles.scannerHeader}>
             <Text style={styles.scannerTitle}>Scan a barcode</Text>
             <Pressable accessibilityLabel="Close scanner" hitSlop={8} onPress={() => setScannerOpen(false)}>
@@ -466,16 +478,12 @@ const createStyles = (colors: ThemeColors) =>
     input: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, fontSize: 18, color: colors.text },
     searchRow: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
     searchInput: { flex: 1, minWidth: 0 },
-    searchButton: { backgroundColor: colors.primary, borderRadius: 16, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-    searchButtonText: { color: colors.onPrimary, fontWeight: '800' },
+    searchButton: { backgroundColor: colors.primary, borderRadius: 16, width: 52, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     scanButton: { backgroundColor: colors.primary, borderRadius: 16, width: 52, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-    scannerScreen: { flex: 1, backgroundColor: colors.background, padding: 20, paddingTop: 60, gap: 16 },
+    scannerScreen: { flex: 1, backgroundColor: colors.background, padding: 20, gap: 16 },
     scannerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     scannerTitle: { fontSize: 22, fontWeight: '900', color: colors.text },
     error: { color: colors.danger, fontWeight: '600' },
-    foodRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    foodInfo: { flex: 1, marginRight: 12 },
-    foodName: { fontWeight: '800', color: colors.text, fontSize: 16, flexWrap: 'wrap' },
     foodMeta: { color: colors.textMuted, marginTop: 4 },
     foodMacros: { fontWeight: '800', color: colors.primary, flexShrink: 0 },
     seeMoreButton: { alignItems: 'center', paddingVertical: 10 },
