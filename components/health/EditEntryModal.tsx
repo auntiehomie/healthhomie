@@ -119,7 +119,7 @@ const createStyles = (colors: ThemeColors) =>
     titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     titleText: { flex: 1 },
     favoriteButton: { padding: 4 },
-    favoriteIcon: { fontSize: 26 },
+    favoriteIcon: { fontSize: 40, color: colors.primary },
     label: { color: colors.text, fontWeight: '800' },
     amountInput: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, fontSize: 20, fontWeight: '700', color: colors.text },
     amountInputInvalid: { borderWidth: 2, borderColor: colors.danger },
