@@ -123,6 +123,7 @@ export default function GoalsScreen() {
           </Pressable>
         )}
         <Text style={styles.macro}>{Math.round(goal?.proteinTargetG ?? 0)}g protein · {Math.round(goal?.carbsG ?? 0)}g carbs · {Math.round(goal?.fatG ?? 0)}g fat</Text>
+        <Text style={styles.disclaimer}>Estimates based on general sports-nutrition research (e.g. ISSN protein guidance). Not medical or dietitian advice — check with a professional for your specific needs.</Text>
         {editingCalories ? (
           <View style={styles.editActions}>
             <Pressable style={styles.editButton} onPress={() => setEditingCalories(false)} disabled={savingCalories}>
@@ -170,6 +171,7 @@ const createStyles = (colors: ThemeColors) =>
     cardTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
     big: { fontSize: 40, fontWeight: '900', color: colors.primary },
     macro: { color: colors.textMuted },
+    disclaimer: { color: colors.textMuted, fontSize: 12, lineHeight: 16, marginTop: 4 },
     editRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
     calorieInput: { fontSize: 40, fontWeight: '900', color: colors.primary, minWidth: 120, padding: 0 },
     editUnit: { fontSize: 20, fontWeight: '700', color: colors.textMuted },
