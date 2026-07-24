@@ -77,15 +77,22 @@ const ROUTINE_HELPER: Record<DayPeriod, string> = {
   evening: 'Last call before the day wraps.',
 };
 
-const AFFIRMATIONS = [
-  'You are capable of amazing things — trust the process.',
-  'Every expert was once a beginner. Keep showing up.',
-  'Your consistency is your superpower. One day at a time.',
-  'Small progress is still progress. Celebrate it.',
-  'Clarity comes from action, not thought. Start moving.',
-  "You've survived 100% of your hard days. This one too.",
-  'Your future self is cheering you on right now.',
-  'One small step today compounds into something incredible.',
+type Affirmation = { text: string; author: string };
+
+// Real, attributed quotes only - a few of the usual "inspirational quote" picks (a Churchill
+// line, an "Eleanor Roosevelt" line, an "Emerson" line) turned out to be widely-circulated fakes
+// with no documented source, so this list is limited to quotes with solid primary-source backing
+// (a recorded speech, an autobiography, a well-documented interview).
+const AFFIRMATIONS: Affirmation[] = [
+  { text: 'The only way to do great work is to love what you do.', author: 'Steve Jobs' },
+  { text: "You miss 100% of the shots you don't take.", author: 'Wayne Gretzky' },
+  { text: 'It always seems impossible until it is done.', author: 'Nelson Mandela' },
+  { text: 'People will forget what you said, people will forget what you did, but people will never forget how you made them feel.', author: 'Maya Angelou' },
+  { text: 'It is hard to fail, but it is worse never to have tried to succeed.', author: 'Theodore Roosevelt' },
+  { text: 'I have failed over and over and over again in my life. And that is why I succeed.', author: 'Michael Jordan' },
+  { text: "I hated every minute of training, but I said, don't quit. Suffer now and live the rest of your life as a champion.", author: 'Muhammad Ali' },
+  { text: 'The most difficult thing is the decision to act, the rest is merely tenacity.', author: 'Amelia Earhart' },
+  { text: 'Optimism is the faith that leads to achievement. Nothing can be done without hope and confidence.', author: 'Helen Keller' },
 ];
 
 // Local calendar date, not UTC — avoids the daily note/affirmation flipping at UTC midnight
@@ -149,8 +156,11 @@ export function ProductivityPage() {
         load<string[]>('routineDone_' + day, []),
         load<(RoutineItem & { done?: boolean })[]>('routine', []),
         loadNotes(),
-        load<string>('affirmation_' + day, randomAff()),
+        load<Affirmation>('affirmation_' + day, randomAff()),
       ]);
+      // A pre-existing value from before quotes carried an author (a plain string) would
+      // otherwise render with no `.text`/`.author` - fall back to a fresh quote instead.
+      const affirmationValue = a && typeof a === 'object' && 'text' in a ? a : randomAff();
 
       let r = template;
       // One-time migration from the old single-list "routine" key (items carried their own
@@ -167,7 +177,7 @@ export function ProductivityPage() {
       setRoutine(r);
       setRoutineDoneIds(doneIds);
       setTodaysQuickNotes(allNotes.filter(n => n.tags.includes(QUICK_NOTE_TAG) && n.createdAt.slice(0, 10) === day));
-      setAffirmation(a);
+      setAffirmation(affirmationValue);
       setLoaded(true);
     })();
   }, []);
@@ -255,7 +265,8 @@ export function ProductivityPage() {
 
       {/* Affirmation */}
       <Pressable style={styles.affBox} onPress={newAffirmation}>
-        <Text style={styles.affText}>{affirmation}</Text>
+        <Text style={styles.affText}>{affirmation.text}</Text>
+        <Text style={styles.affAuthor}>— {affirmation.author}</Text>
         <Text style={styles.affHint}>tap to refresh ✨</Text>
       </Pressable>
 
@@ -404,6 +415,7 @@ const createStyles = (colors: ThemeColors) =>
     title:        { ...typography.display2, color: colors.text },
     affBox:       { backgroundColor: colors.primary, borderRadius: 16, padding: 18, gap: 6 },
     affText:      { color: colors.onPrimary, fontSize: 16, fontWeight: '600', lineHeight: 22 },
+    affAuthor:    { color: colors.onPrimary, opacity: 0.85, fontSize: 13, fontWeight: '700' },
     affHint:      { color: colors.onPrimary, opacity: 0.7, fontSize: 11 },
     card:         { backgroundColor: colors.surface, borderRadius: 20, padding: 18, gap: 12 },
     cardTitle:    { fontSize: 16, fontWeight: '800', color: colors.text },
