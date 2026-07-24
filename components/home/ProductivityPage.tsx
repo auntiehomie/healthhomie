@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,9 +12,12 @@ import { router } from 'expo-router';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { createNote, loadNotes, type Note } from '@/lib/db/notesStorage';
 import { getDayPeriod, type DayPeriod } from '@/lib/domain/dayPeriod';
+import { hapticImpact, hapticSuccess } from '@/lib/utils/haptics';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
+import { cardShadow } from '@/lib/theme/shadow';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Mood = 'great' | 'good' | 'meh' | 'tired' | 'stressed';
@@ -142,49 +146,64 @@ export function ProductivityPage() {
   const [todaysQuickNotes, setTodaysQuickNotes] = useState<Note[]>([]);
   const [affirmation, setAffirmation] = useState(randomAff());
   const [loaded, setLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Load persisted state
+  const reload = useCallback(async () => {
+    const day = todayKey();
+    const [ml, mm, p, w, template, doneIds, legacyRoutine, allNotes, a] = await Promise.all([
+      load<MoodLog>('moodLog_' + day, {}),
+      load<MoodMessages>('moodMessages_' + day, {}),
+      load<string[]>('priorities_' + day, ['', '', '']),
+      load<number>('water_' + day, 0),
+      load<RoutineItem[]>('routineTemplate', []),
+      load<string[]>('routineDone_' + day, []),
+      load<(RoutineItem & { done?: boolean })[]>('routine', []),
+      loadNotes(),
+      load<Affirmation>('affirmation_' + day, randomAff()),
+    ]);
+    // A pre-existing value from before quotes carried an author (a plain string) would
+    // otherwise render with no `.text`/`.author` - fall back to a fresh quote instead.
+    const affirmationValue = a && typeof a === 'object' && 'text' in a ? a : randomAff();
+
+    let r = template;
+    // One-time migration from the old single-list "routine" key (items carried their own
+    // `done` flag, so completed items never cleared) - carry the item texts forward as the
+    // new reusable template, but not the done state, since we don't know which day it was
+    // from and today's completion is tracked separately now.
+    if (r.length === 0 && legacyRoutine.length > 0) {
+      r = legacyRoutine.map((item, i) => ({ id: item.id ?? `${genRoutineId()}-${i}`, text: item.text }));
+      void save('routineTemplate', r);
+      void AsyncStorage.removeItem('morning_routine');
+    }
+
+    setMoodLog(ml); setMoodMessages(mm); setPriorities(p); setWater(w);
+    setRoutine(r);
+    setRoutineDoneIds(doneIds);
+    setTodaysQuickNotes(allNotes.filter(n => n.tags.includes(QUICK_NOTE_TAG) && n.createdAt.slice(0, 10) === day));
+    setAffirmation(affirmationValue);
+  }, []);
+
   useEffect(() => {
     (async () => {
-      const day = todayKey();
-      const [ml, mm, p, w, template, doneIds, legacyRoutine, allNotes, a] = await Promise.all([
-        load<MoodLog>('moodLog_' + day, {}),
-        load<MoodMessages>('moodMessages_' + day, {}),
-        load<string[]>('priorities_' + day, ['', '', '']),
-        load<number>('water_' + day, 0),
-        load<RoutineItem[]>('routineTemplate', []),
-        load<string[]>('routineDone_' + day, []),
-        load<(RoutineItem & { done?: boolean })[]>('routine', []),
-        loadNotes(),
-        load<Affirmation>('affirmation_' + day, randomAff()),
-      ]);
-      // A pre-existing value from before quotes carried an author (a plain string) would
-      // otherwise render with no `.text`/`.author` - fall back to a fresh quote instead.
-      const affirmationValue = a && typeof a === 'object' && 'text' in a ? a : randomAff();
-
-      let r = template;
-      // One-time migration from the old single-list "routine" key (items carried their own
-      // `done` flag, so completed items never cleared) - carry the item texts forward as the
-      // new reusable template, but not the done state, since we don't know which day it was
-      // from and today's completion is tracked separately now.
-      if (r.length === 0 && legacyRoutine.length > 0) {
-        r = legacyRoutine.map((item, i) => ({ id: item.id ?? `${genRoutineId()}-${i}`, text: item.text }));
-        void save('routineTemplate', r);
-        void AsyncStorage.removeItem('morning_routine');
-      }
-
-      setMoodLog(ml); setMoodMessages(mm); setPriorities(p); setWater(w);
-      setRoutine(r);
-      setRoutineDoneIds(doneIds);
-      setTodaysQuickNotes(allNotes.filter(n => n.tags.includes(QUICK_NOTE_TAG) && n.createdAt.slice(0, 10) === day));
-      setAffirmation(affirmationValue);
+      await reload();
       setLoaded(true);
     })();
-  }, []);
+  }, [reload]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await reload();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [reload]);
 
   const day = todayKey();
 
   const updateMood = useCallback((period: DayPeriod, m: Mood) => {
+    hapticImpact();
     const pool = MOOD_PERIODS[period].messages;
     const message = pool[Math.floor(Math.random() * pool.length)];
     setMoodLog(prev => { const next = { ...prev, [period]: m }; void save('moodLog_' + day, next); return next; });
@@ -203,7 +222,9 @@ export function ProductivityPage() {
   }, [routineInput]);
   const toggleRoutine = useCallback((id: string) => {
     setRoutineDoneIds(prev => {
-      const n = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      const completing = !prev.includes(id);
+      if (completing) hapticSuccess(); else hapticImpact();
+      const n = completing ? [...prev, id] : prev.filter(x => x !== id);
       void save('routineDone_' + day, n);
       return n;
     });
@@ -228,6 +249,7 @@ export function ProductivityPage() {
     const title = `Completed routine — ${dateLabel}`;
     const content = completed.map(r => `✅ ${r.text}`).join('\n');
     await createNote({ title, content, tags: ['daily', ROUTINE_LOG_TAG] });
+    hapticSuccess();
     setRoutineDoneIds([]);
     void save('routineDone_' + day, []);
   }, [routine, routineDoneIds, day]);
@@ -244,8 +266,14 @@ export function ProductivityPage() {
   }, [day]);
 
   if (!loaded) return (
-    <View style={[styles.container, styles.fill, { justifyContent: 'center', alignItems: 'center' }]}>
-      <Text style={styles.muted}>Loading…</Text>
+    <View style={[styles.container, styles.fill]}>
+      <Skeleton style={{ height: 32, width: '55%', marginBottom: 4 }} />
+      {[0, 1, 2].map((i) => (
+        <View key={i} style={styles.card}>
+          <Skeleton style={{ height: 16, width: '40%' }} />
+          <Skeleton style={{ height: 44, width: '100%' }} />
+        </View>
+      ))}
     </View>
   );
 
@@ -257,7 +285,11 @@ export function ProductivityPage() {
   const completedRoutine = routine.filter(r => routineDoneIds.includes(r.id));
 
   return (
-    <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
+    <ScrollView
+      style={styles.fill}
+      contentContainerStyle={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.primary} colors={[colors.primary]} />}
+    >
       {/* Header */}
       <View style={styles.hero}>
         <Text style={styles.title}>{greeting()}</Text>
@@ -417,7 +449,7 @@ const createStyles = (colors: ThemeColors) =>
     affText:      { color: colors.onPrimary, fontSize: 16, fontWeight: '600', lineHeight: 22 },
     affAuthor:    { color: colors.onPrimary, opacity: 0.85, fontSize: 13, fontWeight: '700' },
     affHint:      { color: colors.onPrimary, opacity: 0.7, fontSize: 11 },
-    card:         { backgroundColor: colors.surface, borderRadius: 20, padding: 18, gap: 12 },
+    card:         { backgroundColor: colors.surface, borderRadius: 20, padding: 18, gap: 12, ...cardShadow },
     cardTitle:    { fontSize: 16, fontWeight: '800', color: colors.text },
     moodRow:      { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
     moodBtn:      { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.border },

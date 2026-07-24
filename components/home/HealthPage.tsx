@@ -2,6 +2,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,6 +20,7 @@ import { connectOura, getOuraStatus, syncOura } from '@/lib/services/ouraClient'
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
+import { cardShadow } from '@/lib/theme/shadow';
 import type { DailyNutritionSummary } from '@/types/healthhomie';
 
 const FAT_COLOR = '#e2725a';
@@ -90,74 +92,79 @@ export function HealthPage() {
   const [aiLoading, setAiLoading] = useState(true);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  useFocusEffect(useCallback(() => {
-    let active = true;
-    async function load() {
-      setLoading(true); setError(null);
-      const status = await getOuraStatus();
-      if (!active) return;
-      if (!status.connected) {
-        setConnected(false);
-        setData(null);
-        setLoading(false);
-        return;
-      }
-      setConnected(true);
-      const result = await syncOura();
-      if (!active) return;
-      if (result.reason) {
-        setError(result.reason);
-        setLoading(false);
-        return;
-      }
-      const latest = result.metrics?.[0];
-      setData(latest ? {
-        readiness: latest.readinessScore != null ? Math.round(latest.readinessScore) : undefined,
-        sleep: latest.sleepScore != null ? Math.round(latest.sleepScore) : undefined,
-        activity: latest.activityScore != null ? Math.round(latest.activityScore) : undefined,
-      } : null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadOura = useCallback(async (active: () => boolean) => {
+    setLoading(true); setError(null);
+    const status = await getOuraStatus();
+    if (!active()) return;
+    if (!status.connected) {
+      setConnected(false);
+      setData(null);
       setLoading(false);
+      return;
     }
-    void load();
-    return () => { active = false; };
-  }, []));
-
-  useFocusEffect(useCallback(() => {
-    let active = true;
-    async function load() {
-      const [foods, entries, profile] = await Promise.all([listFoodItems(), listMealEntries(todayKey()), getUserProfile()]);
-      if (!active) return;
-      setSummary(summarizeDay(todayKey(), entries, foods));
-      setGoal(calculateDailyGoal(profile));
+    setConnected(true);
+    const result = await syncOura();
+    if (!active()) return;
+    if (result.reason) {
+      setError(result.reason);
+      setLoading(false);
+      return;
     }
-    load().catch(console.warn);
-    return () => { active = false; };
-  }, []));
+    const latest = result.metrics?.[0];
+    setData(latest ? {
+      readiness: latest.readinessScore != null ? Math.round(latest.readinessScore) : undefined,
+      sleep: latest.sleepScore != null ? Math.round(latest.sleepScore) : undefined,
+      activity: latest.activityScore != null ? Math.round(latest.activityScore) : undefined,
+    } : null);
+    setLoading(false);
+  }, []);
 
-  useFocusEffect(useCallback(() => {
-    let active = true;
+  const loadFoodSummary = useCallback(async (active: () => boolean) => {
+    const [foods, entries, profile] = await Promise.all([listFoodItems(), listMealEntries(todayKey()), getUserProfile()]);
+    if (!active()) return;
+    setSummary(summarizeDay(todayKey(), entries, foods));
+    setGoal(calculateDailyGoal(profile));
+  }, []);
+
+  const loadAiSuggestion = useCallback(async (active: () => boolean, force = false) => {
     setAiLoading(true);
-    getCachedSuggestion()
-      .then((result) => {
-        if (!active) return;
-        if (result.suggestion) {
-          setAiSuggestion(result.suggestion);
-          setAiLoading(false);
-          return;
-        }
-        return generateSuggestion(false).then((generated) => {
-          if (!active) return;
-          setAiSuggestion(generated.suggestion);
-        });
-      })
-      .catch((err) => {
-        if (active) setAiError(err instanceof Error ? err.message : 'Failed to load AI suggestions.');
-      })
-      .finally(() => {
-        if (active) setAiLoading(false);
-      });
-    return () => { active = false; };
-  }, []));
+    try {
+      const cached = force ? null : await getCachedSuggestion();
+      if (!active()) return;
+      if (cached?.suggestion) {
+        setAiSuggestion(cached.suggestion);
+        return;
+      }
+      const generated = await generateSuggestion(force);
+      if (!active()) return;
+      setAiSuggestion(generated.suggestion);
+    } catch (err) {
+      if (active()) setAiError(err instanceof Error ? err.message : 'Failed to load AI suggestions.');
+    } finally {
+      if (active()) setAiLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+    let alive = true;
+    const active = () => alive;
+    void loadOura(active);
+    void loadFoodSummary(active);
+    void loadAiSuggestion(active);
+    return () => { alive = false; };
+  }, [loadOura, loadFoodSummary, loadAiSuggestion]));
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    const active = () => true;
+    try {
+      await Promise.all([loadOura(active), loadFoodSummary(active), loadAiSuggestion(active, true)]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadOura, loadFoodSummary, loadAiSuggestion]);
 
   async function handleRegenerate() {
     setAiLoading(true);
@@ -187,7 +194,11 @@ export function HealthPage() {
   // ── Not connected ──
   if (!loading && !connected) {
     return (
-      <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
+      <ScrollView
+        style={styles.fill}
+        contentContainerStyle={styles.container}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.primary} colors={[colors.primary]} />}
+      >
         <View style={styles.center}>
           <Text style={styles.connectEmoji}>⚡</Text>
           <Text style={styles.connectTitle}>Connect your Oura Ring</Text>
@@ -224,10 +235,13 @@ export function HealthPage() {
   );
 
   if (error) return (
-    <View style={styles.center}>
+    <ScrollView
+      contentContainerStyle={styles.center}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.primary} colors={[colors.primary]} />}
+    >
       <Text style={styles.errorText}>⚠️ {error}</Text>
       <Text style={styles.muted}>Pull down to retry, or check your Oura connection in Settings.</Text>
-    </View>
+    </ScrollView>
   );
 
   // Readiness/sleep are usually available all day (Oura finalizes them once you wake up), but
@@ -241,7 +255,10 @@ export function HealthPage() {
   const peakBlock = curve.reduce((best, b) => b.pct > best.pct ? b : best, curve[0]);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.primary} colors={[colors.primary]} />}
+    >
       <View style={styles.hero}>
         <Text style={styles.eyebrow}>oura · today</Text>
         <Text style={styles.title}>Your energy map</Text>
@@ -376,10 +393,10 @@ const createStyles = (colors: ThemeColors) =>
     cycleBanner:    { backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 14, borderLeftWidth: 4, borderLeftColor: colors.warning },
     cycleText:      { color: colors.text, fontSize: 14, fontWeight: '600' },
     scoreRow:       { flexDirection: 'row', gap: 12 },
-    scoreCard:      { flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16, alignItems: 'center', gap: 4 },
+    scoreCard:      { flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16, alignItems: 'center', gap: 4, ...cardShadow },
     scoreNum:       { fontSize: 36, fontWeight: '900' },
     scoreLabel:     { fontSize: 12, color: colors.textMuted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-    card:           { backgroundColor: colors.surface, borderRadius: 20, padding: 18, gap: 12 },
+    card:           { backgroundColor: colors.surface, borderRadius: 20, padding: 18, gap: 12, ...cardShadow },
     cardTitle:      { fontSize: 16, fontWeight: '800', color: colors.text },
     aiHeaderRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     refreshLink:    { color: colors.primary, fontWeight: '700', fontSize: 13 },
@@ -397,7 +414,7 @@ const createStyles = (colors: ThemeColors) =>
     connectBtn:     { backgroundColor: colors.primary, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 },
     connectBtnText: { color: colors.onPrimary, fontWeight: '800', fontSize: 16 },
     errorText:      { fontSize: 16, color: colors.danger, textAlign: 'center' },
-    section:        { backgroundColor: colors.surface, borderRadius: 24, padding: 18, gap: 16 },
+    section:        { backgroundColor: colors.surface, borderRadius: 24, padding: 18, gap: 16, ...cardShadow },
     sectionTitle:   { fontSize: 20, fontWeight: '800', color: colors.text },
     grid:           { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
     macroRow:       { flexDirection: 'row', gap: 12 },

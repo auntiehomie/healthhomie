@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { cardShadow } from '@/lib/theme/shadow';
 
 /** Shared tappable row for a food/menu-item result: title + meta on the left, a trailing label
  * (kcal, "Tap for nutrition") or loading spinner on the right. Was independently copy-pasted
@@ -38,7 +39,7 @@ export function FoodRow({
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    foodRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    foodRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', ...cardShadow },
     foodInfo: { flex: 1, marginRight: 12 },
     foodName: { fontWeight: '800', color: colors.text, fontSize: 16, flexWrap: 'wrap' },
     foodMeta: { color: colors.textMuted, marginTop: 4 },

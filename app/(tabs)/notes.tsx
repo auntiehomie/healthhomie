@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,9 +10,11 @@ import {
 } from 'react-native';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { genNoteId, loadNotes, saveNotes, type Note } from '@/lib/db/notesStorage';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
+import { cardShadow } from '@/lib/theme/shadow';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function fmtDate(iso: string): string {
@@ -45,11 +48,21 @@ export default function NotesScreen() {
   const [editContent, setEditContent] = useState('');
   const [editTags, setEditTags] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [forcedSelection, setForcedSelection] = useState<{ start: number; end: number } | undefined>(undefined);
   const contentCursorRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
 
   useEffect(() => {
     loadNotes().then(n => { setNotes(n); setLoaded(true); });
+  }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      setNotes(await loadNotes());
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
 
   // Both scan every note's content - cheap at a handful of notes, but scale with total note
@@ -192,8 +205,22 @@ export default function NotesScreen() {
   ), [notes, search]);
 
   if (!loaded) return (
-    <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-      <Text style={styles.muted}>Loading…</Text>
+    <View style={styles.container}>
+      <View style={styles.listHeader}>
+        <View style={styles.hero}>
+          <Text style={styles.eyebrow}>zettelkasten</Text>
+          <Text style={styles.title}>Your notes</Text>
+        </View>
+      </View>
+      <View style={styles.listScroll}>
+        {[0, 1, 2].map((i) => (
+          <View key={i} style={styles.noteCard}>
+            <Skeleton style={{ height: 17, width: '60%' }} />
+            <Skeleton style={{ height: 14, width: '90%' }} />
+            <Skeleton style={{ height: 12, width: '30%' }} />
+          </View>
+        ))}
+      </View>
     </View>
   );
 
@@ -293,7 +320,11 @@ export default function NotesScreen() {
         onChangeText={setSearch}
       />
 
-      <ScrollView style={styles.fill} contentContainerStyle={styles.listScroll}>
+      <ScrollView
+        style={styles.fill}
+        contentContainerStyle={styles.listScroll}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.primary} colors={[colors.primary]} />}
+      >
         {filtered.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>📝</Text>
@@ -334,7 +365,7 @@ const createStyles = (colors: ThemeColors) =>
     newBtnText:        { color: colors.onPrimary, fontWeight: '800', fontSize: 14 },
     searchInput:       { marginHorizontal: 20, marginBottom: 8, backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, color: colors.text, fontSize: 15, borderWidth: 1, borderColor: colors.border },
     listScroll:        { padding: 20, paddingTop: 4, gap: 10, paddingBottom: 40 },
-    noteCard:          { backgroundColor: colors.surface, borderRadius: 16, padding: 16, gap: 8 },
+    noteCard:          { backgroundColor: colors.surface, borderRadius: 16, padding: 16, gap: 8, ...cardShadow },
     noteTitle:         { fontSize: 17, fontWeight: '800', color: colors.text },
     notePreview:       { fontSize: 14, color: colors.textMuted, lineHeight: 20 },
     noteMeta:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 },

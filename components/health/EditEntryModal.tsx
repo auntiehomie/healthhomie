@@ -10,6 +10,7 @@ import { scaleMacros } from '@/lib/domain/nutrition';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
+import { hapticImpact } from '@/lib/utils/haptics';
 import type { FoodItem, MealEntry } from '@/types/healthhomie';
 
 /** Keyed by entry.id from the caller so switching entries remounts this with fresh state. */
@@ -40,6 +41,7 @@ export function EditEntryModal({
 
   async function toggleFavorite() {
     if (!food || savingFavorite) return;
+    hapticImpact();
     const next = !favorite;
     setFavorite(next);
     setSavingFavorite(true);
