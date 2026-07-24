@@ -16,6 +16,19 @@ export function estimateBasalMetabolicRate(profile: UserProfile): number {
   return 10 * weight + 6.25 * height - 5 * age + sexOffset;
 }
 
+// Protein multipliers (g per kg bodyweight), grounded in the ISSN position stand on protein and
+// exercise: 1.4-2.0 g/kg covers most exercising adults building/maintaining muscle, while a
+// caloric deficit specifically needs the higher end (2.3-3.1 g/kg in resistance-trained subjects)
+// to preserve lean mass. These aren't at the extreme upper bound of either range - they're a
+// general-audience estimate, not a substitute for individualized guidance from a doctor or
+// registered dietitian.
+const PROTEIN_G_PER_KG: Record<GoalType, number> = {
+  'lose-weight': 2.2,
+  maintain: 1.6,
+  'gain-muscle': 2.0,
+  'improve-consistency': 1.6,
+};
+
 export function calculateDailyGoal(profile: UserProfile, snapshot?: HealthSnapshot): NutritionGoal {
   const bmr = estimateBasalMetabolicRate(profile);
   const activeEnergy = snapshot?.activeEnergyKcal ?? 0;
@@ -23,7 +36,7 @@ export function calculateDailyGoal(profile: UserProfile, snapshot?: HealthSnapsh
   const computedCalories = round(tdee + GOAL_DELTAS[profile.goalType]);
   const calories = Math.max(1300, profile.calorieOverride ?? computedCalories);
   const weightKg = profile.currentWeightKg ?? snapshot?.weightKg ?? 75;
-  const proteinTargetG = profile.goalType === 'gain-muscle' ? weightKg * 1.9 : weightKg * 1.6;
+  const proteinTargetG = weightKg * PROTEIN_G_PER_KG[profile.goalType];
   const fatG = Math.max(45, (calories * 0.27) / 9);
   const carbsG = Math.max(80, (calories - proteinTargetG * 4 - fatG * 9) / 4);
 
@@ -40,7 +53,7 @@ export function calculateDailyGoal(profile: UserProfile, snapshot?: HealthSnapsh
     calorieCeiling: round(calories + 100),
     notes: profile.calorieOverride
       ? 'Manually set. Protein/carbs/fat are still derived from this calorie target.'
-      : 'Generated locally from profile, activity baseline, and Apple Health context when available.',
+      : 'Generated locally from profile, activity baseline, and Apple Health context when available. Estimates based on general sports-nutrition research, not medical advice.',
   };
 }
 
