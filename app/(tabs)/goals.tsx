@@ -4,6 +4,7 @@ import { Alert, Platform, ScrollView, StyleSheet, Text, TextInput, View } from '
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { getUserProfile, saveUserProfile } from '@/lib/db/database';
 import { calculateDailyGoal, recommendWeeklyAdjustment } from '@/lib/domain/goals';
+import { hapticSuccess } from '@/lib/utils/haptics';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
@@ -66,6 +67,7 @@ export default function GoalsScreen() {
     setSavingCalories(true);
     try {
       await saveUserProfile(nextProfile);
+      hapticSuccess();
       setProfile(nextProfile);
       setGoal(calculateDailyGoal(nextProfile));
       setEditingCalories(false);

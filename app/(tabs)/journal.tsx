@@ -1,17 +1,19 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { BarcodeScanner } from '@/components/health/BarcodeScanner';
 import { EditEntryModal } from '@/components/health/EditEntryModal';
 import { FoodRow } from '@/components/health/FoodRow';
+import { FoodRowSkeleton } from '@/components/ui/Skeleton';
 import { HourPicker } from '@/components/health/HourPicker';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
 import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries, updateMealEntry, upsertFoodItem } from '@/lib/db/database';
 import { foodDisplayName } from '@/lib/domain/food';
 import { deriveMealType, formatHour } from '@/lib/domain/mealType';
 import { formatDateLabel, formatWeekRangeLabel, shiftDateKey, summarizeDay, todayKey, weekDateKeys, weekStartKey } from '@/lib/domain/nutrition';
+import { hapticSuccess } from '@/lib/utils/haptics';
 import {
   findClosestRestaurantMatch,
   getRestaurantFoodItem,
@@ -22,6 +24,7 @@ import {
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
+import { cardShadow } from '@/lib/theme/shadow';
 import { ChevronLeft, ChevronRight, ScanBarcode, Search, Trash2, X } from 'lucide-react-native';
 import type { FoodItem, MealEntry } from '@/types/healthhomie';
 
@@ -49,6 +52,7 @@ export default function JournalScreen() {
   const [aiMatching, setAiMatching] = useState(false);
   const [aiNote, setAiNote] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     const [nextFoods, nextEntries] = await Promise.all([listFoodItems(), listMealEntries(selectedDate)]);
@@ -96,6 +100,15 @@ export default function JournalScreen() {
     setViewMode('day');
   }
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await (viewMode === 'week' ? loadWeek() : load());
+    } finally {
+      setRefreshing(false);
+    }
+  }, [viewMode, loadWeek, load]);
+
   // Foods you've already scanned/searched/logged before, plus saved recipes (source: 'custom') —
   // searched locally so recipes are actually reachable when logging, not just saved and forgotten.
   const myFoodMatches = useMemo(() => {
@@ -120,6 +133,7 @@ export default function JournalScreen() {
       servings,
       createdAt: new Date().toISOString(),
     });
+    hapticSuccess();
     setActiveFood(null);
     setResults([]);
     setRestaurantResults([]);
@@ -131,6 +145,7 @@ export default function JournalScreen() {
   async function saveEntryEdit(updated: Pick<MealEntry, 'id' | 'servings' | 'hour' | 'mealType'>) {
     try {
       await updateMealEntry(updated);
+      hapticSuccess();
       setEditingEntry(null);
       await load();
     } catch (error) {
@@ -214,7 +229,11 @@ ${message}`)) void removeEntry(entry);
   }
 
   return (
-    <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
+    <ScrollView
+      style={styles.fill}
+      contentContainerStyle={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.primary} colors={[colors.primary]} />}
+    >
       <Text style={styles.title}>Food journal</Text>
       <Text style={styles.subtitle}>Search USDA foods or tap a saved food to log it.</Text>
 
@@ -324,6 +343,14 @@ ${message}`)) void removeEntry(entry);
         </Pressable>
       </View>
       {searchError && <Text style={styles.error}>{searchError}</Text>}
+
+      {searching && (
+        <>
+          <FoodRowSkeleton />
+          <FoodRowSkeleton />
+          <FoodRowSkeleton />
+        </>
+      )}
 
       {myFoodMatches.length > 0 && (
         <>
@@ -459,7 +486,7 @@ const createStyles = (colors: ThemeColors) =>
     viewToggleActive: { backgroundColor: colors.primary },
     viewToggleText: { color: colors.chipText, fontWeight: '700' },
     viewToggleTextActive: { color: colors.onPrimary },
-    weekDayRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    weekDayRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', ...cardShadow },
     weekDayRowFuture: { opacity: 0.5 },
     weekDayLabel: { fontWeight: '800', color: colors.text, fontSize: 16 },
     dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16 },
@@ -491,7 +518,7 @@ const createStyles = (colors: ThemeColors) =>
     aiMatchLink: { alignItems: 'center', paddingVertical: 6 },
     aiMatchLinkText: { color: colors.textMuted, fontWeight: '600', fontSize: 13 },
     aiNote: { color: colors.textMuted, fontSize: 13, fontStyle: 'italic', textAlign: 'center' },
-    entryRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+    entryRow: { backgroundColor: colors.surface, borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, ...cardShadow },
     entryDetails: { flex: 1, gap: 4 },
     entryName: { color: colors.text, fontSize: 16, fontWeight: '800' },
     entryMeta: { color: colors.textMuted, textTransform: 'capitalize' },

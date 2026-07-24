@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import { cardShadow } from '@/lib/theme/shadow';
 
 export function MetricCard({ label, value, helper, onPress }: { label: string; value: string; helper?: string; onPress?: () => void }) {
   const { colors } = useTheme();
@@ -35,6 +36,7 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.surfaceAlt,
       padding: 16,
       gap: 6,
+      ...cardShadow,
     },
     cardPressed: { opacity: 0.7 },
     label: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },

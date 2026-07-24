@@ -8,6 +8,7 @@ import { scaleMacros } from '@/lib/domain/nutrition';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
+import { hapticImpact } from '@/lib/utils/haptics';
 import type { FoodItem } from '@/types/healthhomie';
 
 const GRAMS_PER_OUNCE = 28.3495;
@@ -48,6 +49,7 @@ export function LogFoodModal({
 
   async function toggleFavorite() {
     if (!food || savingFavorite) return;
+    hapticImpact();
     const next = !favorite;
     setFavorite(next);
     setSavingFavorite(true);

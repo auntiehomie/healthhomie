@@ -11,6 +11,7 @@ import { currentReviewWeekIndex, datesInRange, reviewWeekRange } from '@/lib/dom
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
+import { cardShadow } from '@/lib/theme/shadow';
 
 const LAST_SHOWN_KEY = 'weekly_review_last_shown_week_index';
 
@@ -212,7 +213,7 @@ const createStyles = (colors: ThemeColors) =>
     subtitle: { ...typography.bodyMedium, color: colors.textMuted },
     scroll: { flexGrow: 0 },
     scrollContent: { gap: 14 },
-    card: { backgroundColor: colors.surface, borderRadius: 20, padding: 16, gap: 6 },
+    card: { backgroundColor: colors.surface, borderRadius: 20, padding: 16, gap: 6, ...cardShadow },
     cardTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
     big: { fontSize: 22, fontWeight: '900', color: colors.primary, marginTop: 2 },
     meta: { color: colors.textMuted, fontSize: 13 },
