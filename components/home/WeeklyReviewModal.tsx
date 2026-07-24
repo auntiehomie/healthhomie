@@ -17,6 +17,10 @@ const LAST_SHOWN_KEY = 'weekly_review_last_shown_week_index';
 
 type WeekSummary = { avgCalories: number; avgProteinG: number; avgCarbsG: number; avgFatG: number; daysLogged: number };
 
+const KG_PER_LB = 0.45359237;
+const kgToLb = (kg: number) => kg / KG_PER_LB;
+const lbToKg = (lb: number) => lb * KG_PER_LB;
+
 function formatRangeLabel(start: string, end: string): string {
   const startLabel = new Date(`${start}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   const endLabel = new Date(`${end}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -34,6 +38,7 @@ export function WeeklyReviewModal() {
   const [insight, setInsight] = useState<{ recommendedCalorieDelta: number; insight: string } | null>(null);
   const [currentWeightKg, setCurrentWeightKg] = useState<number | undefined>(undefined);
   const [weightInput, setWeightInput] = useState('');
+  const [weightUnit, setWeightUnit] = useState<'lb' | 'kg'>('lb');
   const [weightSaved, setWeightSaved] = useState(false);
   const [opacity] = useState(() => new Animated.Value(0));
   const [scale] = useState(() => new Animated.Value(0.92));
@@ -100,7 +105,7 @@ export function WeeklyReviewModal() {
       setWeekNotes(relevantNotes);
       setInsight(computedInsight);
       setCurrentWeightKg(profile.currentWeightKg);
-      setWeightInput(profile.currentWeightKg ? String(profile.currentWeightKg) : '');
+      setWeightInput(profile.currentWeightKg ? String(Math.round(kgToLb(profile.currentWeightKg) * 10) / 10) : '');
       setVisible(true);
       await AsyncStorage.setItem(LAST_SHOWN_KEY, String(weekIndex));
 
@@ -112,12 +117,23 @@ export function WeeklyReviewModal() {
     return () => { active = false; };
   }, [opacity, scale]);
 
+  function toggleWeightUnit(next: 'lb' | 'kg') {
+    if (next === weightUnit) return;
+    const value = Number(weightInput);
+    if (Number.isFinite(value) && value > 0) {
+      const converted = next === 'kg' ? lbToKg(value) : kgToLb(value);
+      setWeightInput(String(Math.round(converted * 10) / 10));
+    }
+    setWeightUnit(next);
+  }
+
   async function saveWeight() {
     const value = Number(weightInput);
     if (!Number.isFinite(value) || value <= 0) return;
+    const kgValue = weightUnit === 'lb' ? lbToKg(value) : value;
     const profile = await getUserProfile();
-    await saveUserProfile({ ...profile, currentWeightKg: value, updatedAt: new Date().toISOString() });
-    setCurrentWeightKg(value);
+    await saveUserProfile({ ...profile, currentWeightKg: kgValue, updatedAt: new Date().toISOString() });
+    setCurrentWeightKg(kgValue);
     setWeightSaved(true);
   }
 
@@ -178,10 +194,18 @@ export function WeeklyReviewModal() {
                   value={weightInput}
                   onChangeText={(value) => { setWeightInput(value); setWeightSaved(false); }}
                   keyboardType="decimal-pad"
-                  placeholder="kg"
+                  placeholder={weightUnit}
                   placeholderTextColor={colors.textMuted}
                   style={styles.weightInput}
                 />
+                <View style={styles.unitToggleRow}>
+                  <Pressable onPress={() => toggleWeightUnit('lb')} style={[styles.unitToggleBtn, weightUnit === 'lb' && styles.unitToggleBtnActive]}>
+                    <Text style={[styles.unitToggleText, weightUnit === 'lb' && styles.unitToggleTextActive]}>lb</Text>
+                  </Pressable>
+                  <Pressable onPress={() => toggleWeightUnit('kg')} style={[styles.unitToggleBtn, weightUnit === 'kg' && styles.unitToggleBtnActive]}>
+                    <Text style={[styles.unitToggleText, weightUnit === 'kg' && styles.unitToggleTextActive]}>kg</Text>
+                  </Pressable>
+                </View>
                 <Pressable style={styles.weightSaveButton} onPress={saveWeight}>
                   <Text style={styles.weightSaveButtonText}>Save</Text>
                 </Pressable>
@@ -220,8 +244,13 @@ const createStyles = (colors: ThemeColors) =>
     insightText: { color: colors.text, fontSize: 13, lineHeight: 19, marginTop: 4 },
     insightDelta: { color: colors.text, fontWeight: '800', fontSize: 13 },
     noteTitle: { color: colors.text, fontSize: 13 },
-    weightRow: { flexDirection: 'row', gap: 10 },
+    weightRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
     weightInput: { flex: 1, backgroundColor: colors.background, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border },
+    unitToggleRow: { flexDirection: 'row', backgroundColor: colors.background, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+    unitToggleBtn: { paddingHorizontal: 12, paddingVertical: 10 },
+    unitToggleBtnActive: { backgroundColor: colors.primary },
+    unitToggleText: { color: colors.textMuted, fontWeight: '700', fontSize: 13 },
+    unitToggleTextActive: { color: colors.onPrimary },
     weightSaveButton: { backgroundColor: colors.primary, borderRadius: 12, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
     weightSaveButtonText: { color: colors.onPrimary, fontWeight: '800' },
     savedText: { color: colors.success, fontWeight: '700', fontSize: 12 },
