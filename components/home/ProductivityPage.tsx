@@ -81,6 +81,32 @@ const ROUTINE_HELPER: Record<DayPeriod, string> = {
   evening: 'Last call before the day wraps.',
 };
 
+const ROUTINE_COMPLETE_MESSAGES: Record<DayPeriod, string[]> = {
+  morning: [
+    "Every box checked. That's how strong days start. 🎉",
+    "Routine's done — the rest of the day is yours to shape.",
+    'A clean sweep before most people are even up. Nice.',
+  ],
+  midday: [
+    'All checked off, right in the middle of the day. 🎉',
+    "Nothing left on the list. Keep that momentum going.",
+    'Routine handled — on to whatever comes next.',
+  ],
+  evening: [
+    "Full checklist, day well closed out. 🎉",
+    'Every item done before the day wraps up.',
+    "That's a complete routine. Rest easy.",
+  ],
+};
+
+// Stable per day+period so the message doesn't reshuffle on every render — no extra
+// storage needed since (day, period) alone is enough to seed a consistent pick.
+function pickStable<T>(pool: T[], seed: string): T {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  return pool[hash % pool.length];
+}
+
 type Affirmation = { text: string; author: string };
 
 // Real, attributed quotes only - a few of the usual "inspirational quote" picks (a Churchill
@@ -147,6 +173,7 @@ export function ProductivityPage() {
   const [affirmation, setAffirmation] = useState(randomAff());
   const [loaded, setLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [routineExpanded, setRoutineExpanded] = useState(false);
 
   // Load persisted state
   const reload = useCallback(async () => {
@@ -219,11 +246,13 @@ export function ProductivityPage() {
     if (!routineInput.trim()) return;
     setRoutine(prev => { const n = [...prev, { id: genRoutineId(), text: routineInput.trim() }]; void save('routineTemplate', n); return n; });
     setRoutineInput('');
+    setRoutineExpanded(false);
   }, [routineInput]);
   const toggleRoutine = useCallback((id: string) => {
     setRoutineDoneIds(prev => {
       const completing = !prev.includes(id);
       if (completing) hapticSuccess(); else hapticImpact();
+      if (!completing) setRoutineExpanded(false);
       const n = completing ? [...prev, id] : prev.filter(x => x !== id);
       void save('routineDone_' + day, n);
       return n;
@@ -283,6 +312,9 @@ export function ProductivityPage() {
   const loggedMoodObj = loggedMood ? MOODS.find(m => m.key === loggedMood) : undefined;
   const openRoutine = routine.filter(r => !routineDoneIds.includes(r.id));
   const completedRoutine = routine.filter(r => routineDoneIds.includes(r.id));
+  const routineFullyDone = routine.length > 0 && openRoutine.length === 0;
+  const routineCollapsed = routineFullyDone && !routineExpanded;
+  const routineCompleteMessage = pickStable(ROUTINE_COMPLETE_MESSAGES[currentPeriod], day + currentPeriod);
 
   return (
     <ScrollView
@@ -356,36 +388,55 @@ export function ProductivityPage() {
         <Text style={styles.cardTitle}>✅ Morning routine</Text>
         <Text style={styles.muted}>{ROUTINE_HELPER[currentPeriod]}</Text>
         {routine.length === 0 && <Text style={styles.muted}>Add your morning routine steps below</Text>}
-        {openRoutine.map(item => (
-          <View key={item.id} style={styles.routineRow}>
-            <Pressable onPress={() => toggleRoutine(item.id)} style={styles.checkbox}>
-              <Text style={styles.checkboxText}>⬜</Text>
-            </Pressable>
-            <Text style={styles.routineText}>{item.text}</Text>
-            <Pressable onPress={() => deleteRoutine(item.id)}>
-              <Text style={styles.deleteBtn}>✕</Text>
-            </Pressable>
-          </View>
-        ))}
-        {completedRoutine.length > 0 && (
-          <>
-            <View style={styles.completedHeaderRow}>
-              <Text style={styles.completedLabel}>Completed ({completedRoutine.length})</Text>
-              <Pressable onPress={archiveCompletedRoutine}>
-                <Text style={styles.noteLink}>Archive to Notes →</Text>
-              </Pressable>
+        {routineCollapsed ? (
+          <View style={styles.moodCollapsed}>
+            <Text style={styles.moodCollapsedEmoji}>🎉</Text>
+            <View style={styles.routineCollapsedBody}>
+              <Text style={styles.moodCollapsedText}>{routineCompleteMessage}</Text>
+              <View style={styles.completedHeaderRow}>
+                <Pressable onPress={() => setRoutineExpanded(true)}>
+                  <Text style={styles.noteLink}>Show checklist</Text>
+                </Pressable>
+                <Pressable onPress={archiveCompletedRoutine}>
+                  <Text style={styles.noteLink}>Archive to Notes →</Text>
+                </Pressable>
+              </View>
             </View>
-            {completedRoutine.map(item => (
+          </View>
+        ) : (
+          <>
+            {openRoutine.map(item => (
               <View key={item.id} style={styles.routineRow}>
                 <Pressable onPress={() => toggleRoutine(item.id)} style={styles.checkbox}>
-                  <Text style={styles.checkboxText}>✅</Text>
+                  <Text style={styles.checkboxText}>⬜</Text>
                 </Pressable>
-                <Text style={[styles.routineText, styles.routineDone]}>{item.text}</Text>
+                <Text style={styles.routineText}>{item.text}</Text>
                 <Pressable onPress={() => deleteRoutine(item.id)}>
                   <Text style={styles.deleteBtn}>✕</Text>
                 </Pressable>
               </View>
             ))}
+            {completedRoutine.length > 0 && (
+              <>
+                <View style={styles.completedHeaderRow}>
+                  <Text style={styles.completedLabel}>Completed ({completedRoutine.length})</Text>
+                  <Pressable onPress={archiveCompletedRoutine}>
+                    <Text style={styles.noteLink}>Archive to Notes →</Text>
+                  </Pressable>
+                </View>
+                {completedRoutine.map(item => (
+                  <View key={item.id} style={styles.routineRow}>
+                    <Pressable onPress={() => toggleRoutine(item.id)} style={styles.checkbox}>
+                      <Text style={styles.checkboxText}>✅</Text>
+                    </Pressable>
+                    <Text style={[styles.routineText, styles.routineDone]}>{item.text}</Text>
+                    <Pressable onPress={() => deleteRoutine(item.id)}>
+                      <Text style={styles.deleteBtn}>✕</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </>
+            )}
           </>
         )}
         <View style={styles.row}>
@@ -457,6 +508,7 @@ const createStyles = (colors: ThemeColors) =>
     moodCollapsed:     { flexDirection: 'row', alignItems: 'center', gap: 12 },
     moodCollapsedEmoji:{ fontSize: 32 },
     moodCollapsedText: { flex: 1, color: colors.text, fontSize: 15, lineHeight: 21 },
+    routineCollapsedBody: { flex: 1, gap: 8 },
     input:        { backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: colors.text, fontSize: 15, borderWidth: 1, borderColor: colors.border },
     waterRow:     { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     glass:        { fontSize: 28, opacity: 0.25 },
