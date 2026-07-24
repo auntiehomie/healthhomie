@@ -13,6 +13,7 @@ import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries
 import { foodDisplayName } from '@/lib/domain/food';
 import { deriveMealType, formatHour } from '@/lib/domain/mealType';
 import { formatDateLabel, formatWeekRangeLabel, shiftDateKey, summarizeDay, todayKey, weekDateKeys, weekStartKey } from '@/lib/domain/nutrition';
+import { suggestFoodsForHour } from '@/lib/domain/suggestions';
 import { hapticSuccess } from '@/lib/utils/haptics';
 import {
   findClosestRestaurantMatch,
@@ -53,6 +54,7 @@ export default function JournalScreen() {
   const [aiNote, setAiNote] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [historyEntries, setHistoryEntries] = useState<MealEntry[]>([]);
 
   const load = useCallback(async () => {
     const [nextFoods, nextEntries] = await Promise.all([listFoodItems(), listMealEntries(selectedDate)]);
@@ -61,6 +63,14 @@ export default function JournalScreen() {
   }, [selectedDate]);
 
   useFocusEffect(useCallback(() => { load().catch(console.warn); }, [load]));
+
+  // Full logging history (not scoped to selectedDate) used to learn time-of-day eating patterns
+  // for the "Suggested for now" section - separate from `load()` since that's scoped to one day.
+  const loadHistory = useCallback(async () => {
+    setHistoryEntries(await listMealEntries());
+  }, []);
+
+  useFocusEffect(useCallback(() => { loadHistory().catch(console.warn); }, [loadHistory]));
   const summary = useMemo(() => summarizeDay(selectedDate, entries, foods), [entries, foods, selectedDate]);
   const isToday = selectedDate === todayKey();
 
@@ -103,11 +113,11 @@ export default function JournalScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await (viewMode === 'week' ? loadWeek() : load());
+      await Promise.all([viewMode === 'week' ? loadWeek() : load(), loadHistory()]);
     } finally {
       setRefreshing(false);
     }
-  }, [viewMode, loadWeek, load]);
+  }, [viewMode, loadWeek, load, loadHistory]);
 
   // Foods you've already scanned/searched/logged before, plus saved recipes (source: 'custom') —
   // searched locally so recipes are actually reachable when logging, not just saved and forgotten.
@@ -121,6 +131,18 @@ export default function JournalScreen() {
   // myFoodMatches, so a food you scan/search often enough to save doesn't need re-scanning or
   // re-typing its name every time.
   const quickAddFoods = useMemo(() => foods.filter((food) => food.favorite), [foods]);
+
+  // Learned from actual logging history rather than manually starred - foods you've logged more
+  // than once around this same hour, weighted toward recent logs. Excludes anything already
+  // logged for the selected day and anything already in Quick add (redundant to suggest twice).
+  const alreadyShownIds = useMemo(
+    () => new Set([...entries.map((e) => e.foodItemId), ...quickAddFoods.map((f) => f.id)]),
+    [entries, quickAddFoods]
+  );
+  const suggestedFoods = useMemo(
+    () => suggestFoodsForHour({ allEntries: historyEntries, foods, hour: selectedHour, todayFoodItemIds: alreadyShownIds }),
+    [historyEntries, foods, selectedHour, alreadyShownIds]
+  );
 
   async function logFood(food: FoodItem, servings: number) {
     await upsertFoodItem(food);
@@ -318,6 +340,21 @@ ${message}`)) void removeEntry(entry);
               key={food.id}
               title={foodDisplayName(food)}
               meta={`${food.servingSize}${food.servingUnit} · ${food.source}`}
+              rightLabel={`${Math.round(food.calories)} kcal`}
+              onPress={() => setActiveFood(food)}
+            />
+          ))}
+        </>
+      )}
+
+      {suggestedFoods.length > 0 && (
+        <>
+          <Text style={styles.label}>🧠 Suggested for now</Text>
+          {suggestedFoods.map(({ food, occurrences }) => (
+            <FoodRow
+              key={food.id}
+              title={foodDisplayName(food)}
+              meta={`${food.servingSize}${food.servingUnit} · logged ${occurrences}× around this time`}
               rightLabel={`${Math.round(food.calories)} kcal`}
               onPress={() => setActiveFood(food)}
             />
