@@ -5,7 +5,7 @@ import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedbac
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 
-const HOUR_CHIP_WIDTH = 64;
+const HOUR_CHIP_WIDTH = 60;
 
 export function HourPicker({ label = 'Time', selectedHour, onSelectHour }: { label?: string; selectedHour: number; onSelectHour: (hour: number) => void }) {
   const { colors } = useTheme();
@@ -29,7 +29,7 @@ export function HourPicker({ label = 'Time', selectedHour, onSelectHour }: { lab
       >
         {HOURS.map((hour) => (
           <Pressable key={hour} onPress={() => onSelectHour(hour)} style={[styles.chip, selectedHour === hour && styles.chipActive]}>
-            <Text style={[styles.chipText, selectedHour === hour && styles.chipTextActive]}>{formatHour(hour)}</Text>
+            <Text style={[styles.chipText, selectedHour === hour && styles.chipTextActive]} numberOfLines={1}>{formatHour(hour)}</Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -43,8 +43,8 @@ const createStyles = (colors: ThemeColors) =>
     label: { color: colors.text, fontWeight: '800' },
     scroll: { flexGrow: 0 },
     row: { flexDirection: 'row', gap: 8 },
-    chip: { width: HOUR_CHIP_WIDTH, alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, backgroundColor: colors.chipBackground },
+    chip: { width: HOUR_CHIP_WIDTH, alignItems: 'center', paddingHorizontal: 6, paddingVertical: 8, borderRadius: 999, backgroundColor: colors.chipBackground },
     chipActive: { backgroundColor: colors.primary },
-    chipText: { color: colors.chipText, fontWeight: '700' },
+    chipText: { color: colors.chipText, fontWeight: '700', fontSize: 13 },
     chipTextActive: { color: colors.onPrimary },
   });
