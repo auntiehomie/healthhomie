@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { getSql, DatabaseNotConfiguredError } from '../../lib/server/db';
 import { hashPassword, signAuthToken } from '../../lib/server/auth';
 import { consumeInviteCode } from '../../lib/server/inviteStore';
+import { sendWelcomeEmail } from '../../lib/server/welcomeEmail';
 import type { FoodItem } from '../../types/healthhomie';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -42,6 +43,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     await seedDemoFoods(userId);
+
+    const proto = (req.headers['x-forwarded-proto'] as string | undefined) ?? 'https';
+    const host = (req.headers['x-forwarded-host'] as string | undefined) ?? req.headers.host;
+    void sendWelcomeEmail(normalizedEmail, `${proto}://${host}/`);
 
     res.status(201).json({ token: signAuthToken(userId, isBootstrapSecret) });
   } catch (error) {
