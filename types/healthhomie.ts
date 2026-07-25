@@ -1,5 +1,7 @@
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
+export type Mood = 'great' | 'good' | 'meh' | 'tired' | 'stressed';
+
 export type MacroNutrients = {
   calories: number;
   proteinG: number;

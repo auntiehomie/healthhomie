@@ -16,11 +16,11 @@ import { hapticImpact, hapticSuccess } from '@/lib/utils/haptics';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
+import type { Mood } from '@/types/healthhomie';
 import { typography } from '@/lib/theme/typography';
 import { cardShadow } from '@/lib/theme/shadow';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Mood = 'great' | 'good' | 'meh' | 'tired' | 'stressed';
 type MoodLog = Partial<Record<DayPeriod, Mood>>;
 type MoodMessages = Partial<Record<DayPeriod, string>>;
 interface RoutineItem { id: string; text: string }

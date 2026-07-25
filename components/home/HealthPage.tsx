@@ -9,19 +9,25 @@ import {
   View,
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { MacroRing } from '@/components/health/MacroRing';
 import { MetricCard } from '@/components/health/MetricCard';
 import { generateSuggestion, getCachedSuggestion } from '@/lib/services/aiSuggestionsClient';
 import { getUserProfile, listFoodItems, listMealEntries } from '@/lib/db/database';
+import { getDailyProductivityLogs } from '@/lib/db/dailyLogStorage';
 import { calculateDailyGoal } from '@/lib/domain/goals';
+import { computeCorrelationInsights, type Insight } from '@/lib/domain/insights';
 import { summarizeDay, todayKey } from '@/lib/domain/nutrition';
 import { connectOura, getOuraStatus, syncOura } from '@/lib/services/ouraClient';
+import { getHealthMetricsHistory } from '@/lib/services/healthMetricsClient';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
 import { cardShadow } from '@/lib/theme/shadow';
 import type { DailyNutritionSummary } from '@/types/healthhomie';
+
+const INSIGHTS_WINDOW_DAYS = 30;
 
 const FAT_COLOR = '#e2725a';
 
@@ -92,6 +98,9 @@ export function HealthPage() {
   const [aiLoading, setAiLoading] = useState(true);
   const [aiError, setAiError] = useState<string | null>(null);
 
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const [insightsLoading, setInsightsLoading] = useState(true);
+
   const [refreshing, setRefreshing] = useState(false);
 
   const loadOura = useCallback(async (active: () => boolean) => {
@@ -147,24 +156,61 @@ export function HealthPage() {
     }
   }, []);
 
+  // Cross-domain "patterns" insights - combines server-side nutrition/readiness history with
+  // device-local mood/routine history, so it's a self-contained loader with its own profile fetch
+  // rather than depending on state set by the other loaders' timing.
+  const loadInsights = useCallback(async (active: () => boolean) => {
+    setInsightsLoading(true);
+    try {
+      const [allFoods, allEntries, profile, productivity, readiness, templateRaw] = await Promise.all([
+        listFoodItems(),
+        listMealEntries(),
+        getUserProfile(),
+        getDailyProductivityLogs(INSIGHTS_WINDOW_DAYS),
+        getHealthMetricsHistory(INSIGHTS_WINDOW_DAYS),
+        AsyncStorage.getItem('morning_routineTemplate'),
+      ]);
+      if (!active()) return;
+
+      const dates = Array.from(new Set(allEntries.map((entry) => entry.date)));
+      const nutrition = dates.map((date) => summarizeDay(date, allEntries, allFoods));
+      let routineTemplateLength = 0;
+      try {
+        const template = templateRaw ? JSON.parse(templateRaw) : [];
+        routineTemplateLength = Array.isArray(template) ? template.length : 0;
+      } catch { /* ignore corrupt local value */ }
+
+      setInsights(computeCorrelationInsights({
+        nutrition,
+        proteinTargetG: calculateDailyGoal(profile).proteinTargetG,
+        productivity,
+        readiness,
+        routineTemplateLength,
+      }));
+    } finally {
+      if (active()) setInsightsLoading(false);
+    }
+  }, []);
+
   useFocusEffect(useCallback(() => {
     let alive = true;
     const active = () => alive;
     void loadOura(active);
     void loadFoodSummary(active);
     void loadAiSuggestion(active);
+    void loadInsights(active);
     return () => { alive = false; };
-  }, [loadOura, loadFoodSummary, loadAiSuggestion]));
+  }, [loadOura, loadFoodSummary, loadAiSuggestion, loadInsights]));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     const active = () => true;
     try {
-      await Promise.all([loadOura(active), loadFoodSummary(active), loadAiSuggestion(active, true)]);
+      await Promise.all([loadOura(active), loadFoodSummary(active), loadAiSuggestion(active, true), loadInsights(active)]);
     } finally {
       setRefreshing(false);
     }
-  }, [loadOura, loadFoodSummary, loadAiSuggestion]);
+  }, [loadOura, loadFoodSummary, loadAiSuggestion, loadInsights]);
 
   async function handleRegenerate() {
     setAiLoading(true);
@@ -226,6 +272,8 @@ export function HealthPage() {
             <MacroRing label="Fat" actual={summary.fatG} target={goal.fatG} color={FAT_COLOR} />
           </View>
         </View>
+
+        <InsightsCard insights={insights} loading={insightsLoading} styles={styles} />
       </ScrollView>
     );
   }
@@ -373,7 +421,31 @@ export function HealthPage() {
           <MacroRing label="Fat" actual={summary.fatG} target={goal.fatG} color={FAT_COLOR} />
         </View>
       </View>
+
+      <InsightsCard insights={insights} loading={insightsLoading} styles={styles} />
     </ScrollView>
+  );
+}
+
+/** Cross-domain "patterns" surfaced from logging history - see lib/domain/insights.ts for how
+ * these are computed and why each one requires a real sample size before it's shown. */
+function InsightsCard({ insights, loading, styles }: { insights: Insight[]; loading: boolean; styles: ReturnType<typeof createStyles> }) {
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>📊 Patterns in your data</Text>
+      {loading ? (
+        <Text style={styles.muted}>Looking for patterns in your logging history…</Text>
+      ) : insights.length > 0 ? (
+        <>
+          {insights.map((insight) => (
+            <Text key={insight.id} style={styles.insightItem}>• {insight.text}</Text>
+          ))}
+          <Text style={styles.disclaimer}>Patterns in your own data, not medical advice — correlation isn&apos;t causation.</Text>
+        </>
+      ) : (
+        <Text style={styles.muted}>Keep logging mood, protein, and your morning routine — patterns need a couple weeks of consistent data before there&apos;s enough to show.</Text>
+      )}
+    </View>
   );
 }
 
@@ -402,6 +474,8 @@ const createStyles = (colors: ThemeColors) =>
     refreshLink:    { color: colors.primary, fontWeight: '700', fontSize: 13 },
     refreshLinkDisabled: { opacity: 0.5 },
     muted:          { color: colors.textMuted, fontSize: 13 },
+    insightItem:    { fontSize: 14, color: colors.text, lineHeight: 20 },
+    disclaimer:     { color: colors.textMuted, fontSize: 12, lineHeight: 16, marginTop: 4 },
     curveContainer: { flexDirection: 'row', alignItems: 'flex-end', height: 130, gap: 8, paddingTop: 10 },
     barWrapper:     { flex: 1, alignItems: 'center', gap: 6 },
     bar:            { width: '100%', borderRadius: 6 },
