@@ -108,7 +108,7 @@ async function loadRecipes(userId: string, onlyId?: string): Promise<Recipe[]> {
 
 export async function saveRecipe(
   userId: string,
-  input: { id?: string; name: string; servings: number; ingredients: { foodItemId: string; servings: number }[] }
+  input: { id?: string; name: string; servings: number; ingredients: { foodItemId: string; servings: number }[]; favorite?: boolean }
 ): Promise<Recipe> {
   const sql = getSql();
   const id = input.id ?? randomUUID();
@@ -135,7 +135,7 @@ export async function saveRecipe(
   const recipe = await getRecipe(userId, id);
   if (!recipe) throw new Error('Failed to save recipe.');
 
-  await mirrorRecipeAsFoodItem(userId, recipe);
+  await mirrorRecipeAsFoodItem(userId, recipe, input.favorite ?? false);
   return recipe;
 }
 
@@ -146,7 +146,7 @@ export async function saveRecipe(
  * row in place, matching the rest of the app: food_items are never hard-deleted, since past
  * meal_entries reference them by id and would otherwise lose their macros retroactively.
  */
-async function mirrorRecipeAsFoodItem(userId: string, recipe: Recipe): Promise<void> {
+async function mirrorRecipeAsFoodItem(userId: string, recipe: Recipe, favorite: boolean): Promise<void> {
   const sql = getSql();
   const totals = recipeTotals(recipe.ingredients);
   const perServing = scaleMacros(totals, 1 / Math.max(recipe.servings, 0.01));
@@ -154,12 +154,12 @@ async function mirrorRecipeAsFoodItem(userId: string, recipe: Recipe): Promise<v
   const foodId = `recipe-${recipe.id}`;
 
   await sql`
-    INSERT INTO food_items (id, "userId", name, "servingSize", "servingUnit", source, "sourceId", calories, "proteinG", "carbsG", "fatG", "fiberG", "sugarG", "sodiumMg", "createdAt", "updatedAt")
-    VALUES (${foodId}, ${userId}, ${recipe.name}, 1, 'serving', 'custom', ${recipe.id}, ${perServing.calories}, ${perServing.proteinG}, ${perServing.carbsG}, ${perServing.fatG}, ${perServing.fiberG ?? null}, ${perServing.sugarG ?? null}, ${perServing.sodiumMg ?? null}, ${now}, ${now})
+    INSERT INTO food_items (id, "userId", name, "servingSize", "servingUnit", source, "sourceId", calories, "proteinG", "carbsG", "fatG", "fiberG", "sugarG", "sodiumMg", favorite, "createdAt", "updatedAt")
+    VALUES (${foodId}, ${userId}, ${recipe.name}, 1, 'serving', 'custom', ${recipe.id}, ${perServing.calories}, ${perServing.proteinG}, ${perServing.carbsG}, ${perServing.fatG}, ${perServing.fiberG ?? null}, ${perServing.sugarG ?? null}, ${perServing.sodiumMg ?? null}, ${favorite}, ${now}, ${now})
     ON CONFLICT ("userId", id) DO UPDATE SET
       name = EXCLUDED.name, calories = EXCLUDED.calories, "proteinG" = EXCLUDED."proteinG",
       "carbsG" = EXCLUDED."carbsG", "fatG" = EXCLUDED."fatG", "fiberG" = EXCLUDED."fiberG",
-      "sugarG" = EXCLUDED."sugarG", "sodiumMg" = EXCLUDED."sodiumMg", "updatedAt" = EXCLUDED."updatedAt"
+      "sugarG" = EXCLUDED."sugarG", "sodiumMg" = EXCLUDED."sodiumMg", favorite = EXCLUDED.favorite, "updatedAt" = EXCLUDED."updatedAt"
   `;
 }
 

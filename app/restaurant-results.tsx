@@ -70,13 +70,13 @@ export default function RestaurantResultsScreen() {
     }
   }
 
-  async function logFood(food: FoodItem, servings: number) {
+  async function logFood(food: FoodItem, servings: number, chosenHour: number) {
     await upsertFoodItem(food);
     await addMealEntry({
       id: createId('entry'),
       foodItemId: food.id,
-      mealType: deriveMealType(hour),
-      hour,
+      mealType: deriveMealType(chosenHour),
+      hour: chosenHour,
       date,
       servings,
       createdAt: new Date().toISOString(),
@@ -117,7 +117,7 @@ export default function RestaurantResultsScreen() {
       )}
       {aiNote && <Text style={styles.aiNote}>{aiNote}</Text>}
 
-      <LogFoodModal key={activeFood?.id} food={activeFood} onClose={() => setActiveFood(null)} onConfirm={logFood} />
+      <LogFoodModal key={activeFood?.id} food={activeFood} onClose={() => setActiveFood(null)} onConfirm={logFood} initialHour={hour} />
     </ScrollView>
   );
 }

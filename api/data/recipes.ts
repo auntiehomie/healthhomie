@@ -18,6 +18,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         name?: string;
         servings?: number;
         ingredients?: { foodItemId: string; servings: number }[];
+        favorite?: boolean;
       };
       if (!body.name?.trim()) return res.status(400).json({ error: 'Recipe name is required.' });
       if (!body.ingredients?.length) return res.status(400).json({ error: 'Add at least one ingredient.' });
@@ -27,6 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         name: body.name.trim(),
         servings: body.servings ?? 1,
         ingredients: body.ingredients,
+        favorite: body.favorite ?? false,
       });
       return res.status(200).json({ recipe });
     }

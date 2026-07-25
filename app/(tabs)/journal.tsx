@@ -144,13 +144,13 @@ export default function JournalScreen() {
     [historyEntries, foods, selectedHour, alreadyShownIds]
   );
 
-  async function logFood(food: FoodItem, servings: number) {
+  async function logFood(food: FoodItem, servings: number, hour: number) {
     await upsertFoodItem(food);
     await addMealEntry({
       id: createId('entry'),
       foodItemId: food.id,
-      mealType: deriveMealType(selectedHour),
-      hour: selectedHour,
+      mealType: deriveMealType(hour),
+      hour,
       date: selectedDate,
       servings,
       createdAt: new Date().toISOString(),
@@ -333,18 +333,9 @@ ${message}`)) void removeEntry(entry);
       <HourPicker selectedHour={selectedHour} onSelectHour={setSelectedHour} />
 
       {quickAddFoods.length > 0 && (
-        <>
-          <Text style={styles.label}>⭐ Quick add</Text>
-          {quickAddFoods.map((food) => (
-            <FoodRow
-              key={food.id}
-              title={foodDisplayName(food)}
-              meta={`${food.servingSize}${food.servingUnit} · ${food.source}`}
-              rightLabel={`${Math.round(food.calories)} kcal`}
-              onPress={() => setActiveFood(food)}
-            />
-          ))}
-        </>
+        <Pressable style={styles.seeMoreButton} onPress={() => router.push('/quick-add')}>
+          <Text style={styles.seeMoreButtonText}>⭐ Quick add foods & recipes ({quickAddFoods.length}) →</Text>
+        </Pressable>
       )}
 
       {suggestedFoods.length > 0 && (
@@ -475,7 +466,7 @@ ${message}`)) void removeEntry(entry);
         </>
       )}
 
-      <LogFoodModal key={activeFood?.id} food={activeFood} onClose={() => setActiveFood(null)} onConfirm={logFood} />
+      <LogFoodModal key={activeFood?.id} food={activeFood} onClose={() => setActiveFood(null)} onConfirm={logFood} initialHour={selectedHour} />
 
       <EditEntryModal
         key={editingEntry?.id}

@@ -7,7 +7,7 @@ import { BarcodeScanner } from '@/components/health/BarcodeScanner';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { FoodRow } from '@/components/health/FoodRow';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
-import { listRecipes, saveRecipe, upsertFoodItem } from '@/lib/db/database';
+import { listFoodItems, listRecipes, saveRecipe, upsertFoodItem } from '@/lib/db/database';
 import { foodDisplayName } from '@/lib/domain/food';
 import { recipePerServing, recipeTotals } from '@/lib/domain/recipes';
 import { searchUsdaFoods } from '@/lib/services/nutritionApi';
@@ -26,6 +26,7 @@ export default function RecipeEditorScreen() {
   const [name, setName] = useState('');
   const [servingsText, setServingsText] = useState('1');
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
+  const [favorite, setFavorite] = useState(false);
   const [loaded, setLoaded] = useState(!isEditing);
 
   const [query, setQuery] = useState('');
@@ -41,13 +42,16 @@ export default function RecipeEditorScreen() {
   useFocusEffect(useCallback(() => {
     if (!isEditing) return;
     let active = true;
-    listRecipes().then((recipes) => {
+    Promise.all([listRecipes(), listFoodItems()]).then(([recipes, foods]) => {
       if (!active) return;
       const recipe = recipes.find((r) => r.id === id);
       if (recipe) {
         setName(recipe.name);
         setServingsText(String(recipe.servings));
         setIngredients(recipe.ingredients);
+        // Recipes are mirrored into food_items as `recipe-<id>` (see recipeStore.ts) - that
+        // mirrored row is what actually carries the favorite/quick-add flag.
+        setFavorite(foods.find((f) => f.id === `recipe-${id}`)?.favorite ?? false);
       }
       setLoaded(true);
     }).catch(() => setLoaded(true));
@@ -94,6 +98,7 @@ export default function RecipeEditorScreen() {
         name: name.trim(),
         servings: servingsYield,
         ingredients: ingredients.map((ing) => ({ foodItemId: ing.foodItemId, servings: ing.servings })),
+        favorite,
       });
       router.back();
     } catch (err) {
@@ -131,6 +136,11 @@ export default function RecipeEditorScreen() {
         />
         <Text style={styles.label}>serving{servingsYield === 1 ? '' : 's'}</Text>
       </View>
+
+      <Pressable style={styles.favoriteRow} onPress={() => setFavorite((prev) => !prev)}>
+        <Text style={styles.favoriteIcon}>{favorite ? '⭐' : '☆'}</Text>
+        <Text style={styles.favoriteLabel}>{favorite ? 'Saved to Quick add' : 'Save to Quick add'}</Text>
+      </Pressable>
 
       <View style={styles.totalsCard}>
         <Text style={styles.totalsTitle}>Per serving</Text>
@@ -195,7 +205,7 @@ export default function RecipeEditorScreen() {
         <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save recipe'}</Text>
       </Pressable>
 
-      <LogFoodModal key={activeFood?.id} food={activeFood} onClose={() => setActiveFood(null)} onConfirm={addIngredient} />
+      <LogFoodModal key={activeFood?.id} food={activeFood} onClose={() => setActiveFood(null)} onConfirm={addIngredient} showTimePicker={false} />
 
       <Modal visible={scannerOpen} animationType="slide" onRequestClose={() => setScannerOpen(false)}>
         <View style={[styles.scannerScreen, { paddingTop: insets.top + 20 }]}>
@@ -236,6 +246,9 @@ const createStyles = (colors: ThemeColors) =>
     yieldRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     label: { color: colors.text, fontWeight: '800', marginTop: 4 },
     yieldInput: { backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 16, color: colors.text, width: 70, textAlign: 'center' },
+    favoriteRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.surface, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12 },
+    favoriteIcon: { fontSize: 24, color: colors.primary },
+    favoriteLabel: { color: colors.text, fontWeight: '700', fontSize: 15 },
     totalsCard: { backgroundColor: colors.surfaceAlt, borderRadius: 20, padding: 16, gap: 10 },
     totalsTitle: { fontWeight: '800', color: colors.text, fontSize: 15 },
     totalsSubtitle: { ...typography.caption, color: colors.textMuted },

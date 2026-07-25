@@ -59,7 +59,7 @@ export async function listRecipes(): Promise<Recipe[]> {
   return payload.recipes;
 }
 
-export async function saveRecipe(input: { id?: string; name: string; servings: number; ingredients: { foodItemId: string; servings: number }[] }): Promise<Recipe> {
+export async function saveRecipe(input: { id?: string; name: string; servings: number; ingredients: { foodItemId: string; servings: number }[]; favorite?: boolean }): Promise<Recipe> {
   const response = await apiFetch('/api/data/recipes', { method: 'POST', body: JSON.stringify(input) });
   const payload = await response.json();
   return payload.recipe;
