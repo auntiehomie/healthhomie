@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Modal, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { HourPicker } from '@/components/health/HourPicker';
@@ -28,7 +28,7 @@ export function LogFoodModal({
 }: {
   food: FoodItem | null;
   onClose: () => void;
-  onConfirm: (food: FoodItem, servings: number, hour: number) => void;
+  onConfirm: (food: FoodItem, servings: number, hour: number) => void | Promise<void>;
   initialHour?: number;
   showTimePicker?: boolean;
 }) {
@@ -36,6 +36,8 @@ export function LogFoodModal({
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const [hour, setHour] = useState(() => initialHour ?? new Date().getHours());
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const unitLower = food?.servingUnit.toLowerCase() ?? '';
   const isMass = unitLower === 'g';
   const isVolume = unitLower === 'ml';
@@ -105,6 +107,20 @@ export function LogFoodModal({
     const nextAmount = next === 'fl oz' ? amount / ML_PER_FL_OZ : amount * ML_PER_FL_OZ;
     setAmountText(round1(nextAmount).toString());
     setVolumeUnit(next);
+  }
+
+  async function handleConfirm() {
+    if (confirming || !food) return; // guards against double-tap firing addMealEntry twice
+    setConfirming(true);
+    setConfirmError(null);
+    try {
+      await onConfirm(food, servings, hour);
+      // On success the caller closes/navigates away shortly, unmounting this modal - leaving the
+      // button disabled through that transition avoids a flash of it re-enabling right before.
+    } catch (err) {
+      setConfirmError(err instanceof Error ? err.message : 'Failed to log. Please try again.');
+      setConfirming(false);
+    }
   }
 
   return (
@@ -188,16 +204,18 @@ export function LogFoodModal({
             <MacroStat label="Fat" value={macros ? `${Math.round(macros.fatG)}g` : '—'} />
           </View>
 
+          {confirmError && <Text style={styles.error}>{confirmError}</Text>}
+
           <View style={styles.actionRow}>
-            <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose}>
+            <Pressable style={[styles.button, styles.cancelButton, confirming && styles.buttonDisabled]} disabled={confirming} onPress={onClose}>
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </Pressable>
             <Pressable
-              style={[styles.button, styles.confirmButton, !valid && styles.buttonDisabled]}
-              disabled={!valid}
-              onPress={() => onConfirm(food, servings, hour)}
+              style={[styles.button, styles.confirmButton, (!valid || confirming) && styles.buttonDisabled]}
+              disabled={!valid || confirming}
+              onPress={handleConfirm}
             >
-              <Text style={styles.confirmButtonText}>Log food</Text>
+              {confirming ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.confirmButtonText}>Log food</Text>}
             </Pressable>
           </View>
         </View>
