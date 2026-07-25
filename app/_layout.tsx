@@ -67,6 +67,7 @@ function AppShell() {
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="recipe-editor" options={{ headerTitle: 'Recipe' }} />
         <Stack.Screen name="restaurant-results" options={{ headerTitle: 'Restaurants' }} />
+        <Stack.Screen name="quick-add" options={{ headerTitle: 'Quick Add' }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
         <Stack.Screen name="reset-password" options={{ headerShown: false }} />

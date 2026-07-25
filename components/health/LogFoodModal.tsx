@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Modal, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
+import { HourPicker } from '@/components/health/HourPicker';
 import { upsertFoodItem } from '@/lib/db/database';
 import { foodDisplayName } from '@/lib/domain/food';
 import { scaleMacros } from '@/lib/domain/nutrition';
@@ -22,14 +23,19 @@ export function LogFoodModal({
   food,
   onClose,
   onConfirm,
+  initialHour,
+  showTimePicker = true,
 }: {
   food: FoodItem | null;
   onClose: () => void;
-  onConfirm: (food: FoodItem, servings: number) => void;
+  onConfirm: (food: FoodItem, servings: number, hour: number) => void;
+  initialHour?: number;
+  showTimePicker?: boolean;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
+  const [hour, setHour] = useState(() => initialHour ?? new Date().getHours());
   const unitLower = food?.servingUnit.toLowerCase() ?? '';
   const isMass = unitLower === 'g';
   const isVolume = unitLower === 'ml';
@@ -113,6 +119,8 @@ export function LogFoodModal({
           </View>
           <Text style={styles.subtitle}>Base: {food.servingSize}{food.servingUnit} · {Math.round(food.calories)} kcal</Text>
 
+          {showTimePicker && <HourPicker selectedHour={hour} onSelectHour={setHour} />}
+
           {hasServingsToggle && (
             <View style={styles.modeToggle}>
               <Pressable onPress={() => setMode('unit')} style={[styles.modeChip, mode === 'unit' && styles.modeChipActive]}>
@@ -187,7 +195,7 @@ export function LogFoodModal({
             <Pressable
               style={[styles.button, styles.confirmButton, !valid && styles.buttonDisabled]}
               disabled={!valid}
-              onPress={() => onConfirm(food, servings)}
+              onPress={() => onConfirm(food, servings, hour)}
             >
               <Text style={styles.confirmButtonText}>Log food</Text>
             </Pressable>
