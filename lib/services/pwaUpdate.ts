@@ -40,6 +40,17 @@ export function registerServiceWorker(): void {
           }
         });
       });
+
+      // iOS Safari's automatic update check for home-screen-installed PWAs is unreliable —
+      // standalone-mode service workers don't consistently get re-checked on navigation the way
+      // Chrome/desktop does, so a device can sit on a stale build indefinitely with no banner
+      // ever appearing. Force an explicit check right after registering and every time the app
+      // comes back to the foreground (the most common "did a new version ship while I was away"
+      // moment), instead of relying solely on the browser to notice on its own.
+      void registration.update().catch(() => {});
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') void registration.update().catch(() => {});
+      });
     })
     .catch(() => {});
 
