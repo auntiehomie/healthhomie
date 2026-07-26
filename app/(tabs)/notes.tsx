@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
-import { genNoteId, loadNotes, saveNotes, type Note } from '@/lib/db/notesStorage';
+import { flushPendingNoteSaves, genNoteId, loadNotes, removeNote, upsertNote, upsertNoteDebounced, type Note } from '@/lib/db/notesStorage';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
@@ -54,6 +54,10 @@ export default function NotesScreen() {
 
   useEffect(() => {
     loadNotes().then(n => { setNotes(n); setLoaded(true); });
+    // Safety net: a debounced keystroke save still pending when this screen unmounts (app
+    // backgrounded mid-edit, tab switched without hitting the explicit flush in back()) would
+    // otherwise be silently dropped.
+    return () => { void flushPendingNoteSaves(); };
   }, []);
 
   const onRefresh = useCallback(async () => {
@@ -74,11 +78,10 @@ export default function NotesScreen() {
   );
   const wikilinks = useMemo(() => extractWikilinks(editContent), [editContent]);
 
-  const updateNotes = useCallback((next: Note[]) => {
-    setNotes(next); void saveNotes(next);
-  }, []);
-
   function openNote(note: Note) {
+    // Flush before switching notes (e.g. via a backlink) so an in-progress debounced edit on the
+    // note being left isn't lost.
+    void flushPendingNoteSaves();
     setActiveNote(note);
     setEditTitle(note.title);
     setEditContent(note.content);
@@ -95,19 +98,22 @@ export default function NotesScreen() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    const next = [note, ...notes];
-    updateNotes(next);
+    setNotes(prev => [note, ...prev]);
+    void upsertNote(note);
     openNote(note);
   }
 
   // Saves on every keystroke rather than on blur — onBlur never fires reliably for every way a
   // user can leave a field (tapping the drawer's hamburger icon, switching tabs, etc.), which was
-  // silently dropping edits with zero feedback that anything had gone wrong.
+  // silently dropping edits with zero feedback that anything had gone wrong. Debounced so typing
+  // fires one network write per pause instead of one per keystroke - flushPendingNoteSaves()
+  // covers the case where the user navigates away mid-pause.
   function persistNote(fields: Partial<Pick<Note, 'title' | 'content' | 'tags'>>) {
     if (!activeNote) return;
     const updated: Note = { ...activeNote, ...fields, updatedAt: new Date().toISOString() };
     setActiveNote(updated);
-    updateNotes(notes.map(n => (n.id === updated.id ? updated : n)));
+    setNotes(prev => prev.map(n => (n.id === updated.id ? updated : n)));
+    upsertNoteDebounced(updated);
   }
 
   function updateTitle(value: string) {
@@ -175,17 +181,20 @@ export default function NotesScreen() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    updateNotes([note, ...notes]);
+    setNotes(prev => [note, ...prev]);
+    void upsertNote(note);
     openNote(note);
   }
 
   function deleteNote() {
     if (!activeNote) return;
+    const id = activeNote.id;
     Alert.alert('Delete note', `"${activeNote.title}" will be permanently deleted.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete', style: 'destructive', onPress: () => {
-          updateNotes(notes.filter(n => n.id !== activeNote.id));
+          setNotes(prev => prev.filter(n => n.id !== id));
+          void removeNote(id);
           setScreen('list'); setActiveNote(null);
         },
       },
@@ -194,6 +203,7 @@ export default function NotesScreen() {
 
   function back() {
     if (activeNote && !activeNote.title.trim()) persistNote({ title: 'Untitled' });
+    void flushPendingNoteSaves();
     setScreen('list'); setActiveNote(null);
   }
 
