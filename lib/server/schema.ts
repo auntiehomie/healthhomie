@@ -160,4 +160,18 @@ export const schemaStatements = [
   // Lets a user pin a food (scanned, searched, or logged) for quick re-adding later without
   // re-scanning/re-searching it every time.
   `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS favorite BOOLEAN NOT NULL DEFAULT false;`,
+  // Notes used to live only in device-local AsyncStorage, so a phone and an iPad on the same
+  // account had two completely independent note sets. Composite primary key mirrors food_items -
+  // ids are generated client-side (genNoteId()) and only need to be unique per user.
+  `CREATE TABLE IF NOT EXISTS notes (
+    id TEXT NOT NULL,
+    "userId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL DEFAULT '',
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    "createdAt" TEXT NOT NULL,
+    "updatedAt" TEXT NOT NULL,
+    PRIMARY KEY ("userId", id)
+  );`,
+  `CREATE INDEX IF NOT EXISTS notes_user_updated_idx ON notes("userId", "updatedAt" DESC);`,
 ] as const;
