@@ -49,9 +49,10 @@ async function migrateLegacyNotes(): Promise<void> {
   try {
     const raw = await AsyncStorage.getItem(LEGACY_STORAGE_KEY);
     const legacyNotes: Note[] = raw ? JSON.parse(raw) : [];
-    for (const note of legacyNotes) {
-      await apiFetch('/api/data/notes', { method: 'POST', body: JSON.stringify(note) });
-    }
+    // Parallel, not sequential - a device with a couple dozen legacy notes uploading one at a
+    // time (each a full cold-start network round trip) could take the better part of a minute
+    // and block the Home screen's loading state that whole time.
+    await Promise.all(legacyNotes.map((note) => apiFetch('/api/data/notes', { method: 'POST', body: JSON.stringify(note) })));
   } catch (err) {
     console.warn('Failed to migrate local notes to the server - will retry next load:', err);
     return; // leave the flag unset so this device retries rather than silently losing local notes

@@ -53,7 +53,10 @@ export default function NotesScreen() {
   const contentCursorRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
 
   useEffect(() => {
-    loadNotes().then(n => { setNotes(n); setLoaded(true); });
+    loadNotes()
+      .then(n => setNotes(n))
+      .catch(err => console.warn('Failed to load notes:', err))
+      .finally(() => setLoaded(true));
     // Safety net: a debounced keystroke save still pending when this screen unmounts (app
     // backgrounded mid-edit, tab switched without hitting the explicit flush in back()) would
     // otherwise be silently dropped.
