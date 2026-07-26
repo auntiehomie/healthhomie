@@ -213,8 +213,16 @@ export function ProductivityPage() {
 
   useEffect(() => {
     (async () => {
-      await reload();
-      setLoaded(true);
+      try {
+        await reload();
+      } catch (err) {
+        // A failed load (e.g. a flaky notes request) must never leave the screen stuck on its
+        // skeleton forever with no way out - fall through to loaded with whatever defaults were
+        // already set, same as pull-to-refresh already does via its own try/finally.
+        console.warn('Failed to load productivity data:', err);
+      } finally {
+        setLoaded(true);
+      }
     })();
   }, [reload]);
 
