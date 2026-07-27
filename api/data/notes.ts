@@ -41,6 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error) {
     if (error instanceof AuthError) return res.status(401).json({ error: error.message });
     if (error instanceof DatabaseNotConfiguredError) return res.status(503).json({ error: error.message });
+    console.error('api/data/notes error:', error);
     res.status(500).json({ error: error instanceof Error ? error.message : 'Unexpected error.' });
   }
 }
