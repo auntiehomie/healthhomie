@@ -48,29 +48,41 @@ export default function NotesScreen() {
   const [editContent, setEditContent] = useState('');
   const [editTags, setEditTags] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [forcedSelection, setForcedSelection] = useState<{ start: number; end: number } | undefined>(undefined);
   const contentCursorRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
 
+  // A failed load must never look identical to "you genuinely have zero notes" - that reads as
+  // data loss. Errors get their own state and their own screen, distinct from the empty state.
+  const fetchNotes = useCallback(async () => {
+    try {
+      setNotes(await loadNotes());
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Failed to load notes.');
+    }
+  }, []);
+
   useEffect(() => {
-    loadNotes()
-      .then(n => setNotes(n))
-      .catch(err => console.warn('Failed to load notes:', err))
-      .finally(() => setLoaded(true));
+    (async () => {
+      await fetchNotes();
+      setLoaded(true);
+    })();
     // Safety net: a debounced keystroke save still pending when this screen unmounts (app
     // backgrounded mid-edit, tab switched without hitting the explicit flush in back()) would
     // otherwise be silently dropped.
     return () => { void flushPendingNoteSaves(); };
-  }, []);
+  }, [fetchNotes]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      setNotes(await loadNotes());
+      await fetchNotes();
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [fetchNotes]);
 
   // Both scan every note's content - cheap at a handful of notes, but scale with total note
   // count, and backlinks/wikilinks recompute on every keystroke via persistNote/setEditContent,
@@ -338,7 +350,14 @@ export default function NotesScreen() {
         contentContainerStyle={styles.listScroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.primary} colors={[colors.primary]} />}
       >
-        {filtered.length === 0 && (
+        {loadError ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>⚠️</Text>
+            <Text style={styles.emptyTitle}>Couldn&apos;t load your notes</Text>
+            <Text style={styles.muted}>{loadError}</Text>
+            <Text style={styles.muted}>This doesn&apos;t mean they&apos;re gone — pull down to retry.</Text>
+          </View>
+        ) : filtered.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>📝</Text>
             <Text style={styles.emptyTitle}>{search ? 'No notes match your search' : 'No notes yet'}</Text>
