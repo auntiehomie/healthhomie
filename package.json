@@ -45,6 +45,8 @@
     "@vercel/node": "latest",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -54,7 +56,14 @@
     "web": "expo start --web",
     "build:web": "node scripts/generate-sw.js && expo export -p web",
     "typecheck": "tsc --noEmit",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "prepare": "husky install"
   },
-  "private": true
+  "private": true,
+  "lint-staged": {
+    "*": {
+      "{js,jsx,ts,tsx,json,md}": "prettier --write",
+      "{js,jsx,ts,tsx}": "eslint --fix"
+    }
+  }
 }
