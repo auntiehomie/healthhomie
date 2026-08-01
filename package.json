@@ -43,11 +43,11 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/react": "~19.2.2",
     "@vercel/node": "latest",
-    "eslint": "^9.0.0",
+    "eslint": "^10.8.0",
     "eslint-config-expo": "~57.0.0",
     "husky": "^9.1.7",
-    "lint-staged": "^15.2.10",
-    "typescript": "~6.0.3"
+    "lint-staged": "^17.2.0",
+    "typescript": "~7.0.2"
   },
   "scripts": {
     "start": "expo start",
