@@ -11,6 +11,7 @@ import {
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { flushPendingNoteSaves, genNoteId, loadNotes, removeNote, upsertNote, upsertNoteDebounced, type Note } from '@/lib/db/notesStorage';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { LinkPreview, extractUrls } from '@/components/ui/LinkPreview';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
@@ -92,6 +93,8 @@ export default function NotesScreen() {
     [notes, activeNote]
   );
   const wikilinks = useMemo(() => extractWikilinks(editContent), [editContent]);
+  // Extract URLs from content for link previews
+  const contentUrls = useMemo(() => extractUrls(editContent), [editContent]);
 
   function openNote(note: Note) {
     // Flush before switching notes (e.g. via a backlink) so an in-progress debounced edit on the
@@ -288,9 +291,19 @@ export default function NotesScreen() {
             onSelectionChange={handleContentSelectionChange}
             multiline
             textAlignVertical="top"
-            placeholder={'Write in plain text or markdown…\n\nLink to other notes with [[Note Title]]'}
+            placeholder={'Write in plain text or markdown…\n\nLink to other notes with [[Note Title]]\nPaste URLs for automatic link previews'}
             placeholderTextColor={colors.textMuted}
           />
+
+          {/* Link previews for URLs in content */}
+          {contentUrls.length > 0 && (
+            <View style={styles.backlinkPanel}>
+              <Text style={styles.backlinkTitle}>🔗 Link Previews</Text>
+              {contentUrls.map((url, i) => (
+                <LinkPreview key={`${url}-${i}`} url={url} />
+              ))}
+            </View>
+          )}
 
           {/* Outgoing wikilinks */}
           {wikilinks.length > 0 && (
@@ -368,6 +381,14 @@ export default function NotesScreen() {
           <Pressable key={note.id} style={styles.noteCard} onPress={() => openNote(note)}>
             <Text style={styles.noteTitle} numberOfLines={1}>{note.title}</Text>
             <Text style={styles.notePreview} numberOfLines={2}>{note.content || '(empty)'}</Text>
+            {/* Link previews in list preview */}
+            {extractUrls(note.content).length > 0 && (
+              <View style={styles.linkPreviewList}>
+                {extractUrls(note.content).map((url, i) => (
+                  <LinkPreview key={`${note.id}-${url}-${i}`} url={url} style={styles.linkPreviewCompact} />
+                ))}
+              </View>
+            )}
             <View style={styles.noteMeta}>
               <Text style={styles.noteDate}>{fmtDate(note.updatedAt)}</Text>
               {note.tags.length > 0 && (
@@ -400,6 +421,8 @@ const createStyles = (colors: ThemeColors) =>
     noteCard:          { backgroundColor: colors.surface, borderRadius: 16, padding: 16, gap: 8, ...cardShadow },
     noteTitle:         { fontSize: 17, fontWeight: '800', color: colors.text },
     notePreview:       { fontSize: 14, color: colors.textMuted, lineHeight: 20 },
+    linkPreviewList:   { marginTop: 8, gap: 6 },
+    linkPreviewCompact: { marginBottom: 4 },
     noteMeta:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
     noteDate:          { fontSize: 12, color: colors.textMuted },
     tagRow:            { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
