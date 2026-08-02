@@ -13,6 +13,21 @@ export default function Root({ children }: { children: ReactNode }) {
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 
+        <title>Howdy Morning</title>
+        <meta name="description" content="Your daily health, energy & scheduling companion — food logging, morning routines, notes, and insights from your own data." />
+
+        {/* Open Graph / social share preview (iMessage, Slack, Twitter, etc.) */}
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Howdy Morning" />
+        <meta property="og:title" content="Howdy Morning" />
+        <meta property="og:description" content="Your daily health, energy & scheduling companion — food logging, morning routines, notes, and insights from your own data." />
+        <meta property="og:image" content="https://www.howdymornin.io/pwa-icon.png" />
+        <meta property="og:url" content="https://www.howdymornin.io/" />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content="Howdy Morning" />
+        <meta name="twitter:description" content="Your daily health, energy & scheduling companion — food logging, morning routines, notes, and insights from your own data." />
+        <meta name="twitter:image" content="https://www.howdymornin.io/pwa-icon.png" />
+
         {/* PWA: installable app metadata + update-detecting service worker (registered in components/UpdateBanner.tsx) */}
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta name="theme-color" media="(prefers-color-scheme: light)" content="#2563eb" />
