@@ -7,7 +7,7 @@ import { Copy, Share2 } from 'lucide-react-native';
 import { requestHealthPermissions } from '@/lib/services/healthkit';
 import { connectOura, getOuraStatus, syncOura } from '@/lib/services/ouraClient';
 import { connectFitbit, getFitbitStatus, syncFitbit } from '@/lib/services/fitbitClient';
-import { logout } from '@/lib/services/authClient';
+import { logout, deleteAccount } from '@/lib/services/authClient';
 import { promoteToOwner } from '@/lib/services/adminClient';
 import { createInviteCode, InviteForbiddenError, listInviteCodes, revokeInviteCode, type InviteCode } from '@/lib/services/inviteClient';
 import { useTheme, type ThemePreference } from '@/lib/theme/ThemeContext';
@@ -44,6 +44,11 @@ export default function SettingsScreen() {
   const [promoteEmail, setPromoteEmail] = useState('');
   const [promoting, setPromoting] = useState(false);
   const [promoteStatus, setPromoteStatus] = useState<string | null>(null);
+  // Data deletion (GDPR/CCPA)
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteStatus, setDeleteStatus] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     getOuraStatus().then((status) => {
@@ -141,6 +146,22 @@ export default function SettingsScreen() {
   async function handleLogout() {
     await logout();
     router.replace('/login');
+  }
+
+  async function handleDeleteAccount() {
+    if (!deleteConfirmEmail.trim()) return;
+    setDeleting(true);
+    setDeleteStatus(null);
+    try {
+      const message = await deleteAccount(deleteConfirmEmail.trim());
+      setDeleteStatus(message);
+      // Redirect to login after a brief pause so the user can read the message
+      setTimeout(() => router.replace('/login'), 2500);
+    } catch (err) {
+      setDeleteStatus(err instanceof Error ? err.message : 'Failed to delete account. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function connectHealth() {
@@ -305,6 +326,53 @@ export default function SettingsScreen() {
         <Link href="/legal/privacy" style={styles.link}>Privacy Policy</Link>
         <Link href="/legal/terms" style={styles.link}>Terms of Service</Link>
       </View>
+
+      <View style={[styles.card, { borderWidth: 1, borderColor: colors.danger }]}>
+        <Text style={[styles.cardTitle, { color: colors.danger }]}>Data &amp; privacy</Text>
+        <Text style={styles.cardText}>
+          You can permanently delete your account and all associated data — including your food journal,
+          health connections, notes, survey responses, and profile. This action is irreversible and
+          complies with GDPR (Right to Erasure) and CCPA (Right to Delete).
+        </Text>
+        {!showDeleteConfirm ? (
+          <Pressable style={styles.deleteAccountButton} onPress={() => setShowDeleteConfirm(true)}>
+            <Text style={styles.deleteAccountButtonText}>Delete my data</Text>
+          </Pressable>
+        ) : (
+          <>
+            <Text style={styles.cardText}>
+              Type your account email to confirm. This cannot be undone.
+            </Text>
+            <TextInput
+              placeholder="Your account email"
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+              value={deleteConfirmEmail}
+              onChangeText={setDeleteConfirmEmail}
+              style={[styles.promoteInput, { borderColor: colors.danger }]}
+            />
+            <View style={styles.deleteActionRow}>
+              <Pressable
+                style={[styles.button, styles.cancelDeleteButton]}
+                disabled={deleting}
+                onPress={() => { setShowDeleteConfirm(false); setDeleteConfirmEmail(''); setDeleteStatus(null); }}
+              >
+                <Text style={styles.cancelDeleteButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.deleteAccountButton, (!deleteConfirmEmail.trim() || deleting) && styles.buttonDisabled]}
+                disabled={!deleteConfirmEmail.trim() || deleting}
+                onPress={handleDeleteAccount}
+              >
+                <Text style={styles.deleteAccountButtonText}>{deleting ? 'Deleting...' : 'Yes, delete everything'}</Text>
+              </Pressable>
+            </View>
+          </>
+        )}
+        {deleteStatus && <Text style={[styles.status, { color: deleteStatus.includes('deleted') ? colors.success : colors.danger }]}>{deleteStatus}</Text>}
+      </View>
     </ScrollView>
   );
 }
@@ -337,4 +405,10 @@ const createStyles = (colors: ThemeColors) =>
     promoteInput: { backgroundColor: colors.background, borderRadius: 14, padding: 12, fontSize: 15, color: colors.text },
     revokeButton: { backgroundColor: colors.danger, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12 },
     revokeButtonText: { color: colors.onPrimary, fontWeight: '700', fontSize: 12 },
+    // Data deletion
+    deleteAccountButton: { backgroundColor: colors.danger, borderRadius: 16, padding: 14, alignItems: 'center' },
+    deleteAccountButtonText: { color: colors.onPrimary, fontWeight: '800' },
+    deleteActionRow: { flexDirection: 'row', gap: 10 },
+    cancelDeleteButton: { backgroundColor: colors.surfaceAlt, borderRadius: 16, paddingVertical: 14, alignItems: 'center', flex: 1 },
+    cancelDeleteButtonText: { color: colors.text, fontWeight: '800' },
   });
