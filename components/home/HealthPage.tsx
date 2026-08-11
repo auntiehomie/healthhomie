@@ -16,6 +16,7 @@ import { MetricCard } from '@/components/health/MetricCard';
 import { generateSuggestion, getCachedSuggestion } from '@/lib/services/aiSuggestionsClient';
 import { getUserProfile, listFoodItems, listMealEntries } from '@/lib/db/database';
 import { getDailyProductivityLogs } from '@/lib/db/dailyLogStorage';
+import { createNote } from '@/lib/db/notesStorage';
 import { calculateDailyGoal } from '@/lib/domain/goals';
 import { computeCorrelationInsights, type Insight } from '@/lib/domain/insights';
 import { summarizeDay, todayKey } from '@/lib/domain/nutrition';
@@ -110,6 +111,8 @@ export function HealthPage() {
   const [todaysMood, setTodaysMood] = useState<string | null>(null);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [journalSaving, setJournalSaving] = useState(false);
+  const [journalSaved, setJournalSaved] = useState(false);
 
   const loadOura = useCallback(async (active: () => boolean) => {
     setLoading(true); setError(null);
@@ -357,6 +360,28 @@ export function HealthPage() {
   const cycleNote = data?.cyclePhase ? CYCLE_NOTES[data.cyclePhase] : null;
   const peakBlock = curve.reduce((best, b) => b.pct > best.pct ? b : best, curve[0]);
 
+  // Snapshots today's energy data into a dated Note, so a habit of checking the energy map
+  // builds into a searchable health journal over time instead of just being a today-only view.
+  async function saveEnergyToJournal() {
+    setJournalSaving(true);
+    setJournalSaved(false);
+    try {
+      const dateLabel = new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+      const lines = [
+        `Readiness: ${data?.readiness ?? '—'}`,
+        `Sleep: ${data?.sleep ?? '—'}`,
+        `Activity: ${data?.activity ?? '—'}`,
+        `Best focus window: ${peakBlock.label}`,
+        `Suggested activity: ${hobby.items.join(', ')}`,
+      ];
+      if (cycleNote) lines.push(cycleNote);
+      await createNote({ title: `Energy log — ${dateLabel}`, content: lines.join('\n'), tags: ['daily', 'energy-log'] });
+      setJournalSaved(true);
+    } finally {
+      setJournalSaving(false);
+    }
+  }
+
   return (
     <ScrollView
       contentContainerStyle={styles.container}
@@ -408,7 +433,14 @@ export function HealthPage() {
 
       {/* Energy curve */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>⚡ Energy curve</Text>
+        <View style={styles.aiHeaderRow}>
+          <Text style={styles.cardTitle}>⚡ Energy curve</Text>
+          <Pressable onPress={() => void saveEnergyToJournal()} disabled={journalSaving}>
+            <Text style={[styles.refreshLink, journalSaving && styles.refreshLinkDisabled]}>
+              {journalSaving ? 'Saving…' : journalSaved ? 'Saved ✓' : '📝 Save to journal'}
+            </Text>
+          </Pressable>
+        </View>
         <Text style={styles.muted}>Best time to focus: {peakBlock.label}</Text>
         <View style={styles.curveContainer}>
           {curve.map(block => (
