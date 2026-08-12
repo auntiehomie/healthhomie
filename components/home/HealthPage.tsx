@@ -200,50 +200,6 @@ export function HealthPage() {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => {
-    let alive = true;
-    const active = () => alive;
-    void loadOura(active);
-    void loadFoodSummary(active);
-    void loadAiSuggestion(active);
-    void loadInsights(active);
-    void loadMoodHydrationModifiers(active);
-    return () => { alive = false; };
-  }, [loadOura, loadFoodSummary, loadAiSuggestion, loadInsights, loadMoodHydrationModifiers]));
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    const active = () => true;
-    try {
-      await Promise.all([loadOura(active), loadFoodSummary(active), loadAiSuggestion(active, true), loadInsights(active), loadMoodHydrationModifiers(active)]);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [loadOura, loadFoodSummary, loadAiSuggestion, loadInsights, loadMoodHydrationModifiers]);
-
-  async function handleRegenerate() {
-    setAiLoading(true);
-    setAiError(null);
-    try {
-      const result = await generateSuggestion(true);
-      setAiSuggestion(result.suggestion);
-    } catch (err) {
-      setAiError(err instanceof Error ? err.message : 'Failed to regenerate suggestions.');
-    } finally {
-      setAiLoading(false);
-    }
-  }
-
-  async function handleConnect() {
-    setConnecting(true);
-    setError(null);
-    const result = await connectOura();
-    setConnecting(false);
-    if (result.reason) setError(result.reason);
-    // Web navigates away immediately on success. Native returns here once the in-app
-    // browser closes; useFocusEffect re-checks connection status when focus returns.
-  }
-
   // Map today's mood + hydration (from ProductivityPage AsyncStorage) to energy
   // curve modifiers. Called on focus so the Health tab always reflects today's check-in.
   const loadMoodHydrationModifiers = useCallback(async (active: () => boolean) => {
@@ -289,6 +245,51 @@ export function HealthPage() {
       setTodaysMood(null);
     }
   }, []);
+
+  useFocusEffect(useCallback(() => {
+    let alive = true;
+    const active = () => alive;
+    void loadOura(active);
+    void loadFoodSummary(active);
+    void loadAiSuggestion(active);
+    void loadInsights(active);
+    void loadMoodHydrationModifiers(active);
+    return () => { alive = false; };
+  }, [loadOura, loadFoodSummary, loadAiSuggestion, loadInsights, loadMoodHydrationModifiers]));
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    const active = () => true;
+    try {
+      await Promise.all([loadOura(active), loadFoodSummary(active), loadAiSuggestion(active, true), loadInsights(active), loadMoodHydrationModifiers(active)]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadOura, loadFoodSummary, loadAiSuggestion, loadInsights, loadMoodHydrationModifiers]);
+
+  async function handleRegenerate() {
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const result = await generateSuggestion(true);
+      setAiSuggestion(result.suggestion);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'Failed to regenerate suggestions.');
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  async function handleConnect() {
+    setConnecting(true);
+    setError(null);
+    const result = await connectOura();
+    setConnecting(false);
+    if (result.reason) setError(result.reason);
+    // Web navigates away immediately on success. Native returns here once the in-app
+    // browser closes; useFocusEffect re-checks connection status when focus returns.
+  }
+
 
   const caloriesLeft = Math.round(goal.calories - summary.calories);
 
@@ -434,7 +435,7 @@ export function HealthPage() {
         )}
         {(todaysMood || hydrationModifier > 0) && (
           <Text style={styles.muted}>
-            Today's curve is adjusted by your morning check-in.{' '}
+            Today&apos;s curve is adjusted by your morning check-in.{' '}
             {!todaysMood && 'Log your mood on the Productivity tab to see its effect here.'}
           </Text>
         )}
