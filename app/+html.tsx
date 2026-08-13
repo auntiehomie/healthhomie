@@ -24,16 +24,16 @@ export default function Root({ children }: { children: ReactNode }) {
 
         {/* Open Graph / social embed — makes links shared to Discord, iMessage, Slack, Twitter etc. show a preview card */}
         <meta property="og:title" content="Howdy Morning — Your daily food &amp; health loop" />
-        <meta property="og:description" content="Log your food, scan barcodes, check in on your mood, and build a morning routine that sticks — all in one place. Start your day right with Howdy Morning." />
+        <meta property="og:description" content="Start your day with purpose. Log meals, scan barcodes, check your mood, and build a morning routine that actually sticks. Free at howdymornin.io." />
         <meta property="og:image" content="https://howdymornin.io/pwa-icon.png" />
         <meta property="og:url" content="https://howdymornin.io" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Howdy Morning" />
         <meta name="twitter:card" content="summary" />
         <meta name="twitter:title" content="Howdy Morning — Your daily food &amp; health loop" />
-        <meta name="twitter:description" content="Log your food, scan barcodes, check in on your mood, and build a morning routine that sticks — all in one place." />
+        <meta name="twitter:description" content="Start your day with purpose. Log meals, scan barcodes, check your mood, and build a morning routine that actually sticks. Free at howdymornin.io." />
         <meta name="twitter:image" content="https://howdymornin.io/pwa-icon.png" />
-        <meta name="description" content="Howdy Morning helps you log food, scan barcodes, track macros, and build a consistent morning routine. Join free at howdymornin.io." />
+        <meta name="description" content="Start your day with purpose. Log meals, scan barcodes, check your mood, and build a morning routine that actually sticks. Join free at howdymornin.io." />
 
         {/*
           Disable body scrolling on web. This makes ScrollView components work closer to how they do on native.
