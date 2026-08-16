@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { requireUserId, AuthError } from '../../lib/server/auth';
 import { fetchOuraDailyMetrics } from '../../lib/services/ouraApi';
-import { ensureFreshOuraAccessToken, markOuraSynced } from '../../lib/server/ouraStore';
+import { ensureFreshOuraAccessToken, markOuraSynced, OuraReauthRequiredError } from '../../lib/server/ouraStore';
 import { upsertHealthMetrics } from '../../lib/server/healthMetricsStore';
 import { DatabaseNotConfiguredError } from '../../lib/server/db';
 
@@ -22,6 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(200).json({ metrics });
   } catch (error) {
     if (error instanceof AuthError) return res.status(401).json({ error: error.message });
+    if (error instanceof OuraReauthRequiredError) return res.status(401).json({ error: error.message, reauthRequired: true });
     if (error instanceof DatabaseNotConfiguredError) return res.status(503).json({ error: error.message });
     res.status(502).json({ error: error instanceof Error ? error.message : 'Oura sync failed.' });
   }

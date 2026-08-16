@@ -34,12 +34,15 @@ export function createHealthProviderClient(providerKey: string, providerLabel: s
     return { connected: parsed.searchParams.get('connected') === 'true' };
   }
 
-  async function sync(): Promise<{ synced: number; reason?: string; metrics?: HealthMetricsDaily[] }> {
+  async function sync(): Promise<{ synced: number; reason?: string; metrics?: HealthMetricsDaily[]; reauthRequired?: boolean }> {
     const token = await getToken();
     if (!token) return { synced: 0, reason: 'Log in first.' };
 
     const response = await fetch(apiUrl(`/api/${providerKey}/sync`), { method: 'POST', headers: { authorization: `Bearer ${token}` } });
     const payload = await response.json().catch(() => ({}));
+    if (response.status === 401 || payload.reauthRequired) {
+      return { synced: 0, reauthRequired: true, reason: payload.error ?? `${providerLabel} session expired. Please reconnect.` };
+    }
     if (!response.ok) return { synced: 0, reason: payload.error ?? `${providerLabel} sync failed.` };
     return { synced: payload.metrics?.length ?? 0, metrics: payload.metrics };
   }

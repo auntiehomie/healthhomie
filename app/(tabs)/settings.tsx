@@ -1,13 +1,13 @@
 import * as Clipboard from 'expo-clipboard';
 import { useEffect, useMemo, useState } from 'react';
-import { Platform, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Platform, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { Link, router } from 'expo-router';
 import { Copy, Share2 } from 'lucide-react-native';
 import { requestHealthPermissions } from '@/lib/services/healthkit';
 import { connectOura, getOuraStatus, syncOura } from '@/lib/services/ouraClient';
 import { connectFitbit, getFitbitStatus, syncFitbit } from '@/lib/services/fitbitClient';
-import { logout, deleteAccount } from '@/lib/services/authClient';
+import { logout, deleteAccount, deleteMyData } from '@/lib/services/authClient';
 import { promoteToOwner } from '@/lib/services/adminClient';
 import { createInviteCode, InviteForbiddenError, listInviteCodes, revokeInviteCode, type InviteCode } from '@/lib/services/inviteClient';
 import { useTheme, type ThemePreference } from '@/lib/theme/ThemeContext';
@@ -35,6 +35,7 @@ export default function SettingsScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [healthStatus, setHealthStatus] = useState('Not requested yet');
   const [ouraStatus, setOuraStatus] = useState('Not connected');
+  const [ouraNeedsReauth, setOuraNeedsReauth] = useState(false);
   const [fitbitStatus, setFitbitStatus] = useState('Not connected');
   const [invites, setInvites] = useState<InviteCode[]>([]);
   const [inviteError, setInviteError] = useState<string | null>(null);
@@ -49,10 +50,14 @@ export default function SettingsScreen() {
   const [deleting, setDeleting] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // Health-data-only deletion (keeps the account, signs the user out)
+  const [deletingHealth, setDeletingHealth] = useState(false);
+  const [deleteHealthStatus, setDeleteHealthStatus] = useState<string | null>(null);
 
   useEffect(() => {
     getOuraStatus().then((status) => {
       if (status.connected) setOuraStatus(status.lastSyncedAt ? `Connected, last synced ${status.lastSyncedAt}` : 'Connected, not synced yet');
+      setOuraNeedsReauth(!!status.reauthRequired);
     });
     getFitbitStatus().then((status) => {
       if (status.connected) setFitbitStatus(status.lastSyncedAt ? `Connected, last synced ${status.lastSyncedAt}` : 'Connected, not synced yet');
@@ -164,6 +169,32 @@ export default function SettingsScreen() {
     }
   }
 
+  function confirmDeleteHealthData() {
+    Alert.alert(
+      'Delete your data?',
+      'This will permanently delete all your health data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: handleDeleteHealthData },
+      ],
+    );
+  }
+
+  async function handleDeleteHealthData() {
+    setDeletingHealth(true);
+    setDeleteHealthStatus(null);
+    try {
+      const message = await deleteMyData();
+      setDeleteHealthStatus(message);
+      // deleteMyData clears the auth token; redirect after a brief pause.
+      setTimeout(() => router.replace('/login'), 2500);
+    } catch (err) {
+      setDeleteHealthStatus(err instanceof Error ? err.message : 'Failed to delete your data. Please try again.');
+    } finally {
+      setDeletingHealth(false);
+    }
+  }
+
   async function connectHealth() {
     const result = await requestHealthPermissions();
     setHealthStatus(result.granted ? 'Apple Health connected' : result.reason ?? 'Apple Health unavailable');
@@ -172,12 +203,21 @@ export default function SettingsScreen() {
   async function handleConnectOura() {
     setOuraStatus('Connecting...');
     const result = await connectOura();
-    if (result.reason) setOuraStatus(result.reason);
+    if (result.reason) {
+      setOuraStatus(result.reason);
+    } else if (result.connected) {
+      setOuraNeedsReauth(false);
+    }
   }
 
   async function handleSyncOura() {
     setOuraStatus('Syncing...');
     const result = await syncOura();
+    if (result.reauthRequired) {
+      setOuraNeedsReauth(true);
+      setOuraStatus('Your Oura session has expired. Reconnect Oura to keep syncing.');
+      return;
+    }
     setOuraStatus(result.reason ?? `Synced ${result.synced} days of Oura data.`);
   }
 
@@ -233,8 +273,16 @@ export default function SettingsScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Oura</Text>
         <Text style={styles.cardText}>Sleep, readiness, and activity for web + mobile. Works without HealthKit.</Text>
+        {ouraNeedsReauth && (
+          <View style={styles.ouraWarning}>
+            <Text style={styles.ouraWarningTitle}>Oura connection needs attention</Text>
+            <Text style={styles.ouraWarningText}>
+              Your Oura access token has expired. Reconnect to keep your daily health data in sync.
+            </Text>
+          </View>
+        )}
         <Pressable style={styles.button} onPress={handleConnectOura}>
-          <Text style={styles.buttonText}>Connect Oura</Text>
+          <Text style={styles.buttonText}>{ouraNeedsReauth ? 'Reconnect Oura' : 'Connect Oura'}</Text>
         </Pressable>
         <Pressable style={styles.button} onPress={handleSyncOura}>
           <Text style={styles.buttonText}>Sync Oura data</Text>
@@ -327,6 +375,27 @@ export default function SettingsScreen() {
         <Link href="/legal/terms" style={styles.link}>Terms of Service</Link>
       </View>
 
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Delete your data</Text>
+        <Text style={styles.cardText}>
+          Remove your health data, connected providers (including Oura tokens), synced metrics, and
+          health profile from this account. Your account, journal, and notes stay intact. You&apos;ll be
+          signed out afterward.
+        </Text>
+        <Pressable
+          style={[styles.deleteAccountButton, deletingHealth && styles.buttonDisabled]}
+          onPress={confirmDeleteHealthData}
+          disabled={deletingHealth}
+        >
+          <Text style={styles.deleteAccountButtonText}>{deletingHealth ? 'Deleting...' : 'Delete your data'}</Text>
+        </Pressable>
+        {deleteHealthStatus && (
+          <Text style={[styles.status, { color: deleteHealthStatus.includes('deleted') ? colors.success : colors.danger }]}>
+            {deleteHealthStatus}
+          </Text>
+        )}
+      </View>
+
       <View style={[styles.card, { borderWidth: 1, borderColor: colors.danger }]}>
         <Text style={[styles.cardTitle, { color: colors.danger }]}>Data &amp; privacy</Text>
         <Text style={styles.cardText}>
@@ -411,4 +480,8 @@ const createStyles = (colors: ThemeColors) =>
     deleteActionRow: { flexDirection: 'row', gap: 10 },
     cancelDeleteButton: { backgroundColor: colors.surfaceAlt, borderRadius: 16, paddingVertical: 14, alignItems: 'center', flex: 1 },
     cancelDeleteButtonText: { color: colors.text, fontWeight: '800' },
+    // Oura reconnection banner
+    ouraWarning: { backgroundColor: colors.warning + '1A', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.warning, gap: 4 },
+    ouraWarningTitle: { color: colors.warning, fontWeight: '800', fontSize: 15 },
+    ouraWarningText: { color: colors.textMuted, lineHeight: 20 },
   });

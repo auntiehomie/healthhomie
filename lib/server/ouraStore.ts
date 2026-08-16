@@ -15,6 +15,15 @@ export async function getOuraConnection(userId: string) {
   return getHealthConnection(userId, 'oura');
 }
 
+/** The stored Oura refresh token is expired or revoked, so a fresh access token can no longer
+ * be minted — the user must re-authenticate through the full Oura OAuth flow. */
+export class OuraReauthRequiredError extends Error {
+  constructor() {
+    super('Your Oura connection has expired. Please reconnect Oura.');
+    this.name = 'OuraReauthRequiredError';
+  }
+}
+
 export async function ensureFreshOuraAccessToken(userId: string): Promise<string> {
   const connection = await getOuraConnection(userId);
   if (!connection?.accessToken || !connection.refreshToken) throw new Error('Oura is not connected.');
@@ -26,7 +35,12 @@ export async function ensureFreshOuraAccessToken(userId: string): Promise<string
   const clientSecret = process.env.OURA_CLIENT_SECRET;
   if (!clientId || !clientSecret) throw new Error('Oura is not configured.');
 
-  const refreshed = await refreshOuraToken({ refreshToken: connection.refreshToken, clientId, clientSecret });
+  let refreshed: OuraTokenResponse;
+  try {
+    refreshed = await refreshOuraToken({ refreshToken: connection.refreshToken, clientId, clientSecret });
+  } catch {
+    throw new OuraReauthRequiredError();
+  }
   await storeOuraTokens(userId, refreshed);
   return refreshed.access_token;
 }

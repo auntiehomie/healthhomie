@@ -71,6 +71,24 @@ export async function deleteAccount(email: string): Promise<string> {
   return payload.message as string;
 }
 
+/**
+ * Deletes the user's health data, connected-provider tokens (Oura, Fitbit), synced
+ * metrics, and health profile while keeping the account (email + password) intact.
+ * Clears the auth token afterward so the user is signed out. GDPR/CCPA-compliant.
+ */
+export async function deleteMyData(): Promise<string> {
+  const token = await getToken();
+  if (!token) throw new Error('Not logged in.');
+  const response = await fetch(apiUrl('/api/user/data-deletion'), {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${token}` },
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error ?? 'Failed to delete your data.');
+  await clearToken();
+  return payload.message as string;
+}
+
 export async function requestPasswordReset(email: string): Promise<string> {
   const response = await fetch(apiUrl('/api/auth/forgot-password'), {
     method: 'POST',

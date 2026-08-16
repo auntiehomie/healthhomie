@@ -54,12 +54,12 @@ export default function TodayScreen() {
       };
       setSnapshot(health);
 
-      // Detect Oura connection issues: if the user has Oura connected but the
-      // latest synced health data is completely empty, their Oura access token
-      // has likely expired. Show a reconnection prompt instead of silent blanks.
-      const ouraStatus = await getOuraStatus().catch(() => ({ connected: false }));
+      // Detect Oura connection issues: if the token probe reports re-auth is required,
+      // or if the user has Oura connected but the latest synced health data is completely
+      // empty, show a reconnection prompt instead of silent blanks.
+      const ouraStatus = await getOuraStatus().catch(() => ({ connected: false, reauthRequired: false }));
       const hasNoProviderData = syncedHealth.steps == null && syncedHealth.activeEnergyKcal == null;
-      setOuraNeedsReconnect(ouraStatus.connected && hasNoProviderData);
+      setOuraNeedsReconnect(ouraStatus.reauthRequired || (ouraStatus.connected && hasNoProviderData));
       setSummary(summarizeDay(todayKey(), entries, foods));
       setGoal(calculateDailyGoal(profile, health));
       setTodayFoods(foods);
