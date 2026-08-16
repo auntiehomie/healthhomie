@@ -60,6 +60,15 @@
     "prepare": "husky install"
   },
   "private": true,
+  "overrides": {
+    "ajv": "^8.18.0",
+    "path-to-regexp": "^6.3.0",
+    "undici": "^6.28.0",
+    "js-yaml": "^4.3.1",
+    "minimatch": "^10.2.3",
+    "smol-toml": "^1.6.1",
+    "uuid": "^11.1.1"
+  },
   "lint-staged": {
     "*": {
       "{js,jsx,ts,tsx,json,md}": "prettier --write",
