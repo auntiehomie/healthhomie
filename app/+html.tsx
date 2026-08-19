@@ -24,16 +24,18 @@ export default function Root({ children }: { children: ReactNode }) {
 
         {/* Open Graph / social embed — makes links shared to Discord, iMessage, Slack, Twitter etc. show a preview card */}
         <meta property="og:title" content="Howdy Morning — Your daily food &amp; health loop" />
-        <meta property="og:description" content="The morning routine that checks you — log meals, scan barcodes, track your mood, and build habits that stick. howdymornin.io" />
+        <meta property="og:image:width" content="512" />
+        <meta property="og:image:height" content="512" />
+        <meta property="og:description" content="The morning routine that checks you — log meals, scan barcodes, track your energy, and build habits that actually stick. howdymornin.io" />
         <meta property="og:image" content="https://howdymornin.io/pwa-icon.png" />
         <meta property="og:url" content="https://howdymornin.io" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Howdy Morning" />
-        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Howdy Morning — Your daily food &amp; health loop" />
-        <meta name="twitter:description" content="The morning routine that checks you — log meals, scan barcodes, track your mood, and build habits that stick. howdymornin.io" />
+        <meta name="twitter:description" content="The morning routine that checks you — log meals, scan barcodes, track your energy, and build habits that actually stick. howdymornin.io" />
         <meta name="twitter:image" content="https://howdymornin.io/pwa-icon.png" />
-        <meta name="description" content="The morning routine that checks you — log meals, scan barcodes, track your mood, and build habits that stick. howdymornin.io" />
+        <meta name="description" content="The morning routine that checks you — log meals, scan barcodes, track your energy, and build habits that actually stick. howdymornin.io" />
 
         {/*
           Disable body scrolling on web. This makes ScrollView components work closer to how they do on native.
