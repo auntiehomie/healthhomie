@@ -44,7 +44,7 @@ export default function B2BWellnessScreen() {
     <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Corporate Wellness</Text>
       <Text style={styles.subtitle}>
-        Optimize your team's energy and productivity. Howdy Morning for Business gives you
+        Optimize your team&apos;s energy and productivity. Howdy Morning for Business gives you
         aggregate health insights while respecting individual privacy.
       </Text>
 
