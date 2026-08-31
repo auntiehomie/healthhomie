@@ -38,17 +38,17 @@
     "react-native-worklets": "0.10.0"
   },
   "devDependencies": {
-    "@jest/globals": "^30.4.1",
+    "@jest/globals": "^30.5.0",
     "@types/crypto-js": "^4.2.2",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/react": "~19.2.2",
     "@vercel/node": "latest",
     "eslint": "^9.0.0",
-    "eslint-config-expo": "~57.0.0",
+    "eslint-config-expo": "~57.0.2",
     "husky": "^9.1.7",
-    "lint-staged": "^15.2.10",
+    "lint-staged": "^17.4.1",
     "prettier": "^3.9.6",
-    "typescript": "~6.0.3"
+    "typescript": "~7.0.2"
   },
   "scripts": {
     "start": "expo start",
