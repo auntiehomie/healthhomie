@@ -1,19 +1,36 @@
-import { useMemo, useRef } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { formatHour, HOURS } from '@/lib/domain/mealType';
-import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
-import { useTheme } from '@/lib/theme/ThemeContext';
-import type { ThemeColors } from '@/lib/theme/tokens';
+import { useMemo, useRef } from "react";
+import {
+  ScrollView,
+  type ScrollViewInstance,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { formatHour, HOURS } from "@/lib/domain/mealType";
+import { PressableFeedback as Pressable } from "@/components/ui/PressableFeedback";
+import { useTheme } from "@/lib/theme/ThemeContext";
+import type { ThemeColors } from "@/lib/theme/tokens";
 
 const HOUR_CHIP_WIDTH = 60;
 
-export function HourPicker({ label = 'Time', selectedHour, onSelectHour }: { label?: string; selectedHour: number; onSelectHour: (hour: number) => void }) {
+export function HourPicker({
+  label = "Time",
+  selectedHour,
+  onSelectHour,
+}: {
+  label?: string;
+  selectedHour: number;
+  onSelectHour: (hour: number) => void;
+}) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
 
   function scrollToSelected() {
-    scrollRef.current?.scrollTo({ x: Math.max(0, (selectedHour - 2) * HOUR_CHIP_WIDTH), animated: false });
+    scrollRef.current?.scrollTo({
+      x: Math.max(0, (selectedHour - 2) * HOUR_CHIP_WIDTH),
+      animated: false,
+    });
   }
 
   return (
@@ -28,8 +45,20 @@ export function HourPicker({ label = 'Time', selectedHour, onSelectHour }: { lab
         contentContainerStyle={styles.row}
       >
         {HOURS.map((hour) => (
-          <Pressable key={hour} onPress={() => onSelectHour(hour)} style={[styles.chip, selectedHour === hour && styles.chipActive]}>
-            <Text style={[styles.chipText, selectedHour === hour && styles.chipTextActive]} numberOfLines={1}>{formatHour(hour)}</Text>
+          <Pressable
+            key={hour}
+            onPress={() => onSelectHour(hour)}
+            style={[styles.chip, selectedHour === hour && styles.chipActive]}
+          >
+            <Text
+              style={[
+                styles.chipText,
+                selectedHour === hour && styles.chipTextActive,
+              ]}
+              numberOfLines={1}
+            >
+              {formatHour(hour)}
+            </Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -40,11 +69,18 @@ export function HourPicker({ label = 'Time', selectedHour, onSelectHour }: { lab
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     wrapper: { gap: 8 },
-    label: { color: colors.text, fontWeight: '800' },
+    label: { color: colors.text, fontWeight: "800" },
     scroll: { flexGrow: 0 },
-    row: { flexDirection: 'row', gap: 8 },
-    chip: { width: HOUR_CHIP_WIDTH, alignItems: 'center', paddingHorizontal: 6, paddingVertical: 8, borderRadius: 999, backgroundColor: colors.chipBackground },
+    row: { flexDirection: "row", gap: 8 },
+    chip: {
+      width: HOUR_CHIP_WIDTH,
+      alignItems: "center",
+      paddingHorizontal: 6,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: colors.chipBackground,
+    },
     chipActive: { backgroundColor: colors.primary },
-    chipText: { color: colors.chipText, fontWeight: '700', fontSize: 13 },
+    chipText: { color: colors.chipText, fontWeight: "700", fontSize: 13 },
     chipTextActive: { color: colors.onPrimary },
   });
