@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import {
   View,
+  type ViewProps,
   Text,
   StyleSheet,
   Image,
@@ -13,7 +14,7 @@ import type { ThemeColors } from "@/lib/theme/tokens";
 
 interface LinkPreviewProps {
   url: string;
-  style?: View["props"]["style"];
+  style?: ViewProps["style"];
 }
 
 interface LinkMetadata {
