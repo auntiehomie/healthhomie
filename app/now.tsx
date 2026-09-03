@@ -66,7 +66,7 @@ export default function NowScreen() {
       </View>
 
       <Text style={styles.footer}>
-        This page is inspired by /now pages — a convention for sharing what you're currently focused on.
+        This page is inspired by /now pages — a convention for sharing what you&apos;re currently focused on.
       </Text>
 
       <Pressable
