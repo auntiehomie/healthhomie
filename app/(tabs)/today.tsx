@@ -11,6 +11,7 @@ import { formatHour } from '@/lib/domain/mealType';
 import { scaleMacros, summarizeDay, todayKey } from '@/lib/domain/nutrition';
 import { readTodayHealthSnapshot } from '@/lib/services/healthkit';
 import { getLatestHealthSnapshot } from '@/lib/services/healthMetricsClient';
+import { getOuraStatus, connectOura } from '@/lib/services/ouraClient';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
@@ -26,6 +27,8 @@ export default function TodayScreen() {
   const [snapshot, setSnapshot] = useState<HealthSnapshot>({ date: todayKey() });
   const [todayFoods, setTodayFoods] = useState<FoodItem[]>([]);
   const [todayEntries, setTodayEntries] = useState<MealEntry[]>([]);
+  const [ouraNeedsReconnect, setOuraNeedsReconnect] = useState(false);
+  const [reconnectingOura, setReconnectingOura] = useState(false);
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -50,6 +53,13 @@ export default function TodayScreen() {
         workouts: localHealth.workouts ?? syncedHealth.workouts,
       };
       setSnapshot(health);
+
+      // Detect Oura connection issues: if the user has Oura connected but the
+      // latest synced health data is completely empty, their Oura access token
+      // has likely expired. Show a reconnection prompt instead of silent blanks.
+      const ouraStatus = await getOuraStatus().catch(() => ({ connected: false }));
+      const hasNoProviderData = syncedHealth.steps == null && syncedHealth.activeEnergyKcal == null;
+      setOuraNeedsReconnect(ouraStatus.connected && hasNoProviderData);
       setSummary(summarizeDay(todayKey(), entries, foods));
       setGoal(calculateDailyGoal(profile, health));
       setTodayFoods(foods);
@@ -61,6 +71,18 @@ export default function TodayScreen() {
 
   const caloriesLeft = Math.round(goal.calories - summary.calories);
 
+  async function handleReconnectOura() {
+    setReconnectingOura(true);
+    try {
+      await connectOura();
+      setOuraNeedsReconnect(false);
+    } catch {
+      // If reconnection fails, keep the banner visible
+    } finally {
+      setReconnectingOura(false);
+    }
+  }
+
   return (
     <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
       <View style={styles.hero}>
@@ -68,6 +90,20 @@ export default function TodayScreen() {
         <Text style={styles.title}>Hey homie, here’s today.</Text>
         <Text style={styles.subtitle}>Log the food. Watch the trend. Adjust gently.</Text>
       </View>
+
+      {ouraNeedsReconnect && (
+        <Pressable
+          style={[styles.ouraWarning, reconnectingOura && { opacity: 0.6 }]}
+          onPress={handleReconnectOura}
+          disabled={reconnectingOura}
+        >
+          <Text style={styles.ouraWarningTitle}>Oura connection needs attention</Text>
+          <Text style={styles.ouraWarningText}>
+            Your Oura access token has expired. Tap here to reconnect and restore your daily health data.
+          </Text>
+          <Text style={styles.ouraWarningAction}>{reconnectingOura ? 'Connecting…' : 'Reconnect Oura →'}</Text>
+        </Pressable>
+      )}
 
       <View style={styles.grid}>
         <MetricCard
@@ -129,6 +165,11 @@ const createStyles = (colors: ThemeColors) =>
     sectionTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
     macroRow: { flexDirection: 'row', gap: 12 },
     empty: { color: colors.textMuted, fontStyle: 'italic' },
+    // Oura reconnection banner
+    ouraWarning: { backgroundColor: colors.warning + '1A', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.warning, gap: 6 },
+    ouraWarningTitle: { color: colors.warning, fontWeight: '800', fontSize: 16 },
+    ouraWarningText: { color: colors.textMuted, lineHeight: 20 },
+    ouraWarningAction: { color: colors.primary, fontWeight: '800', marginTop: 4 },
     entryRow: { backgroundColor: colors.surfaceAlt, borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
     entryDetails: { flex: 1, gap: 2 },
     entryName: { color: colors.text, fontSize: 15, fontWeight: '800' },

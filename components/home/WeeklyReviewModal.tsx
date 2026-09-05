@@ -5,6 +5,7 @@ import { Animated, Modal, ScrollView, StyleSheet, Text, TextInput, View } from '
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { getUserProfile, listFoodItems, listMealEntries, saveUserProfile } from '@/lib/db/database';
 import { loadNotes, type Note } from '@/lib/db/notesStorage';
+import { getDailyProductivityLogs } from '@/lib/db/dailyLogStorage';
 import { calculateDailyGoal, recommendWeeklyAdjustment } from '@/lib/domain/goals';
 import { addMacros, emptyMacros, scaleMacros, todayKey } from '@/lib/domain/nutrition';
 import { currentReviewWeekIndex, datesInRange, reviewWeekRange } from '@/lib/domain/weeklyReview';
@@ -15,7 +16,7 @@ import { cardShadow } from '@/lib/theme/shadow';
 
 const LAST_SHOWN_KEY = 'weekly_review_last_shown_week_index';
 
-type WeekSummary = { avgCalories: number; avgProteinG: number; avgCarbsG: number; avgFatG: number; daysLogged: number };
+type WeekSummary = { avgCalories: number; avgProteinG: number; avgCarbsG: number; avgFatG: number; daysLogged: number; avgWaterGlasses: number; avgMood: string | null; routinePct: number; moodDays: number };
 
 const KG_PER_LB = 0.45359237;
 const kgToLb = (kg: number) => kg / KG_PER_LB;
@@ -60,6 +61,29 @@ export function WeeklyReviewModal() {
       const [entries, foods, notes] = await Promise.all([listMealEntries(), listFoodItems(), loadNotes()]);
       if (!active) return;
 
+      // Load productivity logs for mood, hydration, and routine trends
+      const prodLogs = await getDailyProductivityLogs(7, weekRange.end);
+      const weekLogs = prodLogs.filter((log) => log.date >= weekRange.start && log.date <= weekRange.end);
+
+      // Mood stats: average mood label from the MOOD_SCORE mapping
+      const MOOD_ORDER = ['stressed', 'tired', 'meh', 'good', 'great'];
+      const allMoods = weekLogs.flatMap((log) => log.moods);
+      let avgMood: string | null = null;
+      if (allMoods.length > 0) {
+        const avgScore = allMoods.reduce((sum, m) => sum + (MOOD_ORDER.indexOf(m) + 1), 0) / allMoods.length;
+        const idx = Math.round(avgScore) - 1;
+        avgMood = MOOD_ORDER[Math.max(0, Math.min(MOOD_ORDER.length - 1, idx))];
+      }
+      const moodDays = weekLogs.filter((log) => log.moods.length > 0).length;
+
+      // Hydration: average water glasses
+      const totalWater = weekLogs.reduce((sum, log) => sum + log.waterGlasses, 0);
+      const avgWater = weekLogs.length > 0 ? totalWater / weekLogs.length : 0;
+
+      // Routine completion percentage
+      const routineDays = weekLogs.filter((log) => log.routineCompletedCount > 0);
+      const routinePct = weekLogs.length > 0 ? (routineDays.length / weekLogs.length) * 100 : 0;
+
       const byId = new Map(foods.map((food) => [food.id, food]));
       const dates = datesInRange(weekRange.start, weekRange.end);
       let totals = emptyMacros();
@@ -79,6 +103,10 @@ export function WeeklyReviewModal() {
         avgCarbsG: totals.carbsG / 7,
         avgFatG: totals.fatG / 7,
         daysLogged,
+        avgWaterGlasses: Math.round(avgWater * 10) / 10,
+        avgMood,
+        routinePct: Math.round(routinePct),
+        moodDays,
       };
 
       const goal = calculateDailyGoal(profile);
@@ -173,6 +201,28 @@ export function WeeklyReviewModal() {
               )}
             </View>
 
+            {/* Mood, hydration & routine trends */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>🧠 Energy & habits</Text>
+              <View style={styles.metricGrid}>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricValue}>{weekSummary.avgMood ? weekSummary.avgMood.charAt(0).toUpperCase() + weekSummary.avgMood.slice(1) : '—'}</Text>
+                  <Text style={styles.metricLabel}>Avg mood{weekSummary.moodDays > 0 ? ` (${weekSummary.moodDays}d)` : ''}</Text>
+                </View>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricValue}>{weekSummary.avgWaterGlasses > 0 ? `${weekSummary.avgWaterGlasses}` : '—'}</Text>
+                  <Text style={styles.metricLabel}>Glasses/day avg</Text>
+                </View>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricValue}>{weekSummary.routinePct > 0 ? `${weekSummary.routinePct}%` : '—'}</Text>
+                  <Text style={styles.metricLabel}>Routine done</Text>
+                </View>
+              </View>
+              {weekSummary.moodDays === 0 && weekSummary.avgWaterGlasses === 0 && weekSummary.routinePct === 0 && (
+                <Text style={styles.meta}>No mood, hydration, or routine data this week. Tap the Home tab each morning to start tracking.</Text>
+              )}
+            </View>
+
             <View style={styles.card}>
               <Text style={styles.cardTitle}>📝 Notes this week</Text>
               {weekNotes.length === 0 ? (
@@ -244,6 +294,10 @@ const createStyles = (colors: ThemeColors) =>
     insightText: { color: colors.text, fontSize: 13, lineHeight: 19, marginTop: 4 },
     insightDelta: { color: colors.text, fontWeight: '800', fontSize: 13 },
     noteTitle: { color: colors.text, fontSize: 13 },
+    metricGrid: { flexDirection: 'row', gap: 12 },
+    metricItem: { flex: 1, alignItems: 'center', gap: 2 },
+    metricValue: { fontSize: 17, fontWeight: '800', color: colors.text },
+    metricLabel: { fontSize: 11, color: colors.textMuted, textAlign: 'center' },
     weightRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
     weightInput: { flex: 1, backgroundColor: colors.background, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border },
     unitToggleRow: { flexDirection: 'row', backgroundColor: colors.background, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },

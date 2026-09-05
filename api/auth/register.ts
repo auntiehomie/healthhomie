@@ -4,10 +4,12 @@ import { getSql, DatabaseNotConfiguredError } from '../../lib/server/db';
 import { hashPassword, signAuthToken } from '../../lib/server/auth';
 import { consumeInviteCode } from '../../lib/server/inviteStore';
 import { sendWelcomeEmail } from '../../lib/server/welcomeEmail';
+import { authRateLimit } from '../../lib/server/rateLimit';
 import type { FoodItem } from '../../types/healthhomie';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only.' });
+  if (authRateLimit(req, res)) return;
 
   const { email, password, code } = (req.body ?? {}) as { email?: string; password?: string; code?: string };
   if (typeof code !== 'string' || !code.trim()) return res.status(400).json({ error: 'Invite code required.' });

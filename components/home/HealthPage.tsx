@@ -64,9 +64,10 @@ function getHobbies(readiness: number): HobbySuggestion {
   return                      { category: 'ambitious',   items: HOBBIES.ambitious.slice(0, 3) };
 }
 
-// Energy curve: assign energy % to 5 time blocks based on readiness
-function buildEnergyCurve(readiness: number): { label: string; pct: number }[] {
-  const base = readiness / 100;
+// Energy curve: assign energy % to 5 time blocks based on readiness,
+// adjusted by today's mood and hydration from the Productivity tab.
+function buildEnergyCurve(readiness: number, moodModifier = 0, hydrationModifier = 0): { label: string; pct: number }[] {
+  const base = Math.max(0, Math.min(1, (readiness / 100) + moodModifier + hydrationModifier));
   return [
     { label: '6–9am',  pct: Math.round(base * 60) },
     { label: '9–12pm', pct: Math.round(base * 95) },
@@ -101,6 +102,13 @@ export function HealthPage() {
 
   const [insights, setInsights] = useState<Insight[]>([]);
   const [insightsLoading, setInsightsLoading] = useState(true);
+
+  // Morning check-in → energy map: mood + hydration from the Productivity tab
+  // modify the energy curve shown here. This completes the cross-tab feedback loop
+  // so that the Health tab reflects what you logged this morning.
+  const [moodModifier, setMoodModifier] = useState(0);
+  const [hydrationModifier, setHydrationModifier] = useState(0);
+  const [todaysMood, setTodaysMood] = useState<string | null>(null);
 
   const [refreshing, setRefreshing] = useState(false);
   const [journalSaving, setJournalSaving] = useState(false);
@@ -195,6 +203,52 @@ export function HealthPage() {
     }
   }, []);
 
+  // Map today's mood + hydration (from ProductivityPage AsyncStorage) to energy
+  // curve modifiers. Called on focus so the Health tab always reflects today's check-in.
+  const loadMoodHydrationModifiers = useCallback(async (active: () => boolean) => {
+    try {
+      const dayKey = todayKey();
+      const [moodRaw, waterRaw] = await Promise.all([
+        AsyncStorage.getItem(`morning_moodLog_${dayKey}`),
+        AsyncStorage.getItem(`morning_water_${dayKey}`),
+      ]);
+      if (!active()) return;
+
+      // Mood modifier: map logged mood (any period) to an energy curve adjustment.
+      // Most recent mood wins — if you logged morning + midday, midday is more current.
+      const MOOD_WEIGHTS: Record<string, number> = {
+        great: 0.12, good: 0.05, meh: 0, tired: -0.08, stressed: -0.12,
+      };
+      let moodMod = 0;
+      let moodLabel: string | null = null;
+      if (moodRaw) {
+        const moodLog = JSON.parse(moodRaw) as Record<string, string>;
+        // Prefer midday, then evening, then morning — latest period is most reflective
+        const periodPriority = ['midday', 'evening', 'morning'];
+        for (const period of periodPriority) {
+          if (moodLog[period] && MOOD_WEIGHTS[moodLog[period]] !== undefined) {
+            moodMod = MOOD_WEIGHTS[moodLog[period]];
+            moodLabel = moodLog[period];
+            break;
+          }
+        }
+      }
+
+      // Hydration modifier: up to +0.08 at 8 glasses, proportional below.
+      const water = waterRaw ? parseInt(waterRaw, 10) || 0 : 0;
+      const hydMod = Math.min(0.08, (water / 8) * 0.08);
+
+      setMoodModifier(moodMod);
+      setHydrationModifier(hydMod);
+      setTodaysMood(moodLabel);
+    } catch {
+      // Fail silent — energy curve defaults to readiness-only.
+      setMoodModifier(0);
+      setHydrationModifier(0);
+      setTodaysMood(null);
+    }
+  }, []);
+
   useFocusEffect(useCallback(() => {
     let alive = true;
     const active = () => alive;
@@ -202,18 +256,19 @@ export function HealthPage() {
     void loadFoodSummary(active);
     void loadAiSuggestion(active);
     void loadInsights(active);
+    void loadMoodHydrationModifiers(active);
     return () => { alive = false; };
-  }, [loadOura, loadFoodSummary, loadAiSuggestion, loadInsights]));
+  }, [loadOura, loadFoodSummary, loadAiSuggestion, loadInsights, loadMoodHydrationModifiers]));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     const active = () => true;
     try {
-      await Promise.all([loadOura(active), loadFoodSummary(active), loadAiSuggestion(active, true), loadInsights(active)]);
+      await Promise.all([loadOura(active), loadFoodSummary(active), loadAiSuggestion(active, true), loadInsights(active), loadMoodHydrationModifiers(active)]);
     } finally {
       setRefreshing(false);
     }
-  }, [loadOura, loadFoodSummary, loadAiSuggestion, loadInsights]);
+  }, [loadOura, loadFoodSummary, loadAiSuggestion, loadInsights, loadMoodHydrationModifiers]);
 
   async function handleRegenerate() {
     setAiLoading(true);
@@ -237,6 +292,7 @@ export function HealthPage() {
     // Web navigates away immediately on success. Native returns here once the in-app
     // browser closes; useFocusEffect re-checks connection status when focus returns.
   }
+
 
   const caloriesLeft = Math.round(goal.calories - summary.calories);
 
@@ -301,7 +357,7 @@ export function HealthPage() {
   // only for internal schedule/hobby math below, never for what gets displayed.
   const readiness = data?.readiness ?? 50;
   const hobby = getHobbies(readiness);
-  const curve = buildEnergyCurve(readiness);
+  const curve = buildEnergyCurve(readiness, moodModifier, hydrationModifier);
   const cycleNote = data?.cyclePhase ? CYCLE_NOTES[data.cyclePhase] : null;
   const peakBlock = curve.reduce((best, b) => b.pct > best.pct ? b : best, curve[0]);
 
@@ -395,6 +451,29 @@ export function HealthPage() {
             </View>
           ))}
         </View>
+        {/* Mood & hydration influence — cross-tab feedback from Productivity */}
+        {(todaysMood || hydrationModifier > 0) && (
+          <View style={styles.modifierRow}>
+            {todaysMood && (
+              <Text style={styles.modifierTag}>
+                {todaysMood === 'great' ? '🤩' : todaysMood === 'good' ? '😊' : todaysMood === 'meh' ? '😐' : todaysMood === 'tired' ? '😴' : '😤'}{' '}
+                Mood {moodModifier > 0 ? `+${Math.round(moodModifier * 100)}%` : `${Math.round(moodModifier * 100)}%`}
+              </Text>
+            )}
+            {hydrationModifier > 0 && (
+              <Text style={styles.modifierTag}>💧 Hydration +{Math.round(hydrationModifier * 100)}%</Text>
+            )}
+          </View>
+        )}
+        {(todaysMood || hydrationModifier > 0) && (
+          <Text style={styles.muted}>
+            Today&apos;s curve is adjusted by your morning check-in.{' '}
+            {!todaysMood && 'Log your mood on the Productivity tab to see its effect here.'}
+          </Text>
+        )}
+        {!todaysMood && hydrationModifier === 0 && (
+          <Text style={styles.muted}>Log your mood and hydration on the Productivity tab to fine-tune your energy curve.</Text>
+        )}
       </View>
 
       {/* Smart schedule */}
@@ -524,4 +603,6 @@ const createStyles = (colors: ThemeColors) =>
     sectionTitle:   { fontSize: 20, fontWeight: '800', color: colors.text },
     grid:           { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
     macroRow:       { flexDirection: 'row', gap: 12 },
+    modifierRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+    modifierTag:    { backgroundColor: colors.surfaceAlt, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, fontSize: 12, color: colors.text, fontWeight: '600', overflow: 'hidden' },
   });

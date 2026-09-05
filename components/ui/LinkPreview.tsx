@@ -1,11 +1,19 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, Image, Pressable, ActivityIndicator } from 'react-native';
-import { useTheme } from '@/lib/theme/ThemeContext';
-import type { ThemeColors } from '@/lib/theme/tokens';
+import React, { useEffect, useState, useMemo } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  Pressable,
+  ActivityIndicator,
+  Linking,
+} from "react-native";
+import { useTheme } from "@/lib/theme/ThemeContext";
+import type { ThemeColors } from "@/lib/theme/tokens";
 
 interface LinkPreviewProps {
   url: string;
-  style?: View['props']['style'];
+  style?: View["props"]["style"];
 }
 
 interface LinkMetadata {
@@ -30,12 +38,12 @@ export function LinkPreview({ url, style }: LinkPreviewProps) {
         // Try to fetch Open Graph / meta tags from the URL
         // Using a CORS proxy since we can't directly fetch from client
         const response = await fetch(
-          `https://r.jina.ai/http://${url.replace(/^https?:\/\//, '')}`,
+          `https://r.jina.ai/http://${url.replace(/^https?:\/\//, "")}`,
           {
             headers: {
-              'Accept': 'application/json',
+              Accept: "application/json",
             },
-          }
+          },
         );
 
         if (!cancelled) {
@@ -48,15 +56,16 @@ export function LinkPreview({ url, style }: LinkPreviewProps) {
 
             setMetadata({
               title: titleMatch?.[1]?.trim() || new URL(url).hostname,
-              description: descMatch?.[1]?.trim() || text.substring(0, 200) + '...',
-              image: imageMatch?.[1]?.trim() || '',
+              description:
+                descMatch?.[1]?.trim() || text.substring(0, 200) + "...",
+              image: imageMatch?.[1]?.trim() || "",
               siteName: new URL(url).hostname,
             });
           } else {
-            throw new Error('Failed to fetch');
+            throw new Error("Failed to fetch");
           }
         }
-      } catch (err) {
+      } catch {
         if (!cancelled) {
           // Fallback: show basic URL info
           try {
@@ -64,11 +73,11 @@ export function LinkPreview({ url, style }: LinkPreviewProps) {
             setMetadata({
               title: hostname,
               description: url,
-              image: '',
+              image: "",
               siteName: hostname,
             });
           } catch {
-            setError('Invalid URL');
+            setError("Invalid URL");
           }
         }
       } finally {
@@ -77,20 +86,26 @@ export function LinkPreview({ url, style }: LinkPreviewProps) {
     }
 
     fetchMetadata();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [url]);
 
   if (error) return null;
-  if (loading && !metadata) return (
-    <View style={styles.loading}>
-      <ActivityIndicator size="small" color={colors.primary} />
-    </View>
-  );
+  if (loading && !metadata)
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="small" color={colors.primary} />
+      </View>
+    );
 
   if (!metadata) return null;
 
   return (
-    <Pressable style={[styles.container, style]} onPress={() => Linking.openURL(url)}>
+    <Pressable
+      style={[styles.container, style]}
+      onPress={() => Linking.openURL(url)}
+    >
       {metadata.image && (
         <Image
           source={{ uri: metadata.image }}
@@ -99,31 +114,34 @@ export function LinkPreview({ url, style }: LinkPreviewProps) {
         />
       )}
       <View style={styles.content}>
-        <Text style={styles.siteName} numberOfLines={1}>{metadata.siteName}</Text>
-        <Text style={styles.title} numberOfLines={2}>{metadata.title}</Text>
-        <Text style={styles.description} numberOfLines={3}>{metadata.description}</Text>
+        <Text style={styles.siteName} numberOfLines={1}>
+          {metadata.siteName}
+        </Text>
+        <Text style={styles.title} numberOfLines={2}>
+          {metadata.title}
+        </Text>
+        <Text style={styles.description} numberOfLines={3}>
+          {metadata.description}
+        </Text>
       </View>
     </Pressable>
   );
 }
 
-// Need to import Linking
-import { Linking } from 'react-native';
-
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: {
-      flexDirection: 'row',
+      flexDirection: "row",
       backgroundColor: colors.surface,
       borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
-      overflow: 'hidden',
+      overflow: "hidden",
       marginVertical: 8,
     },
     loading: {
       padding: 16,
-      alignItems: 'center',
+      alignItems: "center",
     },
     image: {
       width: 80,
@@ -133,19 +151,19 @@ const createStyles = (colors: ThemeColors) =>
     content: {
       flex: 1,
       padding: 12,
-      justifyContent: 'center',
+      justifyContent: "center",
       gap: 4,
     },
     siteName: {
       fontSize: 11,
-      fontWeight: '700',
+      fontWeight: "700",
       color: colors.primary,
-      textTransform: 'uppercase',
+      textTransform: "uppercase",
       letterSpacing: 0.5,
     },
     title: {
       fontSize: 14,
-      fontWeight: '700',
+      fontWeight: "700",
       color: colors.text,
       lineHeight: 20,
     },

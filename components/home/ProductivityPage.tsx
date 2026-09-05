@@ -14,6 +14,7 @@ import { createNote, loadNotes, type Note } from '@/lib/db/notesStorage';
 import { getDayPeriod, type DayPeriod } from '@/lib/domain/dayPeriod';
 import { hapticImpact, hapticSuccess } from '@/lib/utils/haptics';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { LinkPreview, extractUrls } from '@/components/ui/LinkPreview';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import type { Mood } from '@/types/healthhomie';
@@ -486,11 +487,19 @@ export function ProductivityPage() {
         {todaysQuickNotes.length > 0 && (
           <>
             <Text style={styles.completedLabel}>Today’s quick notes ({todaysQuickNotes.length})</Text>
-            {todaysQuickNotes.map(note => (
-              <Pressable key={note.id} onPress={() => router.push('/(tabs)/notes')} style={styles.quickNoteRow}>
-                <Text style={styles.quickNoteText} numberOfLines={1}>{note.content}</Text>
-              </Pressable>
-            ))}
+            {todaysQuickNotes.map(note => {
+              const urls = extractUrls(note.content);
+              return (
+                <View key={note.id}>
+                  <Pressable onPress={() => router.push('/(tabs)/notes')} style={styles.quickNoteRow}>
+                    <Text style={styles.quickNoteText} numberOfLines={1}>{note.content}</Text>
+                  </Pressable>
+                  {urls.length > 0 && urls.map((url, i) => (
+                    <LinkPreview key={`${note.id}-${url}-${i}`} url={url} style={styles.linkPreviewCompact} />
+                  ))}
+                </View>
+              );
+            })}
           </>
         )}
       </View>
@@ -538,4 +547,5 @@ const createStyles = (colors: ThemeColors) =>
     noteLink:     { color: colors.primary, fontWeight: '600', fontSize: 12, flexShrink: 1 },
     quickNoteRow: { backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.border },
     quickNoteText:{ color: colors.text, fontSize: 14 },
+    linkPreviewCompact: { marginBottom: 4 },
   });

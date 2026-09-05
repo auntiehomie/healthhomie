@@ -2,9 +2,11 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getSql, DatabaseNotConfiguredError } from '../../lib/server/db';
 import { hashPassword } from '../../lib/server/auth';
 import { consumePasswordResetToken } from '../../lib/server/passwordResetStore';
+import { passwordResetRateLimit } from '../../lib/server/rateLimit';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only.' });
+  if (passwordResetRateLimit(req, res)) return;
 
   const { token, password } = (req.body ?? {}) as { token?: string; password?: string };
   if (typeof token !== 'string' || !token) return res.status(400).json({ error: 'Reset token required.' });

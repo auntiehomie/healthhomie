@@ -2,11 +2,13 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getSql, DatabaseNotConfiguredError } from '../../lib/server/db';
 import { createPasswordResetToken } from '../../lib/server/passwordResetStore';
 import { sendEmail, EmailNotConfiguredError } from '../../lib/server/email';
+import { passwordResetRateLimit } from '../../lib/server/rateLimit';
 
 const GENERIC_MESSAGE = "If an account exists for that email, we've sent a link to reset the password.";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only.' });
+  if (passwordResetRateLimit(req, res)) return;
 
   const { email } = (req.body ?? {}) as { email?: string };
   if (typeof email !== 'string' || !email.includes('@')) return res.status(400).json({ error: 'Valid email required.' });

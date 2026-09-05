@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { BarcodeScanner } from '@/components/health/BarcodeScanner';
 import { HourPicker } from '@/components/health/HourPicker';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
@@ -48,7 +50,14 @@ export default function ScanScreen() {
         }}
       />
 
-      {loggedMessage && <Text style={styles.loggedMessage}>{loggedMessage}</Text>}
+      {loggedMessage && (
+        <View style={styles.loggedSection}>
+          <Text style={styles.loggedMessage}>{loggedMessage}</Text>
+          <Pressable style={styles.viewJournalButton} onPress={() => router.push('/(tabs)/journal')}>
+            <Text style={styles.viewJournalButtonText}>View today&apos;s journal →</Text>
+          </Pressable>
+        </View>
+      )}
 
       <LogFoodModal key={activeFood?.id} food={activeFood} onClose={() => setActiveFood(null)} onConfirm={logFood} />
     </ScrollView>
@@ -62,4 +71,7 @@ const createStyles = (colors: ThemeColors) =>
     title: { ...typography.display1, color: colors.text },
     subtitle: { ...typography.bodyMedium, color: colors.textMuted },
     loggedMessage: { color: colors.success, fontWeight: '700', textAlign: 'center' },
+    loggedSection: { gap: 10, alignItems: 'center' },
+    viewJournalButton: { backgroundColor: colors.primary, borderRadius: 16, paddingHorizontal: 20, paddingVertical: 12 },
+    viewJournalButtonText: { color: colors.onPrimary, fontWeight: '800', fontSize: 15 },
   });

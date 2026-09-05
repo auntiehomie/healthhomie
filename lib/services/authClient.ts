@@ -52,6 +52,25 @@ export async function logout(): Promise<void> {
   await clearToken();
 }
 
+/**
+ * Permanently deletes the authenticated user's account and all associated
+ * data (food journal, health connections, notes, etc.). GDPR/CCPA-compliant.
+ * Requires the user's email address as confirmation to prevent accidents.
+ */
+export async function deleteAccount(email: string): Promise<string> {
+  const token = await getToken();
+  if (!token) throw new Error('Not logged in.');
+  const response = await fetch(apiUrl('/api/data/delete-account'), {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: JSON.stringify({ confirmation: email }),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error ?? 'Failed to delete account.');
+  await clearToken();
+  return payload.message as string;
+}
+
 export async function requestPasswordReset(email: string): Promise<string> {
   const response = await fetch(apiUrl('/api/auth/forgot-password'), {
     method: 'POST',

@@ -1,9 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getSql, DatabaseNotConfiguredError } from '../../lib/server/db';
 import { signAuthToken, verifyPassword } from '../../lib/server/auth';
+import { authRateLimit } from '../../lib/server/rateLimit';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only.' });
+  if (authRateLimit(req, res)) return;
 
   const { email, password } = (req.body ?? {}) as { email?: string; password?: string };
   if (typeof email !== 'string' || typeof password !== 'string') return res.status(400).json({ error: 'Email and password required.' });

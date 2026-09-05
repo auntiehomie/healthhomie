@@ -20,11 +20,22 @@ export function signAuthToken(userId: string, isOwner: boolean): string {
   return jwt.sign({ sub: userId, isOwner }, secret, { expiresIn: TOKEN_TTL });
 }
 
+/**
+ * Verifies a JWT auth token string and returns the user ID.
+ * Throws AuthError on missing/invalid/expired tokens.
+ */
+export function verifyAuthToken(token: string): string {
+  return verifyTokenPayload(token).userId;
+}
+
 function verifyBearerToken(req: VercelRequest): { userId: string; isOwner: boolean } {
   const header = req.headers.authorization;
   const token = header?.startsWith('Bearer ') ? header.slice(7) : undefined;
   if (!token) throw new AuthError('Missing bearer token.');
+  return verifyTokenPayload(token);
+}
 
+function verifyTokenPayload(token: string): { userId: string; isOwner: boolean } {
   const secret = requireJwtSecret();
   try {
     const payload = jwt.verify(token, secret) as { sub: string; isOwner?: boolean };

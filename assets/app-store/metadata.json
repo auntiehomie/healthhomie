@@ -1,0 +1,47 @@
+{
+  "appName": "Howdy Morning",
+  "website": "https://howdymornin.io",
+  "bundleIdentifiers": {
+    "ios": "io.howdymorning.app",
+    "android": "io.howdymorning.app"
+  },
+  "description": "Howdy Morning is a practical daily food and wellness journal. Log meals, scan barcodes, understand your energy, and build healthier routines with simple, privacy-first tools.",
+  "shortDescription": "A calmer daily loop for food, energy, and healthier habits.",
+  "keywords": [
+    "food journal",
+    "health tracker",
+    "meal log",
+    "nutrition",
+    "energy",
+    "wellness",
+    "habit tracker",
+    "barcode scanner",
+    "daily routine",
+    "health diary"
+  ],
+  "supportUrl": "https://howdymornin.io",
+  "privacyUrl": "https://howdymornin.io/legal/privacy",
+  "marketingUrl": "https://howdymornin.io",
+  "testFlight": {
+    "subtitle": "Track your food, energy, and daily habits.",
+    "betaDescription": "Thanks for testing Howdy Morning. Please log meals, try barcode scanning, connect supported health data if available, and report anything confusing or broken.",
+    "whatToTest": [
+      "Account creation and sign-in",
+      "Daily food and journal entries",
+      "Barcode scanning and nutrition lookup",
+      "Energy and wellness tracking",
+      "Deep links from https://howdymornin.io"
+    ],
+    "reviewNotes": "Test build for TestFlight distribution. Use a test account; do not enter sensitive health information you do not want included in the test environment."
+  },
+  "firebaseAppDistribution": {
+    "releaseNotes": "Test the daily journal, meal logging, barcode scanning, health integrations, and links from howdymornin.io. Please report crashes, unexpected navigation, or unclear copy.",
+    "testerInstructions": "Install the build, sign in with a test account, complete a food entry, try barcode scanning, and open a https://howdymornin.io link on a device with the app installed."
+  },
+  "screenshots": {
+    "directory": "./screenshots",
+    "status": "placeholder",
+    "required": ["ios-6.7-inch", "ios-6.5-inch", "android-phone"],
+    "notes": "Replace the placeholder files with device captures before store submission."
+  }
+}
