@@ -1,11 +1,16 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { getToken } from '@/lib/services/authClient';
 import { ThemeProvider, useTheme } from '@/lib/theme/ThemeContext';
 import { UpdateBanner } from '@/components/UpdateBanner';
+
+// Keeps the native splash screen up (instead of a blank white/black frame) until the auth
+// check below resolves and we know whether to render the app or redirect to /login.
+void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   return (
@@ -50,6 +55,10 @@ function AppShell() {
       active = false;
     };
   }, [segments, router]);
+
+  useEffect(() => {
+    if (authChecked) void SplashScreen.hideAsync();
+  }, [authChecked]);
 
   if (!authChecked) return null;
 

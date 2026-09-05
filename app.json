@@ -39,6 +39,19 @@
       "expo-secure-store",
       "expo-camera",
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#f8fafc",
+          "dark": {
+            "image": "./assets/images/splash-icon-dark.png",
+            "backgroundColor": "#020617"
+          }
+        }
+      ],
+      [
         "@kingstinct/react-native-healthkit",
         {
           "NSHealthShareUsageDescription": "Howdy Morning reads Apple Health activity, weight, and sleep data to personalize your energy schedule and calorie goals.",

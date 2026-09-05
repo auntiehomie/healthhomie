@@ -9,6 +9,6 @@
   "theme_color": "#2563eb",
   "icons": [
     { "src": "/pwa-icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" },
-    { "src": "/pwa-icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "maskable" }
+    { "src": "/pwa-icon-maskable.png", "sizes": "1024x1024", "type": "image/png", "purpose": "maskable" }
   ]
 }
