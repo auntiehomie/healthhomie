@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Markdown from 'react-native-markdown-display';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { flushPendingNoteSaves, genNoteId, loadNotes, removeNote, upsertNote, upsertNoteDebounced, type Note } from '@/lib/db/notesStorage';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -45,6 +46,7 @@ export default function NotesScreen() {
   const [screen, setScreen] = useState<Screen>('list');
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [search, setSearch] = useState('');
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editTags, setEditTags] = useState('');
@@ -52,6 +54,7 @@ export default function NotesScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [forcedSelection, setForcedSelection] = useState<{ start: number; end: number } | undefined>(undefined);
+  const [previewMode, setPreviewMode] = useState(false);
   const contentCursorRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
 
   // A failed load must never look identical to "you genuinely have zero notes" - that reads as
@@ -100,6 +103,7 @@ export default function NotesScreen() {
     // Flush before switching notes (e.g. via a backlink) so an in-progress debounced edit on the
     // note being left isn't lost.
     void flushPendingNoteSaves();
+    setPreviewMode(false);
     setActiveNote(note);
     setEditTitle(note.title);
     setEditContent(note.content);
@@ -174,6 +178,7 @@ export default function NotesScreen() {
         setForcedSelection(contentCursorRef.current);
         return; // leave content as-is; the controlled `value` prop reverts the native duplicate
       }
+      if (inserted === '\n' && continueList(value, prev, cursor)) return;
       contentCursorRef.current = { start: cursor + 1, end: cursor + 1 };
       updateContent(value);
       return;
@@ -181,6 +186,46 @@ export default function NotesScreen() {
 
     contentCursorRef.current = { start: value.length, end: value.length };
     updateContent(value);
+  }
+
+  // Word/Notes-style list continuation: pressing Enter on a numbered ("1. ") or bulleted ("- "/"* ")
+  // line carries the marker to the next line, incrementing numbers as it goes. Pressing Enter on
+  // an empty list item (just the marker, no text) exits the list instead of piling up another
+  // blank one - matches how iOS Notes and Word both behave.
+  function continueList(value: string, prev: string, cursor: number): boolean {
+    const lineStart = prev.lastIndexOf('\n', cursor - 1) + 1;
+    const currentLine = prev.slice(lineStart, cursor);
+
+    const numbered = currentLine.match(/^(\s*)(\d+)([.)])\s(.*)$/);
+    const bulleted = !numbered ? currentLine.match(/^(\s*)([-*])\s(.*)$/) : null;
+
+    let rest: string;
+    let nextMarker: string;
+    if (numbered) {
+      rest = numbered[4];
+      nextMarker = `${numbered[1]}${Number(numbered[2]) + 1}${numbered[3]} `;
+    } else if (bulleted) {
+      rest = bulleted[3];
+      nextMarker = `${bulleted[1]}${bulleted[2]} `;
+    } else {
+      return false;
+    }
+
+    if (!rest.trim()) {
+      // Empty item - clear the marker line rather than continuing the list.
+      const next = `${value.slice(0, lineStart)}${value.slice(cursor + 1)}`;
+      contentCursorRef.current = { start: lineStart, end: lineStart };
+      setForcedSelection(contentCursorRef.current);
+      updateContent(next);
+      return true;
+    }
+
+    const next = `${value.slice(0, cursor + 1)}${nextMarker}${value.slice(cursor + 1)}`;
+    const nextCursor = cursor + 1 + nextMarker.length;
+    contentCursorRef.current = { start: nextCursor, end: nextCursor };
+    setForcedSelection(contentCursorRef.current);
+    updateContent(next);
+    return true;
   }
 
   function handleContentSelectionChange(e: { nativeEvent: { selection: { start: number; end: number } } }) {
@@ -226,11 +271,12 @@ export default function NotesScreen() {
   }
 
   const filtered = useMemo(() => notes.filter(n =>
-    !search ||
-    n.title.toLowerCase().includes(search.toLowerCase()) ||
-    n.content.toLowerCase().includes(search.toLowerCase()) ||
-    n.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))
-  ), [notes, search]);
+    (!search ||
+      n.title.toLowerCase().includes(search.toLowerCase()) ||
+      n.content.toLowerCase().includes(search.toLowerCase()) ||
+      n.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))) &&
+    (!activeTag || n.tags.includes(activeTag))
+  ), [notes, search, activeTag]);
 
   if (!loaded) return (
     <View style={styles.container}>
@@ -262,6 +308,9 @@ export default function NotesScreen() {
             <Text style={styles.backBtnText}>← Notes</Text>
           </Pressable>
           <Text style={styles.savedLabel} numberOfLines={1}>Saved automatically</Text>
+          <Pressable onPress={() => setPreviewMode(v => !v)} style={styles.previewToggle}>
+            <Text style={styles.previewToggleText}>{previewMode ? 'Edit' : 'Preview'}</Text>
+          </Pressable>
           <Pressable onPress={deleteNote} style={styles.deleteButton}>
             <Text style={styles.deleteButtonText}>Delete</Text>
           </Pressable>
@@ -283,17 +332,27 @@ export default function NotesScreen() {
             placeholder="Tags (comma separated)…"
             placeholderTextColor={colors.textMuted}
           />
-          <TextInput
-            style={styles.contentInput}
-            value={editContent}
-            onChangeText={handleContentChange}
-            selection={forcedSelection}
-            onSelectionChange={handleContentSelectionChange}
-            multiline
-            textAlignVertical="top"
-            placeholder={'Write in plain text or markdown…\n\nLink to other notes with [[Note Title]]\nPaste URLs for automatic link previews'}
-            placeholderTextColor={colors.textMuted}
-          />
+          {previewMode ? (
+            <View style={styles.previewBox}>
+              {editContent.trim() ? (
+                <Markdown style={markdownStyles(colors)}>{editContent}</Markdown>
+              ) : (
+                <Text style={styles.muted}>Nothing to preview yet.</Text>
+              )}
+            </View>
+          ) : (
+            <TextInput
+              style={styles.contentInput}
+              value={editContent}
+              onChangeText={handleContentChange}
+              selection={forcedSelection}
+              onSelectionChange={handleContentSelectionChange}
+              multiline
+              textAlignVertical="top"
+              placeholder={'Write in plain text or markdown…\n\nLink to other notes with [[Note Title]]\nPaste URLs for automatic link previews'}
+              placeholderTextColor={colors.textMuted}
+            />
+          )}
 
           {/* Link previews for URLs in content */}
           {contentUrls.length > 0 && (
@@ -358,6 +417,12 @@ export default function NotesScreen() {
         onChangeText={setSearch}
       />
 
+      {activeTag && (
+        <Pressable style={styles.activeTagFilter} onPress={() => setActiveTag(null)}>
+          <Text style={styles.activeTagFilterText}>Filtering by &ldquo;{activeTag}&rdquo; ✕</Text>
+        </Pressable>
+      )}
+
       <ScrollView
         style={styles.fill}
         contentContainerStyle={styles.listScroll}
@@ -394,7 +459,9 @@ export default function NotesScreen() {
               {note.tags.length > 0 && (
                 <View style={styles.tagRow}>
                   {note.tags.slice(0, 3).map(t => (
-                    <View key={t} style={styles.tag}><Text style={styles.tagText}>{t}</Text></View>
+                    <Pressable key={t} style={styles.tag} onPress={(event) => { event.stopPropagation(); setActiveTag(t); }}>
+                      <Text style={styles.tagText}>{t}</Text>
+                    </Pressable>
                   ))}
                 </View>
               )}
@@ -417,6 +484,8 @@ const createStyles = (colors: ThemeColors) =>
     newBtn:            { backgroundColor: colors.primary, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8 },
     newBtnText:        { color: colors.onPrimary, fontWeight: '800', fontSize: 14 },
     searchInput:       { marginHorizontal: 20, marginBottom: 8, backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, color: colors.text, fontSize: 15, borderWidth: 1, borderColor: colors.border },
+    activeTagFilter:   { alignSelf: 'flex-start', marginHorizontal: 20, marginBottom: 8, backgroundColor: colors.chipBackground, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+    activeTagFilterText: { color: colors.primary, fontWeight: '700', fontSize: 12 },
     listScroll:        { padding: 20, paddingTop: 4, gap: 10, paddingBottom: 40 },
     noteCard:          { backgroundColor: colors.surface, borderRadius: 16, padding: 16, gap: 8, ...cardShadow },
     noteTitle:         { fontSize: 17, fontWeight: '800', color: colors.text },
@@ -438,13 +507,30 @@ const createStyles = (colors: ThemeColors) =>
     backBtn:           { paddingVertical: 4, paddingHorizontal: 2 },
     backBtnText:       { color: colors.primary, fontWeight: '700', fontSize: 15 },
     savedLabel:        { flex: 1, fontSize: 12, color: colors.textMuted, textAlign: 'center', fontWeight: '600' },
+    previewToggle:      { paddingVertical: 4, paddingHorizontal: 2 },
+    previewToggleText:  { color: colors.primary, fontWeight: '700', fontSize: 14 },
     deleteButton:      { paddingVertical: 4, paddingHorizontal: 2 },
     deleteButtonText:  { color: colors.danger, fontWeight: '700', fontSize: 14 },
     editScroll:        { padding: 20, gap: 14, paddingBottom: 60 },
     titleInput:        { fontSize: 24, fontWeight: '900', color: colors.text, borderBottomWidth: 2, borderBottomColor: colors.border, paddingVertical: 8 },
     tagsInput:         { fontSize: 13, color: colors.textMuted, backgroundColor: colors.surface, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: colors.border },
     contentInput:      { fontSize: 16, color: colors.text, lineHeight: 26, minHeight: 320, backgroundColor: colors.surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.border },
+    previewBox:        { minHeight: 320, backgroundColor: colors.surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.border },
     backlinkPanel:     { backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 14, gap: 8 },
     backlinkTitle:     { fontSize: 13, fontWeight: '700', color: colors.textMuted },
     backlinkItem:      { fontSize: 14, color: colors.primary, paddingVertical: 2 },
   });
+
+const markdownStyles = (colors: ThemeColors) => ({
+  body: { color: colors.text, fontSize: 16, lineHeight: 26 },
+  heading1: { color: colors.text, fontWeight: '900' as const, fontSize: 24, marginTop: 8, marginBottom: 6 },
+  heading2: { color: colors.text, fontWeight: '800' as const, fontSize: 20, marginTop: 8, marginBottom: 6 },
+  heading3: { color: colors.text, fontWeight: '800' as const, fontSize: 17, marginTop: 6, marginBottom: 4 },
+  link: { color: colors.primary },
+  code_inline: { backgroundColor: colors.surfaceAlt, color: colors.text, borderRadius: 4 },
+  code_block: { backgroundColor: colors.surfaceAlt, color: colors.text, borderRadius: 8 },
+  fence: { backgroundColor: colors.surfaceAlt, color: colors.text, borderRadius: 8 },
+  blockquote: { backgroundColor: colors.surfaceAlt, borderLeftColor: colors.primary, borderLeftWidth: 4 },
+  bullet_list_icon: { color: colors.primary },
+  ordered_list_icon: { color: colors.primary },
+});
