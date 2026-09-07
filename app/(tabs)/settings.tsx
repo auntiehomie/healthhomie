@@ -1,24 +1,57 @@
-import * as Clipboard from 'expo-clipboard';
-import { useEffect, useMemo, useState } from 'react';
-import { Platform, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
-import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
-import { Link, router } from 'expo-router';
-import { Copy, Share2 } from 'lucide-react-native';
-import { requestHealthPermissions } from '@/lib/services/healthkit';
-import { connectOura, getOuraStatus, syncOura } from '@/lib/services/ouraClient';
-import { connectFitbit, getFitbitStatus, syncFitbit } from '@/lib/services/fitbitClient';
-import { logout, deleteAccount } from '@/lib/services/authClient';
-import { getProStatus, subscribePro, type ProStatus } from '@/lib/services/proClient';
-import { promoteToOwner } from '@/lib/services/adminClient';
-import { createInviteCode, InviteForbiddenError, listInviteCodes, revokeInviteCode, type InviteCode } from '@/lib/services/inviteClient';
-import { useTheme, type ThemePreference } from '@/lib/theme/ThemeContext';
-import type { ThemeColors } from '@/lib/theme/tokens';
-import { typography } from '@/lib/theme/typography';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Clipboard from "expo-clipboard";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Platform,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { PressableFeedback as Pressable } from "@/components/ui/PressableFeedback";
+import { Link, router } from "expo-router";
+import { Copy, Share2 } from "lucide-react-native";
+import { requestHealthPermissions } from "@/lib/services/healthkit";
+import {
+  connectOura,
+  getOuraStatus,
+  syncOura,
+} from "@/lib/services/ouraClient";
+import {
+  connectFitbit,
+  getFitbitStatus,
+  syncFitbit,
+} from "@/lib/services/fitbitClient";
+import { logout, deleteAccount } from "@/lib/services/authClient";
+import {
+  getProStatus,
+  subscribePro,
+  type ProStatus,
+} from "@/lib/services/proClient";
+import { promoteToOwner } from "@/lib/services/adminClient";
+import {
+  createInviteCode,
+  InviteForbiddenError,
+  listInviteCodes,
+  revokeInviteCode,
+  type InviteCode,
+} from "@/lib/services/inviteClient";
+import { useTheme, type ThemePreference } from "@/lib/theme/ThemeContext";
+import type { ThemeColors } from "@/lib/theme/tokens";
+import { typography } from "@/lib/theme/typography";
+import {
+  scheduleMorningReminder,
+  cancelMorningReminder,
+} from "@/lib/notifications";
 
 function inviteStatus(invite: InviteCode): string {
-  if (invite.revokedAt) return 'Revoked';
-  if (invite.usedAt) return `Used${invite.usedByEmail ? ` by ${invite.usedByEmail}` : ''}`;
-  return 'Available';
+  if (invite.revokedAt) return "Revoked";
+  if (invite.usedAt)
+    return `Used${invite.usedByEmail ? ` by ${invite.usedByEmail}` : ""}`;
+  return "Available";
 }
 
 function inviteMessage(code: string): string {
@@ -26,30 +59,35 @@ function inviteMessage(code: string): string {
 }
 
 const APPEARANCE_OPTIONS: { key: ThemePreference; label: string }[] = [
-  { key: 'light', label: 'Light' },
-  { key: 'dark', label: 'Dark' },
-  { key: 'system', label: 'System' },
+  { key: "light", label: "Light" },
+  { key: "dark", label: "Dark" },
+  { key: "system", label: "System" },
 ];
 
 export default function SettingsScreen() {
   const { colors, preference, setPreference } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const [healthStatus, setHealthStatus] = useState('Not requested yet');
-  const [ouraStatus, setOuraStatus] = useState('Not connected');
-  const [fitbitStatus, setFitbitStatus] = useState('Not connected');
+  const [healthStatus, setHealthStatus] = useState("Not requested yet");
+  const [ouraStatus, setOuraStatus] = useState("Not connected");
+  const [fitbitStatus, setFitbitStatus] = useState("Not connected");
   const [invites, setInvites] = useState<InviteCode[]>([]);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [generatingInvite, setGeneratingInvite] = useState(false);
   const [canManageInvites, setCanManageInvites] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [promoteEmail, setPromoteEmail] = useState('');
+  const [promoteEmail, setPromoteEmail] = useState("");
   const [promoting, setPromoting] = useState(false);
   const [promoteStatus, setPromoteStatus] = useState<string | null>(null);
   // Data deletion (GDPR/CCPA)
-  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // Morning check-in reminder
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderHour, setReminderHour] = useState(7);
+  const [reminderMinute, setReminderMinute] = useState(0);
+
   // Pro tier
   const [proStatus, setProStatus] = useState<ProStatus>({ isPro: false });
   const [subscribing, setSubscribing] = useState(false);
@@ -57,13 +95,49 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     getOuraStatus().then((status) => {
-      if (status.connected) setOuraStatus(status.lastSyncedAt ? `Connected, last synced ${status.lastSyncedAt}` : 'Connected, not synced yet');
+      if (status.connected)
+        setOuraStatus(
+          status.lastSyncedAt
+            ? `Connected, last synced ${status.lastSyncedAt}`
+            : "Connected, not synced yet",
+        );
     });
     getFitbitStatus().then((status) => {
-      if (status.connected) setFitbitStatus(status.lastSyncedAt ? `Connected, last synced ${status.lastSyncedAt}` : 'Connected, not synced yet');
+      if (status.connected)
+        setFitbitStatus(
+          status.lastSyncedAt
+            ? `Connected, last synced ${status.lastSyncedAt}`
+            : "Connected, not synced yet",
+        );
     });
     refreshInvites();
-    getProStatus().then(setProStatus).catch(() => {});
+    getProStatus()
+      .then(setProStatus)
+      .catch(() => {});
+
+    // Restore morning reminder preference
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem("morning_reminder");
+        if (stored) {
+          const parsed = JSON.parse(stored) as {
+            enabled: boolean;
+            hour: number;
+            minute: number;
+          };
+          setReminderEnabled(parsed.enabled);
+          setReminderHour(parsed.hour);
+          setReminderMinute(parsed.minute);
+          if (parsed.enabled) {
+            await scheduleMorningReminder(parsed.hour, parsed.minute).catch(
+              () => {},
+            );
+          }
+        }
+      } catch {
+        // Ignore storage errors — notification is optional
+      }
+    })();
   }, []);
 
   function refreshInvites() {
@@ -78,7 +152,9 @@ export default function SettingsScreen() {
           setCanManageInvites(false);
           return;
         }
-        setInviteError(err instanceof Error ? err.message : 'Failed to load invite codes.');
+        setInviteError(
+          err instanceof Error ? err.message : "Failed to load invite codes.",
+        );
       });
   }
 
@@ -89,7 +165,9 @@ export default function SettingsScreen() {
       await createInviteCode();
       refreshInvites();
     } catch (err) {
-      setInviteError(err instanceof Error ? err.message : 'Failed to create invite code.');
+      setInviteError(
+        err instanceof Error ? err.message : "Failed to create invite code.",
+      );
     } finally {
       setGeneratingInvite(false);
     }
@@ -97,7 +175,10 @@ export default function SettingsScreen() {
 
   function flashCopied(id: string) {
     setCopiedId(id);
-    setTimeout(() => setCopiedId((current) => (current === id ? null : current)), 2000);
+    setTimeout(
+      () => setCopiedId((current) => (current === id ? null : current)),
+      2000,
+    );
   }
 
   async function handleCopyInvite(invite: InviteCode) {
@@ -107,8 +188,13 @@ export default function SettingsScreen() {
 
   async function handleShareInvite(invite: InviteCode) {
     const message = inviteMessage(invite.code);
-    if (Platform.OS === 'web') {
-      const nav = typeof navigator !== 'undefined' ? (navigator as Navigator & { share?: (data: { text: string }) => Promise<void> }) : undefined;
+    if (Platform.OS === "web") {
+      const nav =
+        typeof navigator !== "undefined"
+          ? (navigator as Navigator & {
+              share?: (data: { text: string }) => Promise<void>;
+            })
+          : undefined;
       if (nav?.share) {
         try {
           await nav.share({ text: message });
@@ -130,7 +216,9 @@ export default function SettingsScreen() {
       await revokeInviteCode(id);
       refreshInvites();
     } catch (err) {
-      setInviteError(err instanceof Error ? err.message : 'Failed to revoke invite code.');
+      setInviteError(
+        err instanceof Error ? err.message : "Failed to revoke invite code.",
+      );
     }
   }
 
@@ -140,10 +228,14 @@ export default function SettingsScreen() {
     setPromoteStatus(null);
     try {
       const email = await promoteToOwner(promoteEmail.trim());
-      setPromoteStatus(`${email} can now manage invites. They'll need to log out and back in for it to take effect.`);
-      setPromoteEmail('');
+      setPromoteStatus(
+        `${email} can now manage invites. They'll need to log out and back in for it to take effect.`,
+      );
+      setPromoteEmail("");
     } catch (err) {
-      setPromoteStatus(err instanceof Error ? err.message : 'Failed to promote account.');
+      setPromoteStatus(
+        err instanceof Error ? err.message : "Failed to promote account.",
+      );
     } finally {
       setPromoting(false);
     }
@@ -151,7 +243,7 @@ export default function SettingsScreen() {
 
   async function handleLogout() {
     await logout();
-    router.replace('/login');
+    router.replace("/login");
   }
 
   async function handleDeleteAccount() {
@@ -162,9 +254,13 @@ export default function SettingsScreen() {
       const message = await deleteAccount(deleteConfirmEmail.trim());
       setDeleteStatus(message);
       // Redirect to login after a brief pause so the user can read the message
-      setTimeout(() => router.replace('/login'), 2500);
+      setTimeout(() => router.replace("/login"), 2500);
     } catch (err) {
-      setDeleteStatus(err instanceof Error ? err.message : 'Failed to delete account. Please try again.');
+      setDeleteStatus(
+        err instanceof Error
+          ? err.message
+          : "Failed to delete account. Please try again.",
+      );
     } finally {
       setDeleting(false);
     }
@@ -172,37 +268,85 @@ export default function SettingsScreen() {
 
   async function connectHealth() {
     const result = await requestHealthPermissions();
-    setHealthStatus(result.granted ? 'Apple Health connected' : result.reason ?? 'Apple Health unavailable');
+    setHealthStatus(
+      result.granted
+        ? "Apple Health connected"
+        : (result.reason ?? "Apple Health unavailable"),
+    );
   }
 
   async function handleConnectOura() {
-    setOuraStatus('Connecting...');
+    setOuraStatus("Connecting...");
     const result = await connectOura();
     if (result.reason) setOuraStatus(result.reason);
   }
 
   async function handleSyncOura() {
-    setOuraStatus('Syncing...');
+    setOuraStatus("Syncing...");
     const result = await syncOura();
-    setOuraStatus(result.reason ?? `Synced ${result.synced} days of Oura data.`);
+    setOuraStatus(
+      result.reason ?? `Synced ${result.synced} days of Oura data.`,
+    );
   }
 
   async function handleConnectFitbit() {
-    setFitbitStatus('Connecting...');
+    setFitbitStatus("Connecting...");
     const result = await connectFitbit();
     if (result.reason) setFitbitStatus(result.reason);
   }
 
   async function handleSyncFitbit() {
-    setFitbitStatus('Syncing...');
+    setFitbitStatus("Syncing...");
     const result = await syncFitbit();
-    setFitbitStatus(result.reason ?? `Synced ${result.synced} days of Fitbit data.`);
+    setFitbitStatus(
+      result.reason ?? `Synced ${result.synced} days of Fitbit data.`,
+    );
+  }
+
+  function persistReminder(enabled: boolean, hour: number, minute: number) {
+    AsyncStorage.setItem(
+      "morning_reminder",
+      JSON.stringify({ enabled, hour, minute }),
+    ).catch(() => {});
+  }
+
+  async function handleToggleReminder(value: boolean) {
+    setReminderEnabled(value);
+    if (value) {
+      await scheduleMorningReminder(reminderHour, reminderMinute).catch(
+        () => {},
+      );
+    } else {
+      await cancelMorningReminder().catch(() => {});
+    }
+    persistReminder(value, reminderHour, reminderMinute);
+  }
+
+  async function handleChangeReminderTime(hour: number, minute: number) {
+    const clampedHour = ((hour % 24) + 24) % 24;
+    const clampedMinute = ((minute % 60) + 60) % 60;
+    setReminderHour(clampedHour);
+    setReminderMinute(clampedMinute);
+    // Only re-schedule if the reminder is currently enabled
+    if (reminderEnabled) {
+      await scheduleMorningReminder(clampedHour, clampedMinute).catch(() => {});
+    }
+    persistReminder(reminderEnabled, clampedHour, clampedMinute);
+  }
+
+  function formatTime(hour: number, minute: number): string {
+    const h12 = hour % 12 === 0 ? 12 : hour % 12;
+    const ampm = hour < 12 ? "AM" : "PM";
+    return `${h12}:${minute.toString().padStart(2, "0")} ${ampm}`;
   }
 
   return (
     <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Settings</Text>
-      <Text style={styles.subtitle}>Your journal and profile sync across web, iOS, and Android through your account.</Text>
+      <Text style={styles.subtitle}>
+        Your journal and profile sync across web, iOS, and Android through your
+        account.
+      </Text>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Account</Text>
@@ -211,12 +355,83 @@ export default function SettingsScreen() {
         </Pressable>
       </View>
 
+      <View style={styles.card}>
+        <View style={styles.reminderHeader}>
+          <Text style={styles.cardTitle}>☀️ Morning check-in reminder</Text>
+          <Switch
+            value={reminderEnabled}
+            onValueChange={handleToggleReminder}
+            trackColor={{ false: colors.chipBackground, true: colors.primary }}
+            thumbColor={reminderEnabled ? colors.onPrimary : colors.chipText}
+          />
+        </View>
+        <Text style={styles.cardText}>
+          Get a daily nudge to kick off your morning check-in. Taps straight
+          into your journal so you never miss a day.
+        </Text>
+        {reminderEnabled && (
+          <View style={styles.timePicker}>
+            <Text style={styles.timeLabel}>Reminder time</Text>
+            <View style={styles.timeControls}>
+              {/* Hour stepper */}
+              <View style={styles.stepper}>
+                <Pressable
+                  style={styles.stepperButton}
+                  onPress={() =>
+                    handleChangeReminderTime(reminderHour - 1, reminderMinute)
+                  }
+                >
+                  <Text style={styles.stepperButtonText}>−</Text>
+                </Pressable>
+                <Text style={styles.stepperValue}>{reminderHour}</Text>
+                <Pressable
+                  style={styles.stepperButton}
+                  onPress={() =>
+                    handleChangeReminderTime(reminderHour + 1, reminderMinute)
+                  }
+                >
+                  <Text style={styles.stepperButtonText}>+</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.timeSeparator}>:</Text>
+              {/* Minute stepper */}
+              <View style={styles.stepper}>
+                <Pressable
+                  style={styles.stepperButton}
+                  onPress={() =>
+                    handleChangeReminderTime(reminderHour, reminderMinute - 5)
+                  }
+                >
+                  <Text style={styles.stepperButtonText}>−</Text>
+                </Pressable>
+                <Text style={styles.stepperValue}>
+                  {reminderMinute.toString().padStart(2, "0")}
+                </Text>
+                <Pressable
+                  style={styles.stepperButton}
+                  onPress={() =>
+                    handleChangeReminderTime(reminderHour, reminderMinute + 5)
+                  }
+                >
+                  <Text style={styles.stepperButtonText}>+</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.timeAmPm}>
+                {formatTime(reminderHour, reminderMinute)}
+              </Text>
+            </View>
+          </View>
+        )}
+      </View>
+
       <View style={[styles.card, proStatus.isPro && styles.cardProActive]}>
-        <Text style={styles.cardTitle}>{proStatus.isPro ? '⚡ Howdy Morning Pro' : 'Upgrade to Pro'}</Text>
+        <Text style={styles.cardTitle}>
+          {proStatus.isPro ? "⚡ Howdy Morning Pro" : "Upgrade to Pro"}
+        </Text>
         <Text style={styles.cardText}>
           {proStatus.isPro
-            ? `You're Pro! Expires ${proStatus.expiresAt ? new Date(proStatus.expiresAt).toLocaleDateString() : 'N/A'}. Enjoy unlimited AI, 7-day energy forecast, and deep Oura insights.`
-            : 'Howdy Morning Pro — $4/mo. 7-day predicted energy curve, custom schedule optimization, and Oura ring insights deep-dive.'}
+            ? `You're Pro! Expires ${proStatus.expiresAt ? new Date(proStatus.expiresAt).toLocaleDateString() : "N/A"}. Enjoy unlimited AI, 7-day energy forecast, and deep Oura insights.`
+            : "Howdy Morning Pro — $4/mo. 7-day predicted energy curve, custom schedule optimization, and Oura ring insights deep-dive."}
         </Text>
         {!proStatus.isPro && (
           <Pressable
@@ -229,14 +444,18 @@ export default function SettingsScreen() {
                 setProStatus(result);
                 setSubscribeMsg(result.message ?? null);
               } catch (err) {
-                setSubscribeMsg(err instanceof Error ? err.message : 'Subscription failed.');
+                setSubscribeMsg(
+                  err instanceof Error ? err.message : "Subscription failed.",
+                );
               } finally {
                 setSubscribing(false);
               }
             }}
             disabled={subscribing}
           >
-            <Text style={styles.buttonText}>{subscribing ? 'Processing...' : 'Subscribe — $4/mo'}</Text>
+            <Text style={styles.buttonText}>
+              {subscribing ? "Processing..." : "Subscribe — $4/mo"}
+            </Text>
           </Pressable>
         )}
         {subscribeMsg && <Text style={styles.status}>{subscribeMsg}</Text>}
@@ -244,15 +463,27 @@ export default function SettingsScreen() {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Appearance</Text>
-        <Text style={styles.cardText}>Choose light, dark, or match your device.</Text>
+        <Text style={styles.cardText}>
+          Choose light, dark, or match your device.
+        </Text>
         <View style={styles.chipRow}>
           {APPEARANCE_OPTIONS.map((option) => (
             <Pressable
               key={option.key}
               onPress={() => setPreference(option.key)}
-              style={[styles.chip, preference === option.key && styles.chipActive]}
+              style={[
+                styles.chip,
+                preference === option.key && styles.chipActive,
+              ]}
             >
-              <Text style={[styles.chipText, preference === option.key && styles.chipTextActive]}>{option.label}</Text>
+              <Text
+                style={[
+                  styles.chipText,
+                  preference === option.key && styles.chipTextActive,
+                ]}
+              >
+                {option.label}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -260,16 +491,33 @@ export default function SettingsScreen() {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Apple Health</Text>
-        <Text style={styles.cardText}>Reads: steps, active energy, weight, sleep, workouts. Optional writes: daily nutrition totals.</Text>
-        <Pressable style={[styles.button, Platform.OS !== 'ios' && styles.buttonDisabled]} onPress={connectHealth} disabled={Platform.OS !== 'ios'}>
-          <Text style={styles.buttonText}>{Platform.OS === 'ios' ? 'Connect Apple Health' : 'HealthKit is iOS-only'}</Text>
+        <Text style={styles.cardText}>
+          Reads: steps, active energy, weight, sleep, workouts. Optional writes:
+          daily nutrition totals.
+        </Text>
+        <Pressable
+          style={[
+            styles.button,
+            Platform.OS !== "ios" && styles.buttonDisabled,
+          ]}
+          onPress={connectHealth}
+          disabled={Platform.OS !== "ios"}
+        >
+          <Text style={styles.buttonText}>
+            {Platform.OS === "ios"
+              ? "Connect Apple Health"
+              : "HealthKit is iOS-only"}
+          </Text>
         </Pressable>
         <Text style={styles.status}>{healthStatus}</Text>
       </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Oura</Text>
-        <Text style={styles.cardText}>Sleep, readiness, and activity for web + mobile. Works without HealthKit.</Text>
+        <Text style={styles.cardText}>
+          Sleep, readiness, and activity for web + mobile. Works without
+          HealthKit.
+        </Text>
         <Pressable style={styles.button} onPress={handleConnectOura}>
           <Text style={styles.buttonText}>Connect Oura</Text>
         </Pressable>
@@ -281,7 +529,10 @@ export default function SettingsScreen() {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Fitbit</Text>
-        <Text style={styles.cardText}>Steps, active calories, and sleep for web + mobile. No Apple Health or Oura required.</Text>
+        <Text style={styles.cardText}>
+          Steps, active calories, and sleep for web + mobile. No Apple Health or
+          Oura required.
+        </Text>
         <Pressable style={styles.button} onPress={handleConnectFitbit}>
           <Text style={styles.buttonText}>Connect Fitbit</Text>
         </Pressable>
@@ -295,28 +546,49 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Invite friends</Text>
           <Text style={styles.cardText}>
-            Generate a one-time code, then tap the share icon to send it straight to a friend — or the copy icon to
-            paste it yourself. Either way they&apos;ll register at howdymornin.io with that code.
+            Generate a one-time code, then tap the share icon to send it
+            straight to a friend — or the copy icon to paste it yourself. Either
+            way they&apos;ll register at howdymornin.io with that code.
           </Text>
-          <Pressable style={[styles.button, generatingInvite && styles.buttonDisabled]} onPress={handleGenerateInvite} disabled={generatingInvite}>
-            <Text style={styles.buttonText}>{generatingInvite ? 'Generating...' : 'Generate invite code'}</Text>
+          <Pressable
+            style={[styles.button, generatingInvite && styles.buttonDisabled]}
+            onPress={handleGenerateInvite}
+            disabled={generatingInvite}
+          >
+            <Text style={styles.buttonText}>
+              {generatingInvite ? "Generating..." : "Generate invite code"}
+            </Text>
           </Pressable>
           {inviteError && <Text style={styles.error}>{inviteError}</Text>}
           {invites.map((invite) => (
             <View key={invite.id} style={styles.inviteRow}>
               <View style={styles.inviteInfo}>
                 <Text style={styles.inviteCode}>{invite.code}</Text>
-                <Text style={styles.status}>{copiedId === invite.id ? 'Copied!' : inviteStatus(invite)}</Text>
+                <Text style={styles.status}>
+                  {copiedId === invite.id ? "Copied!" : inviteStatus(invite)}
+                </Text>
               </View>
               {!invite.usedAt && !invite.revokedAt && (
                 <View style={styles.inviteActions}>
-                  <Pressable accessibilityLabel="Copy invite code" style={styles.iconButton} onPress={() => handleCopyInvite(invite)}>
+                  <Pressable
+                    accessibilityLabel="Copy invite code"
+                    style={styles.iconButton}
+                    onPress={() => handleCopyInvite(invite)}
+                  >
                     <Copy color={colors.onPrimary} size={16} />
                   </Pressable>
-                  <Pressable accessibilityLabel="Share invite code" style={styles.iconButton} onPress={() => handleShareInvite(invite)}>
+                  <Pressable
+                    accessibilityLabel="Share invite code"
+                    style={styles.iconButton}
+                    onPress={() => handleShareInvite(invite)}
+                  >
                     <Share2 color={colors.onPrimary} size={16} />
                   </Pressable>
-                  <Pressable accessibilityLabel="Revoke invite code" style={styles.revokeButton} onPress={() => handleRevokeInvite(invite.id)}>
+                  <Pressable
+                    accessibilityLabel="Revoke invite code"
+                    style={styles.revokeButton}
+                    onPress={() => handleRevokeInvite(invite.id)}
+                  >
                     <Text style={styles.revokeButtonText}>Revoke</Text>
                   </Pressable>
                 </View>
@@ -330,8 +602,9 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Owner access</Text>
           <Text style={styles.cardText}>
-            Promote an existing account to owner so they can also generate and manage invite codes — no need to
-            share your bootstrap secret. They&apos;ll need to log out and back in for it to take effect.
+            Promote an existing account to owner so they can also generate and
+            manage invite codes — no need to share your bootstrap secret.
+            They&apos;ll need to log out and back in for it to take effect.
           </Text>
           <TextInput
             placeholder="Their account email"
@@ -343,8 +616,17 @@ export default function SettingsScreen() {
             onChangeText={setPromoteEmail}
             style={styles.promoteInput}
           />
-          <Pressable style={[styles.button, (promoting || !promoteEmail.trim()) && styles.buttonDisabled]} onPress={handlePromote} disabled={promoting || !promoteEmail.trim()}>
-            <Text style={styles.buttonText}>{promoting ? 'Promoting...' : 'Make owner'}</Text>
+          <Pressable
+            style={[
+              styles.button,
+              (promoting || !promoteEmail.trim()) && styles.buttonDisabled,
+            ]}
+            onPress={handlePromote}
+            disabled={promoting || !promoteEmail.trim()}
+          >
+            <Text style={styles.buttonText}>
+              {promoting ? "Promoting..." : "Make owner"}
+            </Text>
           </Pressable>
           {promoteStatus && <Text style={styles.status}>{promoteStatus}</Text>}
         </View>
@@ -352,35 +634,57 @@ export default function SettingsScreen() {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>For Teams & Business</Text>
-        <Text style={styles.cardText}>Interested in bringing Howdy Morning to your workplace? Explore our corporate wellness plans — aggregate energy insights, team health scoring, and productivity reports.</Text>
-        <Pressable style={styles.button} onPress={() => router.push('/b2b-wellness')}>
+        <Text style={styles.cardText}>
+          Interested in bringing Howdy Morning to your workplace? Explore our
+          corporate wellness plans — aggregate energy insights, team health
+          scoring, and productivity reports.
+        </Text>
+        <Pressable
+          style={styles.button}
+          onPress={() => router.push("/b2b-wellness")}
+        >
           <Text style={styles.buttonText}>Explore team plans</Text>
         </Pressable>
       </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Survey</Text>
-        <Text style={styles.cardText}>An optional check-in on body stats, movement, and how you manage notes and knowledge.</Text>
-        <Pressable style={styles.button} onPress={() => router.push('/survey')}>
+        <Text style={styles.cardText}>
+          An optional check-in on body stats, movement, and how you manage notes
+          and knowledge.
+        </Text>
+        <Pressable style={styles.button} onPress={() => router.push("/survey")}>
           <Text style={styles.buttonText}>Take the survey</Text>
         </Pressable>
       </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Legal</Text>
-        <Link href="/legal/privacy" style={styles.link}>Privacy Policy</Link>
-        <Link href="/legal/terms" style={styles.link}>Terms of Service</Link>
+        <Link href="/legal/privacy" style={styles.link}>
+          Privacy Policy
+        </Link>
+        <Link href="/legal/terms" style={styles.link}>
+          Terms of Service
+        </Link>
       </View>
 
-      <View style={[styles.card, { borderWidth: 1, borderColor: colors.danger }]}>
-        <Text style={[styles.cardTitle, { color: colors.danger }]}>Data &amp; privacy</Text>
+      <View
+        style={[styles.card, { borderWidth: 1, borderColor: colors.danger }]}
+      >
+        <Text style={[styles.cardTitle, { color: colors.danger }]}>
+          Data &amp; privacy
+        </Text>
         <Text style={styles.cardText}>
-          You can permanently delete your account and all associated data — including your food journal,
-          health connections, notes, survey responses, and profile. This action is irreversible and
-          complies with GDPR (Right to Erasure) and CCPA (Right to Delete).
+          You can permanently delete your account and all associated data —
+          including your food journal, health connections, notes, survey
+          responses, and profile. This action is irreversible and complies with
+          GDPR (Right to Erasure) and CCPA (Right to Delete).
         </Text>
         {!showDeleteConfirm ? (
-          <Pressable style={styles.deleteAccountButton} onPress={() => setShowDeleteConfirm(true)}>
+          <Pressable
+            style={styles.deleteAccountButton}
+            onPress={() => setShowDeleteConfirm(true)}
+          >
             <Text style={styles.deleteAccountButtonText}>Delete my data</Text>
           </Pressable>
         ) : (
@@ -402,21 +706,44 @@ export default function SettingsScreen() {
               <Pressable
                 style={[styles.button, styles.cancelDeleteButton]}
                 disabled={deleting}
-                onPress={() => { setShowDeleteConfirm(false); setDeleteConfirmEmail(''); setDeleteStatus(null); }}
+                onPress={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteConfirmEmail("");
+                  setDeleteStatus(null);
+                }}
               >
                 <Text style={styles.cancelDeleteButtonText}>Cancel</Text>
               </Pressable>
               <Pressable
-                style={[styles.deleteAccountButton, (!deleteConfirmEmail.trim() || deleting) && styles.buttonDisabled]}
+                style={[
+                  styles.deleteAccountButton,
+                  (!deleteConfirmEmail.trim() || deleting) &&
+                    styles.buttonDisabled,
+                ]}
                 disabled={!deleteConfirmEmail.trim() || deleting}
                 onPress={handleDeleteAccount}
               >
-                <Text style={styles.deleteAccountButtonText}>{deleting ? 'Deleting...' : 'Yes, delete everything'}</Text>
+                <Text style={styles.deleteAccountButtonText}>
+                  {deleting ? "Deleting..." : "Yes, delete everything"}
+                </Text>
               </Pressable>
             </View>
           </>
         )}
-        {deleteStatus && <Text style={[styles.status, { color: deleteStatus.includes('deleted') ? colors.success : colors.danger }]}>{deleteStatus}</Text>}
+        {deleteStatus && (
+          <Text
+            style={[
+              styles.status,
+              {
+                color: deleteStatus.includes("deleted")
+                  ? colors.success
+                  : colors.danger,
+              },
+            ]}
+          >
+            {deleteStatus}
+          </Text>
+        )}
       </View>
     </ScrollView>
   );
@@ -428,33 +755,155 @@ const createStyles = (colors: ThemeColors) =>
     container: { padding: 20, gap: 16, backgroundColor: colors.background },
     title: { ...typography.display1, color: colors.text },
     subtitle: { ...typography.bodyMedium, color: colors.textMuted },
-    card: { backgroundColor: colors.surface, borderRadius: 24, padding: 18, gap: 10 },
-    cardTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      padding: 18,
+      gap: 10,
+    },
+    cardTitle: { fontSize: 20, fontWeight: "800", color: colors.text },
     cardText: { color: colors.textMuted, lineHeight: 20 },
-    button: { backgroundColor: colors.primary, borderRadius: 16, padding: 14, alignItems: 'center' },
+    button: {
+      backgroundColor: colors.primary,
+      borderRadius: 16,
+      padding: 14,
+      alignItems: "center",
+    },
     buttonDisabled: { opacity: 0.5 },
-    buttonText: { color: colors.onPrimary, fontWeight: '800' },
-    status: { color: colors.text, fontWeight: '700' },
-    link: { color: colors.primary, fontWeight: '700', textDecorationLine: 'underline' },
-    error: { color: colors.danger, fontWeight: '600' },
-    chipRow: { flexDirection: 'row', gap: 8 },
-    chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999, backgroundColor: colors.chipBackground },
+    buttonText: { color: colors.onPrimary, fontWeight: "800" },
+    status: { color: colors.text, fontWeight: "700" },
+    link: {
+      color: colors.primary,
+      fontWeight: "700",
+      textDecorationLine: "underline",
+    },
+    error: { color: colors.danger, fontWeight: "600" },
+    chipRow: { flexDirection: "row", gap: 8 },
+    chip: {
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 999,
+      backgroundColor: colors.chipBackground,
+    },
     chipActive: { backgroundColor: colors.primary },
-    chipText: { color: colors.chipText, fontWeight: '700' },
+    chipText: { color: colors.chipText, fontWeight: "700" },
     chipTextActive: { color: colors.onPrimary },
-    inviteRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surfaceAlt, borderRadius: 14, padding: 12 },
+    inviteRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 14,
+      padding: 12,
+    },
     inviteInfo: { gap: 2 },
-    inviteCode: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: 1 },
-    inviteActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-    iconButton: { backgroundColor: colors.primary, borderRadius: 10, padding: 8 },
-    promoteInput: { backgroundColor: colors.background, borderRadius: 14, padding: 12, fontSize: 15, color: colors.text },
-    revokeButton: { backgroundColor: colors.danger, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12 },
-    revokeButtonText: { color: colors.onPrimary, fontWeight: '700', fontSize: 12 },
+    inviteCode: {
+      fontSize: 16,
+      fontWeight: "800",
+      color: colors.text,
+      letterSpacing: 1,
+    },
+    inviteActions: { flexDirection: "row", gap: 8, alignItems: "center" },
+    iconButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 10,
+      padding: 8,
+    },
+    promoteInput: {
+      backgroundColor: colors.background,
+      borderRadius: 14,
+      padding: 12,
+      fontSize: 15,
+      color: colors.text,
+    },
+    revokeButton: {
+      backgroundColor: colors.danger,
+      borderRadius: 12,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+    },
+    revokeButtonText: {
+      color: colors.onPrimary,
+      fontWeight: "700",
+      fontSize: 12,
+    },
     // Data deletion
-    deleteAccountButton: { backgroundColor: colors.danger, borderRadius: 16, padding: 14, alignItems: 'center' },
-    deleteAccountButtonText: { color: colors.onPrimary, fontWeight: '800' },
-    deleteActionRow: { flexDirection: 'row', gap: 10 },
-    cancelDeleteButton: { backgroundColor: colors.surfaceAlt, borderRadius: 16, paddingVertical: 14, alignItems: 'center', flex: 1 },
-    cancelDeleteButtonText: { color: colors.text, fontWeight: '800' },
+    deleteAccountButton: {
+      backgroundColor: colors.danger,
+      borderRadius: 16,
+      padding: 14,
+      alignItems: "center",
+    },
+    deleteAccountButtonText: { color: colors.onPrimary, fontWeight: "800" },
+    deleteActionRow: { flexDirection: "row", gap: 10 },
+    cancelDeleteButton: {
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 16,
+      paddingVertical: 14,
+      alignItems: "center",
+      flex: 1,
+    },
+    cancelDeleteButtonText: { color: colors.text, fontWeight: "800" },
     cardProActive: { borderWidth: 2, borderColor: colors.primary },
+    // Morning reminder
+    reminderHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    timePicker: {
+      marginTop: 4,
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 14,
+      padding: 12,
+    },
+    timeLabel: {
+      ...typography.bodySmall,
+      color: colors.textMuted,
+      marginBottom: 8,
+    },
+    timeControls: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    stepper: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.background,
+      borderRadius: 12,
+      overflow: "hidden",
+    },
+    stepperButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: colors.surface,
+    },
+    stepperButtonText: {
+      ...typography.bodyMedium,
+      color: colors.text,
+      fontWeight: "800",
+      fontSize: 18,
+    },
+    stepperValue: {
+      ...typography.bodyMedium,
+      color: colors.text,
+      fontWeight: "900",
+      fontSize: 20,
+      minWidth: 36,
+      textAlign: "center",
+      paddingHorizontal: 4,
+    },
+    timeSeparator: {
+      ...typography.bodyMedium,
+      color: colors.textMuted,
+      fontWeight: "900",
+      fontSize: 20,
+    },
+    timeAmPm: {
+      ...typography.bodySmall,
+      color: colors.textMuted,
+      marginLeft: 8,
+      fontWeight: "700",
+    },
   });

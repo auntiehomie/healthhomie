@@ -1,16 +1,40 @@
-import { Stack, useRouter, useSegments } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState } from 'react';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { getToken } from '@/lib/services/authClient';
-import { ThemeProvider, useTheme } from '@/lib/theme/ThemeContext';
-import { UpdateBanner } from '@/components/UpdateBanner';
+import { Stack, useRouter, useSegments } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import * as SplashScreen from "expo-splash-screen";
+import * as Notifications from "expo-notifications";
+import { useEffect, useState } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { getToken } from "@/lib/services/authClient";
+import { ThemeProvider, useTheme } from "@/lib/theme/ThemeContext";
+import { UpdateBanner } from "@/components/UpdateBanner";
+
+// Show notifications even when the app is in the foreground (e.g. during onboarding).
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 // Keeps the native splash screen up (instead of a blank white/black frame) until the auth
 // check below resolves and we know whether to render the app or redirect to /login.
 void SplashScreen.preventAutoHideAsync();
+
+// Register for push notifications on app boot (token captured for future server-side push).
+// This is fire-and-forget — local scheduled reminders don't need the token.
+void (async () => {
+  try {
+    const { registerForPushNotificationsAsync } =
+      await import("@/lib/notifications");
+    await registerForPushNotificationsAsync();
+  } catch {
+    // Notifications are optional; don't crash the app on failure.
+  }
+})();
 
 export default function RootLayout() {
   return (
@@ -43,10 +67,10 @@ function AppShell() {
         if (!active) return;
         const isAuthed = !!token;
         setAuthChecked(true);
-        const publicRoutes = ['login', 'forgot-password', 'reset-password'];
+        const publicRoutes = ["login", "forgot-password", "reset-password"];
         const inPublicRoute = publicRoutes.includes(segments[0] as string);
-        if (!isAuthed && !inPublicRoute) router.replace('/login');
-        if (isAuthed && segments[0] === 'login') router.replace('/(tabs)');
+        if (!isAuthed && !inPublicRoute) router.replace("/login");
+        if (isAuthed && segments[0] === "login") router.replace("/(tabs)");
       })
       .catch(() => {
         if (active) setAuthChecked(true);
@@ -68,22 +92,28 @@ function AppShell() {
         screenOptions={{
           headerStyle: { backgroundColor: colors.surface },
           headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '900' },
+          headerTitleStyle: { fontWeight: "900" },
           contentStyle: { backgroundColor: colors.background },
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-        <Stack.Screen name="recipe-editor" options={{ headerTitle: 'Recipe' }} />
-        <Stack.Screen name="restaurant-results" options={{ headerTitle: 'Restaurants' }} />
-        <Stack.Screen name="quick-add" options={{ headerTitle: 'Quick Add' }} />
+        <Stack.Screen
+          name="recipe-editor"
+          options={{ headerTitle: "Recipe" }}
+        />
+        <Stack.Screen
+          name="restaurant-results"
+          options={{ headerTitle: "Restaurants" }}
+        />
+        <Stack.Screen name="quick-add" options={{ headerTitle: "Quick Add" }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
         <Stack.Screen name="reset-password" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <UpdateBanner />
-      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style={scheme === "dark" ? "light" : "dark"} />
     </>
   );
 }
