@@ -8,6 +8,17 @@ import { getToken } from "@/lib/services/authClient";
 import { ThemeProvider, useTheme } from "@/lib/theme/ThemeContext";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { setupMorningCheckInReminder } from "@/lib/services/notifications";
+import * as Sentry from "@sentry/react-native";
+
+// Initialize Sentry crash reporting
+// SENTRY_DSN is injected via app.config.ts extra config
+if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+    tracesSampleRate: 0.2,
+    enableNativeCrashReporting: true,
+  });
+}
 
 // Keeps the native splash screen up (instead of a blank white/black frame) until the auth
 // check below resolves and we know whether to render the app or redirect to /login.

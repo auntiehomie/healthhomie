@@ -31,7 +31,12 @@
           "action": "VIEW",
           "autoVerify": true,
           "category": ["BROWSABLE", "DEFAULT"],
-          "data": [{ "scheme": "https", "host": "howdymornin.io" }]
+          "data": [
+            {
+              "scheme": "https",
+              "host": "howdymornin.io"
+            }
+          ]
         }
       ],
       "adaptiveIcon": {
@@ -74,10 +79,20 @@
           "NSHealthShareUsageDescription": "Howdy Morning reads Apple Health activity, weight, and sleep data to personalize your energy schedule and calorie goals.",
           "NSHealthUpdateUsageDescription": "Howdy Morning can write nutrition totals to Apple Health when you choose to sync your food journal."
         }
-      ]
+      ],
+      "@sentry/react-native",
+      "expo-updates"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "extra": {
+      "sentryDSN": ""
     }
   }
 }
