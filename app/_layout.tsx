@@ -28,7 +28,7 @@ if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
     // Attach stack traces to all error events
     attachStacktrace: true,
     // Capture user sessions for release health tracking
-    autoSessionTracking: true,
+    enableAutoSessionTracking: true,
   });
 }
 
