@@ -80,7 +80,14 @@
           "NSHealthUpdateUsageDescription": "Howdy Morning can write nutrition totals to Apple Health when you choose to sync your food journal."
         }
       ],
-      "@sentry/react-native",
+      [
+        "@sentry/react-native",
+        {
+          "organization": "homiehouse",
+          "project": "howdy-morning",
+          "authSessionEnabled": true
+        }
+      ],
       "expo-updates"
     ],
     "experiments": {

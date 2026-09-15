@@ -10,12 +10,25 @@ import { UpdateBanner } from "@/components/UpdateBanner";
 import { setupMorningCheckInReminder } from "@/lib/services/notifications";
 import * as Sentry from "@sentry/react-native";
 
-// Initialize Sentry crash reporting
+// Initialize Sentry crash reporting with release tracking
 // SENTRY_DSN is injected via app.config.ts extra config
+// Release tracking: set SENTRY_RELEASE env var to match the EAS build version
+// Source maps: uploaded via `eas build --upload-sourcemaps` or sentry-cli in CI
 if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
   Sentry.init({
     dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
     tracesSampleRate: 0.2,
+    // Release tracking for production crash symbolication
+    // Format: howdymorning@<version>+<buildNumber> (matches EAS build profile)
+    release: process.env.SENTRY_RELEASE || `${process.env.EXPO_PUBLIC_SENTRY_RELEASE}` || undefined,
+    // Enable source map upload via Sentry React Native Expo plugin
+    // @sentry/react-native Expo plugin handles source map upload automatically
+    // when SENTRY_AUTH_TOKEN is set in the environment
+    environment: process.env.APP_VARIANT || 'development',
+    // Attach stack traces to all error events
+    attachStacktrace: true,
+    // Capture user sessions for release health tracking
+    autoSessionTracking: true,
   });
 }
 
