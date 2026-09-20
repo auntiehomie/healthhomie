@@ -1,9 +1,13 @@
-import { useEffect, useMemo } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
-import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
-import { applyUpdate, registerServiceWorker, useUpdateAvailable } from '@/lib/services/pwaUpdate';
-import { useTheme } from '@/lib/theme/ThemeContext';
-import type { ThemeColors } from '@/lib/theme/tokens';
+import { useEffect, useMemo } from "react";
+import { Platform, StyleSheet, Text, View } from "react-native";
+import { PressableFeedback as Pressable } from "@/components/ui/PressableFeedback";
+import {
+  applyUpdate,
+  registerServiceWorker,
+  useUpdateAvailable,
+} from "@/lib/services/pwaUpdate";
+import { useTheme } from "@/lib/theme/ThemeContext";
+import type { ThemeColors } from "@/lib/theme/tokens";
 
 export function UpdateBanner() {
   const { colors } = useTheme();
@@ -14,7 +18,7 @@ export function UpdateBanner() {
     registerServiceWorker();
   }, []);
 
-  if (Platform.OS !== 'web' || !available) return null;
+  if (Platform.OS !== "web" || !available) return null;
 
   return (
     <View style={styles.banner}>
@@ -29,20 +33,29 @@ export function UpdateBanner() {
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     banner: {
-      position: 'absolute',
+      position: "absolute",
       top: 0,
       left: 0,
       right: 0,
       zIndex: 1000,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
       gap: 12,
-      paddingVertical: 10,
+      paddingVertical: 8,
       paddingHorizontal: 16,
       backgroundColor: colors.primary,
     },
-    text: { color: colors.onPrimary, fontWeight: '700', flex: 1 },
-    button: { backgroundColor: colors.onPrimary, borderRadius: 10, paddingVertical: 6, paddingHorizontal: 14 },
-    buttonText: { color: colors.primary, fontWeight: '800' },
+    text: { color: colors.onPrimary, fontWeight: "700", flex: 1 },
+    button: {
+      minHeight: 44,
+      minWidth: 44,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.onPrimary,
+      borderRadius: 10,
+      paddingVertical: 6,
+      paddingHorizontal: 14,
+    },
+    buttonText: { color: colors.primary, fontWeight: "800" },
   });
