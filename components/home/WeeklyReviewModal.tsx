@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Animated, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
-import { getUserProfile, listFoodItems, listMealEntries, saveUserProfile } from '@/lib/db/database';
+import { getUserProfile, listFoodItems, listMealEntries, saveUserProfile, getLatestWeight } from '@/lib/db/database';
 import { loadNotes, type Note } from '@/lib/db/notesStorage';
 import { getDailyProductivityLogs } from '@/lib/db/dailyLogStorage';
 import { calculateDailyGoal, recommendWeeklyAdjustment } from '@/lib/domain/goals';
@@ -132,8 +132,12 @@ export function WeeklyReviewModal() {
       setWeekSummary(summary);
       setWeekNotes(relevantNotes);
       setInsight(computedInsight);
-      setCurrentWeightKg(profile.currentWeightKg);
-      setWeightInput(profile.currentWeightKg ? String(Math.round(kgToLb(profile.currentWeightKg) * 10) / 10) : '');
+      // Read from the unified weight_logs table (same source as the Today screen)
+      // instead of the stale user_profile.currentWeightKg field
+      const latestWeight = await getLatestWeight().catch(() => null);
+      const weightKg = latestWeight?.weightKg ?? profile.currentWeightKg;
+      setCurrentWeightKg(weightKg);
+      setWeightInput(weightKg ? String(Math.round(kgToLb(weightKg) * 10) / 10) : '');
       setVisible(true);
       await AsyncStorage.setItem(LAST_SHOWN_KEY, String(weekIndex));
 
@@ -159,8 +163,11 @@ export function WeeklyReviewModal() {
     const value = Number(weightInput);
     if (!Number.isFinite(value) || value <= 0) return;
     const kgValue = weightUnit === 'lb' ? lbToKg(value) : value;
+    // Save to both the weight_logs table (unified) and user_profile (for goal calculations)
     const profile = await getUserProfile();
     await saveUserProfile({ ...profile, currentWeightKg: kgValue, updatedAt: new Date().toISOString() });
+    const { logWeight } = await import('@/lib/db/database');
+    await logWeight(todayKey(), kgValue);
     setCurrentWeightKg(kgValue);
     setWeightSaved(true);
   }
