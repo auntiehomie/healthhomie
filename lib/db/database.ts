@@ -1,5 +1,5 @@
 import { apiUrl, getToken } from '@/lib/services/authClient';
-import type { FoodItem, MealEntry, Recipe, UserProfile } from '@/types/healthhomie';
+import type { ExerciseEntry, FoodItem, MealEntry, Recipe, UserProfile, WeightLog } from '@/types/healthhomie';
 
 async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const token = await getToken();
@@ -71,4 +71,52 @@ export async function deleteRecipe(id: string): Promise<void> {
 
 export function createId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+// ── Exercise ──────────────────────────────────────────────────────────────────
+
+export async function listExercises(date?: string): Promise<ExerciseEntry[]> {
+  const query = date ? `?date=${encodeURIComponent(date)}` : '';
+  const response = await apiFetch(`/api/data/exercises${query}`);
+  const payload = await response.json();
+  return payload.entries;
+}
+
+export async function listExercisesByDateRange(days: number): Promise<ExerciseEntry[]> {
+  const response = await apiFetch(`/api/data/exercises?days=${days}`);
+  const payload = await response.json();
+  return payload.entries;
+}
+
+export async function insertExercise(entry: ExerciseEntry): Promise<void> {
+  await apiFetch('/api/data/exercises', { method: 'POST', body: JSON.stringify(entry) });
+}
+
+export async function deleteExercise(entryId: string): Promise<void> {
+  await apiFetch(`/api/data/exercises?id=${encodeURIComponent(entryId)}`, { method: 'DELETE' });
+}
+
+// ── Weight ────────────────────────────────────────────────────────────────────
+
+export async function getWeightHistory(days = 90): Promise<WeightLog[]> {
+  const response = await apiFetch(`/api/data/weights?days=${days}`);
+  const payload = await response.json();
+  return payload.entries;
+}
+
+export async function getLatestWeight(): Promise<WeightLog | null> {
+  const response = await apiFetch('/api/data/weights?days=1');
+  const payload = await response.json();
+  return payload.entries?.[0] ?? null;
+}
+
+export async function logWeight(date: string, weightKg: number): Promise<WeightLog> {
+  const entry: WeightLog = {
+    id: createId('weight'),
+    date,
+    weightKg,
+    createdAt: new Date().toISOString(),
+  };
+  await apiFetch('/api/data/weights', { method: 'POST', body: JSON.stringify(entry) });
+  return entry;
 }

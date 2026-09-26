@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
-import { createNote, loadNotes, type Note } from '@/lib/db/notesStorage';
+import { createNote, getOrCreateDailyNote, loadNotes, type Note } from '@/lib/db/notesStorage';
 import { getDayPeriod, type DayPeriod } from '@/lib/domain/dayPeriod';
 import { hapticImpact, hapticSuccess } from '@/lib/utils/haptics';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -213,13 +213,13 @@ export function ProductivityPage() {
   }, []);
 
   useEffect(() => {
+    const d = todayKey();
     (async () => {
       try {
         await reload();
+        // Auto-create today's daily note if it doesn't exist yet
+        getOrCreateDailyNote(d).catch(console.warn);
       } catch (err) {
-        // A failed load (e.g. a flaky notes request) must never leave the screen stuck on its
-        // skeleton forever with no way out - fall through to loaded with whatever defaults were
-        // already set, same as pull-to-refresh already does via its own try/finally.
         console.warn('Failed to load productivity data:', err);
       } finally {
         setLoaded(true);

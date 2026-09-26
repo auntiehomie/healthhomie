@@ -6,8 +6,10 @@ import {
   Dumbbell,
   FileText,
   Home,
+  LineChart,
   ScanBarcode,
   Settings,
+  Timer,
 } from 'lucide-react-native';
 import { useTheme } from '@/lib/theme/ThemeContext';
 
@@ -44,6 +46,26 @@ export default function TabLayout() {
           title: 'Today',
           drawerIcon: ({ color, size }) => <Activity size={size} color={color} />,
           headerTitle: 'Today',
+        }}
+      />
+
+      {/* ── New: Trends (7/30/90-day charts) ── */}
+      <Drawer.Screen
+        name="trends"
+        options={{
+          title: 'Trends',
+          drawerIcon: ({ color, size }) => <LineChart size={size} color={color} />,
+          headerTitle: 'Trends',
+        }}
+      />
+
+      {/* ── New: Exercise tracking ── */}
+      <Drawer.Screen
+        name="exercise"
+        options={{
+          title: 'Exercise',
+          drawerIcon: ({ color, size }) => <Timer size={size} color={color} />,
+          headerTitle: 'Exercise',
         }}
       />
 

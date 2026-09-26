@@ -7,9 +7,10 @@ import { BarcodeScanner } from '@/components/health/BarcodeScanner';
 import { EditEntryModal } from '@/components/health/EditEntryModal';
 import { FoodRow } from '@/components/health/FoodRow';
 import { FoodRowSkeleton } from '@/components/ui/Skeleton';
+import { CalendarStrip, type DayCompliance } from '@/components/health/CalendarStrip';
 import { HourPicker } from '@/components/health/HourPicker';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
-import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries, updateMealEntry, upsertFoodItem } from '@/lib/db/database';
+import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries, updateMealEntry, upsertFoodItem, listExercises, getWeightHistory } from '@/lib/db/database';
 import { foodDisplayName } from '@/lib/domain/food';
 import { deriveMealType, formatHour } from '@/lib/domain/mealType';
 import { formatDateLabel, formatWeekRangeLabel, shiftDateKey, summarizeDay, todayKey, weekDateKeys, weekStartKey } from '@/lib/domain/nutrition';
@@ -55,6 +56,7 @@ export default function JournalScreen() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [historyEntries, setHistoryEntries] = useState<MealEntry[]>([]);
+  const [calendarDays, setCalendarDays] = useState<DayCompliance[]>([]);
 
   const load = useCallback(async () => {
     const [nextFoods, nextEntries] = await Promise.all([listFoodItems(), listMealEntries(selectedDate)]);
@@ -88,6 +90,34 @@ export default function JournalScreen() {
   useFocusEffect(useCallback(() => {
     if (viewMode === 'week') loadWeek().catch(console.warn);
   }, [viewMode, loadWeek]));
+
+  // Calendar strip data
+  const loadCalendarDays = useCallback(async () => {
+    const [allEntries, exerciseEntries, weights] = await Promise.all([
+      listMealEntries(),
+      listExercises(),
+      getWeightHistory(30),
+    ])
+    const dates = Array.from({ length: 30 }, (_, i) => shiftDateKey(todayKey(), -i)).reverse()
+    const foodDates = new Set(allEntries.map((e) => e.date))
+    const exerciseDates = new Set(exerciseEntries.map((e) => e.date))
+    const weightDates = new Set(weights.map((w) => w.date))
+    setCalendarDays(
+      dates.map((d) => ({
+        date: d,
+        indicators: [
+          ...(foodDates.has(d) ? ['food' as const] : []),
+          ...(exerciseDates.has(d) ? ['exercise' as const] : []),
+          ...(weightDates.has(d) ? ['weight' as const] : []),
+        ],
+      }))
+    )
+  }, [])
+
+  // Load calendar strip data
+  useFocusEffect(useCallback(() => {
+    loadCalendarDays().catch(console.warn);
+  }, [loadCalendarDays]));
 
   const weekDays = useMemo(() => weekDateKeys(weekStart), [weekStart]);
   const weekDaySummaries = useMemo(
@@ -256,6 +286,15 @@ ${message}`)) void removeEntry(entry);
       contentContainerStyle={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.primary} colors={[colors.primary]} />}
     >
+      {/* Calendar strip */}
+      {calendarDays.length > 0 ? (
+        <CalendarStrip
+          days={calendarDays}
+          onDayPress={(date) => openDay(date)}
+          currentDate={todayKey()}
+        />
+      ) : null}
+
       <Text style={styles.title}>Food journal</Text>
       <Text style={styles.subtitle}>Search USDA foods or tap a saved food to log it.</Text>
 

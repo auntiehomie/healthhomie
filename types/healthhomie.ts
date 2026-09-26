@@ -153,3 +153,23 @@ export type WeeklyCheckIn = {
   insight: string;
   createdAt: string;
 };
+
+export type ExerciseType = 'walking' | 'running' | 'strength' | 'yoga' | 'cycling' | 'swimming' | 'sports' | 'other';
+
+export type ExerciseEntry = {
+  id: string;
+  type: ExerciseType;
+  durationMin: number;
+  caloriesBurned?: number;
+  date: string;
+  hour?: number;
+  notes?: string;
+  createdAt: string;
+};
+
+export type WeightLog = {
+  id: string;
+  date: string;
+  weightKg: number;
+  createdAt: string;
+};

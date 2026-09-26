@@ -174,4 +174,24 @@ export const schemaStatements = [
     PRIMARY KEY ("userId", id)
   );`,
   `CREATE INDEX IF NOT EXISTS notes_user_updated_idx ON notes("userId", "updatedAt" DESC);`,
+  `CREATE TABLE IF NOT EXISTS exercise_entries (
+    id TEXT PRIMARY KEY,
+    "userId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    "durationMin" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "caloriesBurned" DOUBLE PRECISION,
+    date TEXT NOT NULL,
+    hour INTEGER,
+    notes TEXT,
+    "createdAt" TEXT NOT NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS exercise_entries_user_date_idx ON exercise_entries("userId", date);`,
+  `CREATE TABLE IF NOT EXISTS weight_logs (
+    id TEXT PRIMARY KEY,
+    "userId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    "weightKg" DOUBLE PRECISION NOT NULL,
+    "createdAt" TEXT NOT NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS weight_logs_user_date_idx ON weight_logs("userId", date);`,
 ] as const;
