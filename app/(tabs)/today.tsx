@@ -45,6 +45,7 @@ export default function TodayScreen() {
   // Weight tracking
   const [latestWeight, setLatestWeight] = useState<WeightLog | null>(null);
   const [weightInput, setWeightInput] = useState('');
+  const [weightUnit, setWeightUnit] = useState<'lb' | 'kg'>('lb');
   const [savingWeight, setSavingWeight] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -119,11 +120,31 @@ export default function TodayScreen() {
     }
   }
 
+  const KG_PER_LB = 0.45359237
+  const kgToLb = (kg: number) => kg / KG_PER_LB
+  const lbToKg = (lb: number) => lb * KG_PER_LB
+
+  function toggleWeightUnit(next: 'lb' | 'kg') {
+    if (next === weightUnit) return
+    const value = parseFloat(weightInput)
+    if (Number.isFinite(value) && value > 0) {
+      const converted = next === 'kg' ? lbToKg(value) : kgToLb(value)
+      setWeightInput(String(Math.round(converted * 10) / 10))
+    }
+    setWeightUnit(next)
+  }
+
   async function handleSaveWeight() {
-    const kg = parseFloat(weightInput)
-    if (!Number.isFinite(kg) || kg <= 0 || kg > 300) {
-      if (Platform.OS === 'web') window.alert('Enter a valid weight in kg.')
-      else Alert.alert('Invalid weight', 'Enter a valid weight in kg.')
+    const rawValue = parseFloat(weightInput)
+    if (!Number.isFinite(rawValue) || rawValue <= 0) {
+      if (Platform.OS === 'web') window.alert(`Enter a valid weight in ${weightUnit}.`)
+      else Alert.alert('Invalid weight', `Enter a valid weight in ${weightUnit}.`)
+      return
+    }
+    const kg = weightUnit === 'lb' ? lbToKg(rawValue) : rawValue
+    if (kg > 300) {
+      if (Platform.OS === 'web') window.alert('That value seems too high — check the unit toggle.')
+      else Alert.alert('Value too high', 'That value seems too high — check the unit toggle (lb vs kg).')
       return
     }
     setSavingWeight(true)
@@ -197,7 +218,7 @@ export default function TodayScreen() {
         <Text style={styles.sectionTitle}>Weight</Text>
         {latestWeight ? (
           <View style={styles.weightValueRow}>
-            <Text style={styles.weightValue}>{latestWeight.weightKg} kg</Text>
+            <Text style={styles.weightValue}>{weightUnit === 'lb' ? Math.round(kgToLb(latestWeight.weightKg) * 10) / 10 : latestWeight.weightKg} {weightUnit}</Text>
             <Text style={styles.weightDate}>logged {latestWeight.date}</Text>
           </View>
         ) : (
@@ -208,10 +229,18 @@ export default function TodayScreen() {
             style={styles.weightInput}
             value={weightInput}
             onChangeText={setWeightInput}
-            placeholder="Weight in kg"
+            placeholder={`Weight in ${weightUnit}`}
             placeholderTextColor={colors.textMuted}
             keyboardType="decimal-pad"
           />
+          <View style={styles.unitToggleRow}>
+            <Pressable onPress={() => toggleWeightUnit('lb')} style={[styles.unitToggleBtn, weightUnit === 'lb' && styles.unitToggleBtnActive]}>
+              <Text style={[styles.unitToggleText, weightUnit === 'lb' && styles.unitToggleTextActive]}>lb</Text>
+            </Pressable>
+            <Pressable onPress={() => toggleWeightUnit('kg')} style={[styles.unitToggleBtn, weightUnit === 'kg' && styles.unitToggleBtnActive]}>
+              <Text style={[styles.unitToggleText, weightUnit === 'kg' && styles.unitToggleTextActive]}>kg</Text>
+            </Pressable>
+          </View>
           <Pressable
             style={[styles.weightSaveBtn, savingWeight && { opacity: 0.5 }]}
             onPress={() => void handleSaveWeight()}
@@ -298,7 +327,7 @@ const createStyles = (colors: ThemeColors) =>
     weightValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
     weightValue: { fontSize: 28, fontWeight: '900', color: colors.text },
     weightDate: { color: colors.textMuted, fontSize: 13 },
-    weightInputRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+    weightInputRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
     weightInput: {
       flex: 1,
       backgroundColor: colors.surfaceAlt,
@@ -307,6 +336,11 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: 16,
       color: colors.text,
     },
+    unitToggleRow: { flexDirection: 'row', backgroundColor: colors.surfaceAlt, borderRadius: 12, overflow: 'hidden' },
+    unitToggleBtn: { paddingHorizontal: 10, paddingVertical: 12 },
+    unitToggleBtnActive: { backgroundColor: colors.primary },
+    unitToggleText: { color: colors.textMuted, fontWeight: '700', fontSize: 13 },
+    unitToggleTextActive: { color: colors.onPrimary },
     weightSaveBtn: {
       backgroundColor: colors.primary,
       borderRadius: 14,
