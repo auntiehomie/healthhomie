@@ -110,3 +110,54 @@ export async function createNote(fields: { title: string; content: string; tags?
   await upsertNote(note);
   return note;
 }
+
+// ── Daily note (Obsidian-style) ───────────────────────────────────────────────
+
+const DAILY_NOTE_TAG = 'daily-note';
+
+function dailyNoteTitle(date: string): string {
+  return new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+function dailyNoteTemplate(date: string): string {
+  const title = dailyNoteTitle(date);
+  return `# ${title}
+
+## Priorities
+- [ ] 
+- [ ] 
+- [ ] 
+
+## Mood
+- morning: 
+- midday: 
+- evening: 
+
+## Food log
+
+## Exercise
+
+## Notes
+`;
+}
+
+/**
+ * Get or create today's daily note. If one doesn't exist, creates it
+ * with a template and returns it. Safe to call on every app open — it
+ * will only create a note once per day.
+ */
+export async function getOrCreateDailyNote(date: string): Promise<Note> {
+  const allNotes = await loadNotes();
+  const existing = allNotes.find(
+    (n) => n.tags.includes(DAILY_NOTE_TAG) && n.createdAt.startsWith(date)
+  );
+  if (existing) return existing;
+
+  const title = dailyNoteTitle(date);
+  const content = dailyNoteTemplate(date);
+  return createNote({ title, content, tags: [DAILY_NOTE_TAG] });
+}

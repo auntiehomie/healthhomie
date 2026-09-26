@@ -5,7 +5,13 @@ import { requireUserId, AuthError } from '../../lib/server/auth';
 const DEFAULT_DAYS = 30;
 const MAX_DAYS = 90;
 
-export type HealthMetricsHistoryDay = { date: string; readinessScore?: number; sleepScore?: number };
+export type HealthMetricsHistoryDay = {
+  date: string;
+  readinessScore?: number;
+  sleepScore?: number;
+  steps?: number;
+  activeEnergyKcal?: number;
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'GET only.' });
@@ -21,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const startDate = start.toISOString().slice(0, 10);
 
     const rows = await sql`
-      SELECT date, "readinessScore", "sleepScore" FROM health_metrics_daily
+      SELECT date, "readinessScore", "sleepScore", steps, "activeEnergyKcal" FROM health_metrics_daily
       WHERE "userId" = ${userId} AND date >= ${startDate}
       ORDER BY date ASC
     `;
@@ -33,6 +39,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const existing: HealthMetricsHistoryDay = byDate.get(row.date) ?? { date: row.date };
       if (existing.readinessScore == null && row.readinessScore != null) existing.readinessScore = row.readinessScore;
       if (existing.sleepScore == null && row.sleepScore != null) existing.sleepScore = row.sleepScore;
+      if (existing.steps == null && row.steps != null) existing.steps = row.steps;
+      if (existing.activeEnergyKcal == null && row.activeEnergyKcal != null) existing.activeEnergyKcal = row.activeEnergyKcal;
       byDate.set(row.date, existing);
     }
 

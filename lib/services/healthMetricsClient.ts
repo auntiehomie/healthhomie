@@ -12,9 +12,15 @@ export async function getLatestHealthSnapshot(): Promise<HealthSnapshot> {
   return response.json();
 }
 
-export type HealthMetricsHistoryDay = { date: string; readinessScore?: number; sleepScore?: number };
+export type HealthMetricsHistoryDay = {
+  date: string;
+  readinessScore?: number;
+  sleepScore?: number;
+  steps?: number;
+  activeEnergyKcal?: number;
+};
 
-/** Per-day readiness/sleep history — not device-local, used to correlate against food/mood/routine logs. */
+/** Per-day health history with steps, readiness, sleep scores */
 export async function getHealthMetricsHistory(days = 30): Promise<HealthMetricsHistoryDay[]> {
   const token = await getToken();
   if (!token) return [];

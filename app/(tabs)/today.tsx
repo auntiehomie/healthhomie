@@ -1,21 +1,30 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { MacroRing } from '@/components/health/MacroRing';
 import { MetricCard } from '@/components/health/MetricCard';
-import { getUserProfile, listFoodItems, listMealEntries } from '@/lib/db/database';
+import { CalendarStrip, type DayCompliance } from '@/components/health/CalendarStrip';
+import {
+  getUserProfile,
+  listFoodItems,
+  listMealEntries,
+  getWeightHistory,
+  logWeight,
+  listExercises,
+} from '@/lib/db/database';
 import { foodDisplayName } from '@/lib/domain/food';
 import { calculateDailyGoal } from '@/lib/domain/goals';
 import { formatHour } from '@/lib/domain/mealType';
-import { scaleMacros, summarizeDay, todayKey } from '@/lib/domain/nutrition';
+import { scaleMacros, shiftDateKey, summarizeDay, todayKey } from '@/lib/domain/nutrition';
 import { readTodayHealthSnapshot } from '@/lib/services/healthkit';
 import { getLatestHealthSnapshot } from '@/lib/services/healthMetricsClient';
 import { getOuraStatus, connectOura } from '@/lib/services/ouraClient';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
-import type { DailyNutritionSummary, FoodItem, HealthSnapshot, MealEntry } from '@/types/healthhomie';
+import { cardShadow } from '@/lib/theme/shadow';
+import type { DailyNutritionSummary, FoodItem, HealthSnapshot, MealEntry, WeightLog } from '@/types/healthhomie';
 
 const FAT_COLOR = '#e2725a';
 
@@ -30,6 +39,15 @@ export default function TodayScreen() {
   const [ouraNeedsReconnect, setOuraNeedsReconnect] = useState(false);
   const [reconnectingOura, setReconnectingOura] = useState(false);
 
+  // Calendar compliance data
+  const [calendarDays, setCalendarDays] = useState<DayCompliance[]>([]);
+
+  // Weight tracking
+  const [latestWeight, setLatestWeight] = useState<WeightLog | null>(null);
+  const [weightInput, setWeightInput] = useState('');
+  const [savingWeight, setSavingWeight] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
   useFocusEffect(useCallback(() => {
     let active = true;
     async function load() {
@@ -41,9 +59,6 @@ export default function TodayScreen() {
         getLatestHealthSnapshot(),
       ]);
       if (!active) return;
-      // Device-local HealthKit values (once wired) win when present; otherwise fall back to
-      // whatever's synced server-side from a connected provider (Oura today, others later) —
-      // this is how steps/active-kcal show up even for accounts with no Apple Health access.
       const health: HealthSnapshot = {
         date: localHealth.date,
         steps: localHealth.steps ?? syncedHealth.steps,
@@ -54,9 +69,6 @@ export default function TodayScreen() {
       };
       setSnapshot(health);
 
-      // Detect Oura connection issues: if the user has Oura connected but the
-      // latest synced health data is completely empty, their Oura access token
-      // has likely expired. Show a reconnection prompt instead of silent blanks.
       const ouraStatus = await getOuraStatus().catch(() => ({ connected: false }));
       const hasNoProviderData = syncedHealth.steps == null && syncedHealth.activeEnergyKcal == null;
       setOuraNeedsReconnect(ouraStatus.connected && hasNoProviderData);
@@ -64,30 +76,105 @@ export default function TodayScreen() {
       setGoal(calculateDailyGoal(profile, health));
       setTodayFoods(foods);
       setTodayEntries(entries.slice().sort((a, b) => (b.hour ?? -1) - (a.hour ?? -1)));
-    }
-    load().catch(console.warn);
-    return () => { active = false; };
-  }, []));
 
-  const caloriesLeft = Math.round(goal.calories - summary.calories);
+      // Load calendar strip data (30 days of entries for compliance indicators)
+      Promise.all([
+        listMealEntries(),
+        listExercises(),
+        getWeightHistory(30),
+      ]).then(([allEntries, exerciseEntries, weights]) => {
+        if (!active) return
+        const dates = Array.from({ length: 30 }, (_, i) => shiftDateKey(todayKey(), -i)).reverse()
+        const foodDates = new Set(allEntries.map((e) => e.date))
+        const exerciseDates = new Set(exerciseEntries.map((e) => e.date))
+        const weightDates = new Set(weights.map((w) => w.date))
+        setCalendarDays(
+          dates.map((d) => ({
+            date: d,
+            indicators: [
+              ...(foodDates.has(d) ? ['food' as const] : []),
+              ...(exerciseDates.has(d) ? ['exercise' as const] : []),
+              ...(weightDates.has(d) ? ['weight' as const] : []),
+            ],
+          }))
+        )
+        setLatestWeight(weights[0] ?? null)
+      }).catch(console.warn)
+    }
+    load().catch(console.warn)
+    return () => { active = false }
+  }, []))
+
+  const caloriesLeft = Math.round(goal.calories - summary.calories)
 
   async function handleReconnectOura() {
-    setReconnectingOura(true);
+    setReconnectingOura(true)
     try {
-      await connectOura();
-      setOuraNeedsReconnect(false);
+      await connectOura()
+      setOuraNeedsReconnect(false)
     } catch {
       // If reconnection fails, keep the banner visible
     } finally {
-      setReconnectingOura(false);
+      setReconnectingOura(false)
     }
   }
 
+  async function handleSaveWeight() {
+    const kg = parseFloat(weightInput)
+    if (!Number.isFinite(kg) || kg <= 0 || kg > 300) {
+      if (Platform.OS === 'web') window.alert('Enter a valid weight in kg.')
+      else Alert.alert('Invalid weight', 'Enter a valid weight in kg.')
+      return
+    }
+    setSavingWeight(true)
+    try {
+      const entry = await logWeight(todayKey(), Math.round(kg * 10) / 10)
+      setLatestWeight(entry)
+      setWeightInput('')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Please try again.'
+      if (Platform.OS === 'web') window.alert(`Failed to save weight: ${msg}`)
+      else Alert.alert('Save failed', msg)
+    } finally {
+      setSavingWeight(false)
+    }
+  }
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      let active = true
+      const [foods, entries] = await Promise.all([
+        listFoodItems(),
+        listMealEntries(todayKey()),
+      ])
+      if (!active) return
+      setTodayFoods(foods)
+      setTodayEntries(entries.slice().sort((a, b) => (b.hour ?? -1) - (a.hour ?? -1)))
+      setSummary(summarizeDay(todayKey(), entries, foods))
+    } finally {
+      setRefreshing(false)
+    }
+  }, [])
+
   return (
-    <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
+    <ScrollView
+      style={styles.fill}
+      contentContainerStyle={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.primary} colors={[colors.primary]} />}
+    >
+      {/* Calendar strip */}
+      {calendarDays.length > 0 ? (
+        <CalendarStrip
+          days={calendarDays}
+          onDayPress={(date) => router.push({ pathname: '/(tabs)/journal', params: { date } })}
+          currentDate={todayKey()}
+        />
+      ) : null}
+
       <View style={styles.hero}>
         <Text style={styles.eyebrow}>daily food + health loop</Text>
-        <Text style={styles.title}>Hey homie, here’s today.</Text>
+        <Text style={styles.title}>Hey homie, here&apos;s today.</Text>
         <Text style={styles.subtitle}>Log the food. Watch the trend. Adjust gently.</Text>
       </View>
 
@@ -104,6 +191,36 @@ export default function TodayScreen() {
           <Text style={styles.ouraWarningAction}>{reconnectingOura ? 'Connecting…' : 'Reconnect Oura →'}</Text>
         </Pressable>
       )}
+
+      {/* Weight card */}
+      <View style={styles.weightCard}>
+        <Text style={styles.sectionTitle}>Weight</Text>
+        {latestWeight ? (
+          <View style={styles.weightValueRow}>
+            <Text style={styles.weightValue}>{latestWeight.weightKg} kg</Text>
+            <Text style={styles.weightDate}>logged {latestWeight.date}</Text>
+          </View>
+        ) : (
+          <Text style={styles.empty}>No weight logged yet.</Text>
+        )}
+        <View style={styles.weightInputRow}>
+          <TextInput
+            style={styles.weightInput}
+            value={weightInput}
+            onChangeText={setWeightInput}
+            placeholder="Weight in kg"
+            placeholderTextColor={colors.textMuted}
+            keyboardType="decimal-pad"
+          />
+          <Pressable
+            style={[styles.weightSaveBtn, savingWeight && { opacity: 0.5 }]}
+            onPress={() => void handleSaveWeight()}
+            disabled={savingWeight || !weightInput.trim()}
+          >
+            <Text style={styles.weightSaveBtnText}>{savingWeight ? '…' : 'Log'}</Text>
+          </Pressable>
+        </View>
+      </View>
 
       <View style={styles.grid}>
         <MetricCard
@@ -132,8 +249,8 @@ export default function TodayScreen() {
           <Text style={styles.empty}>Nothing logged yet today.</Text>
         ) : (
           todayEntries.map((entry) => {
-            const food = todayFoods.find((item) => item.id === entry.foodItemId);
-            const macros = food ? scaleMacros(food, entry.servings) : null;
+            const food = todayFoods.find((item) => item.id === entry.foodItemId)
+            const macros = food ? scaleMacros(food, entry.servings) : null
             return (
               <Pressable key={entry.id} style={styles.entryRow} onPress={() => router.push('/(tabs)/journal')}>
                 <View style={styles.entryDetails}>
@@ -144,12 +261,12 @@ export default function TodayScreen() {
                 </View>
                 <Text style={styles.entryKcal}>{macros ? Math.round(macros.calories) : 0} kcal</Text>
               </Pressable>
-            );
+            )
           })
         )}
       </View>
     </ScrollView>
-  );
+  )
 }
 
 const createStyles = (colors: ThemeColors) =>
@@ -170,9 +287,37 @@ const createStyles = (colors: ThemeColors) =>
     ouraWarningTitle: { color: colors.warning, fontWeight: '800', fontSize: 16 },
     ouraWarningText: { color: colors.textMuted, lineHeight: 20 },
     ouraWarningAction: { color: colors.primary, fontWeight: '800', marginTop: 4 },
+    // Weight card
+    weightCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      padding: 18,
+      gap: 12,
+      ...cardShadow,
+    },
+    weightValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+    weightValue: { fontSize: 28, fontWeight: '900', color: colors.text },
+    weightDate: { color: colors.textMuted, fontSize: 13 },
+    weightInputRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+    weightInput: {
+      flex: 1,
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 14,
+      padding: 12,
+      fontSize: 16,
+      color: colors.text,
+    },
+    weightSaveBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: 14,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+    },
+    weightSaveBtnText: { color: colors.onPrimary, fontWeight: '800' },
+    // Food entries
     entryRow: { backgroundColor: colors.surfaceAlt, borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
     entryDetails: { flex: 1, gap: 2 },
     entryName: { color: colors.text, fontSize: 15, fontWeight: '800' },
     entryMeta: { color: colors.textMuted, fontSize: 12, textTransform: 'capitalize' },
     entryKcal: { color: colors.primary, fontWeight: '800' },
-  });
+  })
