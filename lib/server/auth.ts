@@ -2,7 +2,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import type { VercelRequest } from '@vercel/node';
 
-const TOKEN_TTL = '365d';
+const ACCESS_TOKEN_TTL = '24h';
+const REFRESH_TOKEN_TTL = '30d';
 
 export class AuthError extends Error {}
 export class ForbiddenError extends Error {}
@@ -17,7 +18,31 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 
 export function signAuthToken(userId: string, isOwner: boolean): string {
   const secret = requireJwtSecret();
-  return jwt.sign({ sub: userId, isOwner }, secret, { expiresIn: TOKEN_TTL });
+  return jwt.sign({ sub: userId, isOwner }, secret, { expiresIn: ACCESS_TOKEN_TTL });
+}
+
+/**
+ * Longer-lived refresh token (30d) — client sends this to /api/auth/refresh
+ * to get a new short-lived access token without re-entering credentials.
+ */
+export function signRefreshToken(userId: string, isOwner: boolean): string {
+  const secret = requireJwtSecret();
+  return jwt.sign({ sub: userId, isOwner, purpose: 'refresh' }, secret, { expiresIn: REFRESH_TOKEN_TTL });
+}
+
+/**
+ * Verifies a refresh token and returns the user ID + owner flag.
+ * Throws AuthError if the token is invalid, expired, or not a refresh token.
+ */
+export function verifyRefreshToken(token: string): { userId: string; isOwner: boolean } {
+  const secret = requireJwtSecret();
+  try {
+    const payload = jwt.verify(token, secret) as { sub: string; isOwner?: boolean; purpose?: string };
+    if (payload.purpose !== 'refresh') throw new Error('not a refresh token');
+    return { userId: payload.sub, isOwner: !!payload.isOwner };
+  } catch {
+    throw new AuthError('Invalid or expired refresh token.');
+  }
 }
 
 /**

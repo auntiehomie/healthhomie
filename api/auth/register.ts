@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'node:crypto';
 import { getSql, DatabaseNotConfiguredError } from '../../lib/server/db';
-import { hashPassword, signAuthToken } from '../../lib/server/auth';
+import { hashPassword, signAuthToken, signRefreshToken } from '../../lib/server/auth';
 import { consumeInviteCode } from '../../lib/server/inviteStore';
 import { sendWelcomeEmail } from '../../lib/server/welcomeEmail';
 import { authRateLimit } from '../../lib/server/rateLimit';
@@ -50,7 +50,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const host = (req.headers['x-forwarded-host'] as string | undefined) ?? req.headers.host;
     void sendWelcomeEmail(normalizedEmail, `${proto}://${host}/`);
 
-    res.status(201).json({ token: signAuthToken(userId, isBootstrapSecret) });
+    res.status(201).json({
+      token: signAuthToken(userId, isBootstrapSecret),
+      refreshToken: signRefreshToken(userId, isBootstrapSecret),
+    });
   } catch (error) {
     if (error instanceof DatabaseNotConfiguredError) return res.status(503).json({ error: error.message });
     res.status(500).json({ error: error instanceof Error ? error.message : 'Registration failed.' });

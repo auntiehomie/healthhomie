@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getSql, DatabaseNotConfiguredError } from '../../lib/server/db';
-import { signAuthToken, verifyPassword } from '../../lib/server/auth';
+import { signAuthToken, signRefreshToken, verifyPassword } from '../../lib/server/auth';
 import { authRateLimit } from '../../lib/server/rateLimit';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -17,7 +17,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
-    res.status(200).json({ token: signAuthToken(user.id, user.isOwner) });
+    res.status(200).json({
+      token: signAuthToken(user.id, user.isOwner),
+      refreshToken: signRefreshToken(user.id, user.isOwner),
+    });
   } catch (error) {
     if (error instanceof DatabaseNotConfiguredError) return res.status(503).json({ error: error.message });
     res.status(500).json({ error: error instanceof Error ? error.message : 'Login failed.' });

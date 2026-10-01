@@ -1,6 +1,31 @@
 import { Platform } from 'react-native';
 
 const TOKEN_KEY = 'healthhomie_auth_token';
+const REFRESH_TOKEN_KEY = 'healthhomie_refresh_token';
+
+export async function getRefreshToken(): Promise<string | null> {
+  if (Platform.OS === 'web') return typeof window !== 'undefined' ? window.localStorage.getItem(REFRESH_TOKEN_KEY) : null;
+  const SecureStore = await import('expo-secure-store');
+  return SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+}
+
+export async function setRefreshToken(token: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    window.localStorage.setItem(REFRESH_TOKEN_KEY, token);
+    return;
+  }
+  const SecureStore = await import('expo-secure-store');
+  await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, token);
+}
+
+export async function clearRefreshToken(): Promise<void> {
+  if (Platform.OS === 'web') {
+    window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+    return;
+  }
+  const SecureStore = await import('expo-secure-store');
+  await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+}
 
 export async function getToken(): Promise<string | null> {
   if (Platform.OS === 'web') return typeof window !== 'undefined' ? window.localStorage.getItem(TOKEN_KEY) : null;
@@ -35,6 +60,7 @@ export async function login(email: string, password: string): Promise<void> {
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error ?? 'Login failed.');
   await setToken(payload.token);
+  if (payload.refreshToken) await setRefreshToken(payload.refreshToken);
 }
 
 export async function register(email: string, password: string, code: string): Promise<void> {
@@ -46,10 +72,34 @@ export async function register(email: string, password: string, code: string): P
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error ?? 'Registration failed.');
   await setToken(payload.token);
+  if (payload.refreshToken) await setRefreshToken(payload.refreshToken);
 }
 
 export async function logout(): Promise<void> {
   await clearToken();
+  await clearRefreshToken();
+}
+
+/**
+ * Attempts to refresh the access token using the stored refresh token.
+ * Returns the new access token on success, or null if refresh failed.
+ */
+export async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = await getRefreshToken();
+  if (!refreshToken) return null;
+  try {
+    const response = await fetch(apiUrl('/api/auth/refresh'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    await setToken(payload.token);
+    return payload.token as string;
+  } catch {
+    return null;
+  }
 }
 
 /**
