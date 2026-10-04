@@ -201,6 +201,7 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.fill} contentContainerStyle={styles.container}>
+      <Pressable onPress={() => router.push('/support')} style={styles.button}><Text style={styles.buttonText}>Account support</Text></Pressable>
       <Text style={styles.title}>Settings</Text>
       <Text style={styles.subtitle}>Your journal and profile sync across web, iOS, and Android through your account.</Text>
 

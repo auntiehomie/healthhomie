@@ -6,6 +6,8 @@ export const schemaStatements = [
     "isOwner" BOOLEAN NOT NULL DEFAULT FALSE,
     "createdAt" TEXT NOT NULL
   );`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS "clerkUserId" TEXT;`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS users_clerk_id_idx ON users("clerkUserId");`,
   // Added after users already existed in production - see the activityScore comment below for why this needs its own statement.
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS "isOwner" BOOLEAN NOT NULL DEFAULT FALSE;`,
   `CREATE TABLE IF NOT EXISTS food_items (
