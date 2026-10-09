@@ -108,16 +108,21 @@ export async function refreshAccessToken(): Promise<string | null> {
  * Requires the user's email address as confirmation to prevent accidents.
  */
 export async function deleteAccount(email: string): Promise<string> {
-  const token = await getToken();
-  if (!token) throw new Error('Not logged in.');
-  const response = await fetch(apiUrl('/api/data/delete-account'), {
-    method: 'DELETE',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-    body: JSON.stringify({ confirmation: email }),
-  });
+  let response: Response;
+  try {
+    response = await authedFetch(apiUrl('/api/data/delete-account'), {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ confirmation: email }),
+    });
+  } catch (e) {
+    if (e instanceof AuthExpiredError) throw e;
+    throw new Error('Failed to delete account.');
+  }
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error ?? 'Failed to delete account.');
   await clearToken();
+  await clearRefreshToken();
   return payload.message as string;
 }
 
@@ -140,6 +145,61 @@ export async function resetPassword(token: string, password: string): Promise<vo
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error ?? 'Failed to reset password.');
+}
+
+/**
+ * Wrapper around fetch that automatically attaches the auth bearer token
+ * and attempts a single token refresh on 401 responses.
+ *
+ * Usage: replace `fetch(url, { headers: { authorization: \`Bearer ${token}\` } })`
+ * with `authedFetch(url, { ... })`.
+ *
+ * On a 401 it will try refreshAccessToken() once, retry the original request
+ * with the new token, and return that response. If refresh fails it throws
+ * an AuthExpiredError so the caller can redirect to login.
+ */
+export class AuthExpiredError extends Error {
+  constructor(message = 'Session expired. Please log in again.') {
+    super(message);
+    this.name = 'AuthExpiredError';
+  }
+}
+
+export async function authedFetch(
+  input: RequestInfo | URL,
+  init: RequestInit = {}
+): Promise<Response> {
+  const token = await getToken();
+  if (!token) throw new AuthExpiredError('Not logged in.');
+
+  const authedInit: RequestInit = {
+    ...init,
+    headers: {
+      ...init.headers,
+      authorization: `Bearer ${token}`,
+    },
+  };
+
+  const response = await fetch(input, authedInit);
+
+  if (response.status !== 401) return response;
+
+  // 401 — attempt one silent refresh, then retry the original request
+  const newToken = await refreshAccessToken();
+  if (!newToken) {
+    await clearToken();
+    await clearRefreshToken();
+    throw new AuthExpiredError();
+  }
+
+  const retriedInit: RequestInit = {
+    ...init,
+    headers: {
+      ...init.headers,
+      authorization: `Bearer ${newToken}`,
+    },
+  };
+  return fetch(input, retriedInit);
 }
 
 export function apiUrl(path: string): string {
