@@ -1,3 +1,4 @@
+import { AuthProvider } from "@/components/auth/AuthProvider";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
@@ -20,11 +21,14 @@ if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
     tracesSampleRate: 0.2,
     // Release tracking for production crash symbolication
     // Format: howdymorning@<version>+<buildNumber> (matches EAS build profile)
-    release: process.env.SENTRY_RELEASE || `${process.env.EXPO_PUBLIC_SENTRY_RELEASE}` || undefined,
+    release:
+      process.env.SENTRY_RELEASE ||
+      `${process.env.EXPO_PUBLIC_SENTRY_RELEASE}` ||
+      undefined,
     // Enable source map upload via Sentry React Native Expo plugin
     // @sentry/react-native Expo plugin handles source map upload automatically
     // when SENTRY_AUTH_TOKEN is set in the environment
-    environment: process.env.APP_VARIANT || 'development',
+    environment: process.env.APP_VARIANT || "development",
     // Attach stack traces to all error events
     attachStacktrace: true,
     // Capture user sessions for release health tracking
@@ -41,7 +45,9 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <AppShell />
+          <AuthProvider>
+            <AppShell />
+          </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
@@ -67,7 +73,13 @@ function AppShell() {
         if (!active) return;
         const isAuthed = !!token;
         setAuthChecked(true);
-        const publicRoutes = ["login", "forgot-password", "reset-password"];
+        const publicRoutes = [
+          "login",
+          "register",
+          "forgot-password",
+          "reset-password",
+          "support",
+        ];
         const inPublicRoute = publicRoutes.includes(segments[0] as string);
         if (!isAuthed && !inPublicRoute) router.replace("/login");
         if (isAuthed && segments[0] === "login") router.replace("/(tabs)");

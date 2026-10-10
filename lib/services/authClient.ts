@@ -1,54 +1,68 @@
-import { Platform } from 'react-native';
+import {
+  managedAuthEnabled,
+  getManagedToken,
+  signOutManaged,
+} from "./managedAuth";
+import { Platform } from "react-native";
 
-const TOKEN_KEY = 'healthhomie_auth_token';
+const TOKEN_KEY = "healthhomie_auth_token";
 
 export async function getToken(): Promise<string | null> {
-  if (Platform.OS === 'web') return typeof window !== 'undefined' ? window.localStorage.getItem(TOKEN_KEY) : null;
-  const SecureStore = await import('expo-secure-store');
+  if (Platform.OS === "web" && managedAuthEnabled()) return getManagedToken();
+  if (Platform.OS === "web")
+    return typeof window !== "undefined"
+      ? window.localStorage.getItem(TOKEN_KEY)
+      : null;
+  const SecureStore = await import("expo-secure-store");
   return SecureStore.getItemAsync(TOKEN_KEY);
 }
 
 export async function setToken(token: string): Promise<void> {
-  if (Platform.OS === 'web') {
+  if (Platform.OS === "web") {
     window.localStorage.setItem(TOKEN_KEY, token);
     return;
   }
-  const SecureStore = await import('expo-secure-store');
+  const SecureStore = await import("expo-secure-store");
   await SecureStore.setItemAsync(TOKEN_KEY, token);
 }
 
 export async function clearToken(): Promise<void> {
-  if (Platform.OS === 'web') {
+  if (Platform.OS === "web") {
     window.localStorage.removeItem(TOKEN_KEY);
     return;
   }
-  const SecureStore = await import('expo-secure-store');
+  const SecureStore = await import("expo-secure-store");
   await SecureStore.deleteItemAsync(TOKEN_KEY);
 }
 
 export async function login(email: string, password: string): Promise<void> {
-  const response = await fetch(apiUrl('/api/auth/login'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
+  const response = await fetch(apiUrl("/api/auth/login"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error ?? 'Login failed.');
+  if (!response.ok) throw new Error(payload.error ?? "Login failed.");
   await setToken(payload.token);
 }
 
-export async function register(email: string, password: string, code: string): Promise<void> {
-  const response = await fetch(apiUrl('/api/auth/register'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
+export async function register(
+  email: string,
+  password: string,
+  code: string,
+): Promise<void> {
+  const response = await fetch(apiUrl("/api/auth/register"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
     body: JSON.stringify({ email, password, code }),
   });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error ?? 'Registration failed.');
+  if (!response.ok) throw new Error(payload.error ?? "Registration failed.");
   await setToken(payload.token);
 }
 
 export async function logout(): Promise<void> {
+  if (Platform.OS === "web" && managedAuthEnabled()) await signOutManaged();
   await clearToken();
 }
 
@@ -59,42 +73,53 @@ export async function logout(): Promise<void> {
  */
 export async function deleteAccount(email: string): Promise<string> {
   const token = await getToken();
-  if (!token) throw new Error('Not logged in.');
-  const response = await fetch(apiUrl('/api/data/delete-account'), {
-    method: 'DELETE',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+  if (!token) throw new Error("Not logged in.");
+  const response = await fetch(apiUrl("/api/data/delete-account"), {
+    method: "DELETE",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify({ confirmation: email }),
   });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error ?? 'Failed to delete account.');
+  if (!response.ok)
+    throw new Error(payload.error ?? "Failed to delete account.");
   await clearToken();
   return payload.message as string;
 }
 
 export async function requestPasswordReset(email: string): Promise<string> {
-  const response = await fetch(apiUrl('/api/auth/forgot-password'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
+  const response = await fetch(apiUrl("/api/auth/forgot-password"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
     body: JSON.stringify({ email }),
   });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error ?? 'Failed to send reset email.');
+  if (!response.ok)
+    throw new Error(payload.error ?? "Failed to send reset email.");
   return payload.message as string;
 }
 
-export async function resetPassword(token: string, password: string): Promise<void> {
-  const response = await fetch(apiUrl('/api/auth/reset-password'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
+export async function resetPassword(
+  token: string,
+  password: string,
+): Promise<void> {
+  const response = await fetch(apiUrl("/api/auth/reset-password"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
     body: JSON.stringify({ token, password }),
   });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error ?? 'Failed to reset password.');
+  if (!response.ok)
+    throw new Error(payload.error ?? "Failed to reset password.");
 }
 
 export function apiUrl(path: string): string {
-  if (Platform.OS === 'web' && typeof window !== 'undefined') return `${window.location.origin}${path}`;
+  if (Platform.OS === "web" && typeof window !== "undefined")
+    return `${window.location.origin}${path}`;
   const base = process.env.EXPO_PUBLIC_API_BASE_URL;
-  if (!base) throw new Error('EXPO_PUBLIC_API_BASE_URL is required for native builds.');
+  if (!base)
+    throw new Error("EXPO_PUBLIC_API_BASE_URL is required for native builds.");
   return `${base}${path}`;
 }

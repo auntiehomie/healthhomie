@@ -1,4 +1,4 @@
-export const PRIVACY_POLICY_EFFECTIVE_DATE = "2026-07-05";
+export const PRIVACY_POLICY_EFFECTIVE_DATE = "2026-10-04";
 
 export const PRIVACY_POLICY_TEXT = `# Howdy Morning Privacy Policy
 
@@ -15,7 +15,7 @@ Howdy Morning is not a medical device and does not provide medical advice, diagn
 ## Information we collect
 
 ### Information you provide directly
-- Account credentials: an email address and a password (stored only as a salted cryptographic hash, never in plain text).
+- Account information: email address and authentication provider ID. When Clerk sign-in is enabled on the web, Clerk handles passwords, email verification, recovery, and social sign-in; the app does not receive your Clerk password. Legacy sign-in stores only a salted password hash.
 - Food journal entries, custom foods, meal logs, and serving sizes.
 - Profile information: age, sex, height, current/target weight, activity level, and goal type.
 
@@ -40,7 +40,7 @@ We do not use your health or nutrition data for advertising, profiling for marke
 ## Where information is stored
 
 - Account-based, cross-platform storage: your food journal, meal entries, profile, goals, and connected-service status are stored in a Postgres database associated with your account, so the same data appears whether you use the web app, iOS, or Android. This replaced an earlier, purely on-device design; nothing about that change is used for any purpose beyond letting your own data follow you across devices.
-- Passwords are stored only as a bcrypt hash, never in plain text or in a reversible form.
+- Legacy passwords are stored only as a bcrypt hash. Clerk manages credentials for Clerk accounts separately.
 - Oura OAuth tokens are stored server-side, associated with your account, and are never transmitted to or stored on your device.
 - Requests to USDA FoodData Central and Open Food Facts are proxied through serverless functions that do not persist your search queries beyond the request itself.
 - Apple HealthKit data (iOS only) currently stays on-device and is not synced to your account; see above.
@@ -50,6 +50,7 @@ We do not use your health or nutrition data for advertising, profiling for marke
 - Oura Health, Inc. — only the data needed to complete the OAuth connection and fetch the daily metrics you've authorized. Review Oura's own privacy policy before connecting.
 - USDA FoodData Central and Open Food Facts — only the search term or barcode needed to return a result.
 - Apple — HealthKit reads/writes on iOS are governed by Apple's own platform rules, not by Howdy Morning.
+- Clerk, when managed web sign-in is enabled, receives account identity and authentication/session information to provide registration, verification, recovery, and social sign-in. We do not send your health records to Clerk. Review https://clerk.com/legal/privacy before registering.
 - Our hosting and database infrastructure providers (Vercel and its Postgres/Neon storage integration), for running the app, the API, and storing your account's data.
 
 We do not sell personal information, and we do not share personal information with third parties for cross-context behavioral advertising.
@@ -83,11 +84,11 @@ Howdy Morning is not directed at children under 13 (or the applicable minimum ag
 
 ## Data retention
 
-Account and journal data persists until you delete it or ask us to delete your account. OAuth tokens for connected services persist until you disconnect the service, revoke access with the provider, or the tokens expire. Your session token (which keeps you logged in) is stored on your device and can be cleared by logging out.
+Account and journal data persists until you delete it or ask us to delete your account. OAuth tokens for connected services persist until you disconnect the service, revoke access with the provider, or the tokens expire. Legacy session tokens are stored on your device. Managed web sign-in uses Clerk sessions and an in-memory app token that expires after five minutes. Logging out clears the app token and signs out of Clerk. Deleting app data in Settings does not automatically delete the separate Clerk identity; contact support for identity deletion.
 
 ## Security
 
-We use HTTPS/TLS for network requests, keep OAuth client secrets and the session-signing secret only in server-side environment variables (never bundled into the app), hash passwords with bcrypt, and store your session token using your device's secure storage (Keychain/Keystore on native, browser storage on web). No method of transmission or storage is completely secure, and we cannot guarantee absolute security.
+We use HTTPS/TLS for network requests, keep OAuth client secrets and the session-signing secret only in server-side environment variables (never bundled into the app), hash passwords with bcrypt, and store legacy session tokens using your device's storage (Keychain/Keystore on native, browser storage on legacy web). Managed web app tokens are kept only in memory, with sessions handled by Clerk. No method of transmission or storage is completely secure, and we cannot guarantee absolute security.
 
 ## International data transfers
 
