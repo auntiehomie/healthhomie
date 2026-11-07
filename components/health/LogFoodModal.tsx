@@ -133,7 +133,7 @@ export function LogFoodModal({
               <Text style={styles.favoriteIcon}>{favorite ? '⭐' : '☆'}</Text>
             </Pressable>
           </View>
-          <Text style={styles.subtitle}>Base: {food.servingSize}{food.servingUnit} · {Math.round(food.calories)} kcal</Text>
+          <Text style={styles.subtitle}>Base: {food.servingSize}{food.servingUnit} · {Math.round(food.calories)} kcal · {food.source}</Text>
 
           {showTimePicker && <HourPicker selectedHour={hour} onSelectHour={setHour} />}
 
@@ -197,6 +197,16 @@ export function LogFoodModal({
             </>
           )}
 
+          <View style={styles.modeToggle}>
+            {[0.5, 1, 2].map((portion) => (
+              <Pressable key={portion} accessibilityLabel={`${portion} servings`} onPress={() => {
+                if (hasServingsToggle) { setMode('servings'); setServingsText(String(portion)); }
+                else setAmountText(String(portion));
+              }} style={styles.modeChip}>
+                <Text style={styles.modeChipText}>{portion}× serving</Text>
+              </Pressable>
+            ))}
+          </View>
           <View style={styles.macroGrid}>
             <MacroStat label="Calories" value={macros ? `${Math.round(macros.calories)}` : '—'} />
             <MacroStat label="Protein" value={macros ? `${Math.round(macros.proteinG)}g` : '—'} />

@@ -10,6 +10,7 @@ import { FoodRowSkeleton } from '@/components/ui/Skeleton';
 import { CalendarStrip, type DayCompliance } from '@/components/health/CalendarStrip';
 import { HourPicker } from '@/components/health/HourPicker';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
+import { MealBuilder } from '@/components/health/MealBuilder';
 import { addMealEntry, createId, deleteMealEntry, listFoodItems, listMealEntries, updateMealEntry, upsertFoodItem, listExercises, getWeightHistory } from '@/lib/db/database';
 import { foodDisplayName } from '@/lib/domain/food';
 import { deriveMealType, formatHour } from '@/lib/domain/mealType';
@@ -169,6 +170,15 @@ export default function JournalScreen() {
     () => new Set([...entries.map((e) => e.foodItemId), ...quickAddFoods.map((f) => f.id)]),
     [entries, quickAddFoods]
   );
+  const recentFoods = useMemo(() => {
+    const seen = new Set<string>();
+    return historyEntries.flatMap((entry) => {
+      const food = foods.find((item) => item.id === entry.foodItemId);
+      if (!food || seen.has(food.id)) return [];
+      seen.add(food.id);
+      return [food];
+    }).slice(0, 4);
+  }, [historyEntries, foods]);
   const suggestedFoods = useMemo(
     () => suggestFoodsForHour({ allEntries: historyEntries, foods, hour: selectedHour, todayFoodItemIds: alreadyShownIds }),
     [historyEntries, foods, selectedHour, alreadyShownIds]
@@ -191,7 +201,7 @@ export default function JournalScreen() {
     setRestaurantResults([]);
     setAiNote(null);
     setQuery('');
-    await load();
+    await Promise.all([load(), loadHistory()]);
   }
 
   async function saveEntryEdit(updated: Pick<MealEntry, 'id' | 'servings' | 'hour' | 'mealType'>) {
@@ -371,11 +381,18 @@ ${message}`)) void removeEntry(entry);
 
       <HourPicker selectedHour={selectedHour} onSelectHour={setSelectedHour} />
 
+      <MealBuilder date={selectedDate} hour={selectedHour} savedFoods={foods} onSaved={async () => { await Promise.all([load(), loadHistory()]); }} />
+
       {quickAddFoods.length > 0 && (
         <Pressable style={styles.seeMoreButton} onPress={() => router.push('/quick-add')}>
           <Text style={styles.seeMoreButtonText}>⭐ Quick add foods & recipes ({quickAddFoods.length}) →</Text>
         </Pressable>
       )}
+
+      {recentFoods.length > 0 && <>
+        <Text style={styles.label}>Recently logged</Text>
+        {recentFoods.map((food) => <FoodRow key={food.id} title={foodDisplayName(food)} meta={`${food.servingSize}${food.servingUnit} · ${food.source}`} rightLabel={`${Math.round(food.calories)} kcal`} onPress={() => setActiveFood(food)} />)}
+      </>}
 
       {suggestedFoods.length > 0 && (
         <>
