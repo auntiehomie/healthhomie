@@ -56,7 +56,7 @@ type SpoonacularMenuItemDetail = {
 export async function searchUsdaFoods(query: string): Promise<FoodItem[]> {
   if (!query.trim()) return [];
   const response = await fetch(
-    `/api/nutrition/search?q=${encodeURIComponent(query)}`,
+    apiUrl(`/api/nutrition/search?q=${encodeURIComponent(query)}`),
   );
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
@@ -75,7 +75,7 @@ export async function searchUsdaFoods(query: string): Promise<FoodItem[]> {
   const payload = await response.json();
   if (payload.source === "openfoodfacts") {
     return ((payload.products ?? []) as OpenFoodFactsProduct[])
-      .filter((product) => product.product_name && product.code)
+      .filter((product) => product.product_name && product.code && hasUsableOpenFoodFactsCalories(product))
       .map(mapOpenFoodFactsProduct);
   }
   if (payload.source === "fatsecret") {
@@ -165,6 +165,7 @@ export async function lookupBarcode(barcode: string): Promise<FoodItem | null> {
   }
   const payload = await response.json();
   if (payload.source === "usda") return mapUsdaFood(payload.food);
+  if (!hasUsableOpenFoodFactsCalories(payload.product)) throw new Error("This product has no usable calorie information. Search for another match.");
   return mapOpenFoodFactsProduct(payload.product);
 }
 
@@ -196,32 +197,50 @@ function mapUsdaFood(food: UsdaFood): FoodItem {
   };
 }
 
-function mapOpenFoodFactsProduct(product: OpenFoodFactsProduct): FoodItem {
+export function hasUsableOpenFoodFactsCalories(product: OpenFoodFactsProduct): boolean {
+  const nutrients = product.nutriments ?? {};
+  const valid = (value: unknown) => value !== undefined && value !== null && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0;
+  const unit = (product.serving_quantity_unit || '').toLowerCase();
+  const quantity = Number(product.serving_quantity);
+  const knownServing = Number.isFinite(quantity) && quantity > 0 && (unit === 'g' || unit === 'ml');
+  return valid(nutrients['energy-kcal_100g']) || (knownServing && valid(nutrients['energy-kcal_serving']));
+}
+
+export function mapOpenFoodFactsProduct(product: OpenFoodFactsProduct): FoodItem {
   const nutriments = product.nutriments ?? {};
   const now = new Date().toISOString();
+  const quantity = Number(product.serving_quantity);
+  const unit = (product.serving_quantity_unit || '').toLowerCase();
+  const usableServing = Number.isFinite(quantity) && quantity > 0 && (unit === 'g' || unit === 'ml');
+  // Only convert per-100 values when the serving has a compatible weight/volume.
+  // Otherwise retain a 100 g basis instead of assigning it to an unknown portion.
+  const hasServingCalories = nutriments['energy-kcal_serving'] != null;
+  const useServing = usableServing && (hasServingCalories || nutriments['energy-kcal_100g'] != null);
+  const servingSize = useServing ? quantity : 100;
+  const servingUnit = useServing ? unit : 'g';
+  const value = (name: string) => {
+    const perServing = nutriments[`${name}_serving`];
+    const per100 = nutriments[`${name}_100g`];
+    if (useServing && perServing != null) return numberish(perServing);
+    if (per100 != null) return numberish(per100) * (useServing ? quantity / 100 : 1);
+    return 0;
+  };
   return {
     id: `off-${product.code}`,
     name: product.product_name || "Packaged food",
     brand: product.brands,
     barcode: product.code,
-    servingSize: Number(product.serving_quantity) || 100,
-    servingUnit: product.serving_quantity_unit || "g",
+    servingSize,
+    servingUnit,
     source: "open-food-facts",
     sourceId: product.code,
-    calories: numberish(
-      nutriments["energy-kcal_serving"] ?? nutriments["energy-kcal_100g"],
-    ),
-    proteinG: numberish(
-      nutriments.proteins_serving ?? nutriments.proteins_100g,
-    ),
-    carbsG: numberish(
-      nutriments.carbohydrates_serving ?? nutriments.carbohydrates_100g,
-    ),
-    fatG: numberish(nutriments.fat_serving ?? nutriments.fat_100g),
-    fiberG: numberish(nutriments.fiber_serving ?? nutriments.fiber_100g),
-    sugarG: numberish(nutriments.sugars_serving ?? nutriments.sugars_100g),
-    sodiumMg:
-      numberish(nutriments.sodium_serving ?? nutriments.sodium_100g) * 1000,
+    calories: value("energy-kcal"),
+    proteinG: value("proteins"),
+    carbsG: value("carbohydrates"),
+    fatG: value("fat"),
+    fiberG: value("fiber"),
+    sugarG: value("sugars"),
+    sodiumMg: value("sodium") * 1000,
     createdAt: now,
     updatedAt: now,
   };
