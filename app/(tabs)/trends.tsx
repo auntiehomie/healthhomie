@@ -1,3 +1,4 @@
+import { WeeklyJournalInsights } from '@/components/health/WeeklyJournalInsights';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
@@ -433,6 +434,7 @@ export default function TrendsScreen() {
       <Text style={styles.title}>Trends</Text>
       <Text style={styles.subtitle}>Calories, macros, weight, and movement over time.</Text>
 
+      <WeeklyJournalInsights />
       {/* Time range toggle */}
       <View style={styles.toggleRow}>
         {TIME_RANGES.map((r) => (
