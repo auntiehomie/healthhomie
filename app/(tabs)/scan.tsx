@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
+import { PhotoMealCapture } from '@/components/health/PhotoMealCapture';
 import { BarcodeScanner } from '@/components/health/BarcodeScanner';
 import { HourPicker } from '@/components/health/HourPicker';
 import { LogFoodModal } from '@/components/health/LogFoodModal';
@@ -17,6 +18,7 @@ import type { FoodItem } from '@/types/healthhomie';
 export default function ScanScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const [photoMode, setPhotoMode] = useState(false);
   const [selectedHour, setSelectedHour] = useState<number>(new Date().getHours());
   const [activeFood, setActiveFood] = useState<FoodItem | null>(null);
   const [loggedMessage, setLoggedMessage] = useState<string | null>(null);
@@ -43,12 +45,13 @@ export default function ScanScreen() {
 
       <HourPicker selectedHour={selectedHour} onSelectHour={setSelectedHour} />
 
-      <BarcodeScanner
+      <Pressable onPress={() => setPhotoMode(current => !current)}><Text style={{ color: colors.primary }}>{photoMode ? 'Use barcode scanner' : 'Estimate a meal from a photo'}</Text></Pressable>
+      {photoMode ? <PhotoMealCapture onFound={food => { setLoggedMessage(null); setActiveFood(food); }} /> : <BarcodeScanner
         onFound={(food) => {
           setLoggedMessage(null);
           setActiveFood(food);
         }}
-      />
+      />}
 
       {loggedMessage && (
         <View style={styles.loggedSection}>
