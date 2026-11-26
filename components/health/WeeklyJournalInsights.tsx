@@ -6,6 +6,7 @@ import { loadNotes } from '@/lib/db/notesStorage';
 import { calculateDailyGoal } from '@/lib/domain/goals';
 import { summarizeDay, todayKey } from '@/lib/domain/nutrition';
 import { weeklyJournalInsights } from '@/lib/domain/weeklyJournalInsights';
+import { journalInsightSuggestion } from '@/lib/domain/journalInsightSuggestions';
 import { getHealthMetricsHistory } from '@/lib/services/healthMetricsClient';
 import { useTheme } from '@/lib/theme/ThemeContext';
 
@@ -26,7 +27,15 @@ export function WeeklyJournalInsights() {
   return <View style={{ backgroundColor: colors.surface, padding: 16, borderRadius: 20, gap: 8 }}>
     <Text style={{ color: colors.text, fontWeight: '800', fontSize: 17 }}>Weekly journal → outcomes</Text>
     <Text style={{ color: colors.textMuted }}>{error ? 'Could not load insights. Reopen Trends to retry.' : report ? `28-day evidence window: ${report.start} – ${report.end}. Updated weekly.` : 'Loading weekly insights…'}</Text>
-    {report?.insights.map(insight => <Text key={insight.id} style={{ color: colors.text }}>{insight.text}</Text>)}
+    {report?.insights.map(insight => {
+      const suggestion = journalInsightSuggestion(insight);
+      return <View key={insight.id} style={{ gap: 6, paddingVertical: 8 }}>
+        <Text style={{ color: colors.text }}>{insight.text}</Text>
+        <Text style={{ color: colors.text, fontWeight: '700' }}>What to try next</Text>
+        <Text style={{ color: colors.textMuted }}>{suggestion.evidenceTag}</Text>
+        <Text style={{ color: colors.text }}>{suggestion.action}</Text>
+      </View>;
+    })}
     {report && !report.insights.length && <Text style={{ color: colors.text }}>Not enough comparable data yet. Each comparison needs 4 days per group and a 5-point difference.</Text>}
     <Text style={{ color: colors.textMuted }}>Patterns, not causes or medical advice. Only logged meals count; unknown times are excluded. Tag notes alcohol or no-alcohol for explicit journal comparisons. Health scores come from your connected providers (including Oura).</Text>
   </View>;
