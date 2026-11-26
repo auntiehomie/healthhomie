@@ -82,7 +82,7 @@ export type HealthSnapshot = {
   workouts?: number;
 };
 
-export type HealthProvider = 'apple-health' | 'oura' | 'fitbit' | 'manual';
+export type HealthProvider = 'apple-health' | 'oura' | 'fitbit' | 'garmin' | 'manual';
 
 export type HealthConnectionStatus = 'connected' | 'expired' | 'revoked' | 'error';
 

@@ -4,7 +4,7 @@ import { Platform, ScrollView, Share, StyleSheet, Text, TextInput, View } from '
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { Link, router } from 'expo-router';
 import { Copy, Share2 } from 'lucide-react-native';
-import { requestHealthPermissions } from '@/lib/services/healthkit';
+import { HealthSyncControls } from '@/components/health/HealthSyncControls';
 import { connectOura, getOuraStatus, syncOura } from '@/lib/services/ouraClient';
 import { connectFitbit, getFitbitStatus, syncFitbit } from '@/lib/services/fitbitClient';
 import { logout, deleteAccount } from '@/lib/services/authClient';
@@ -34,7 +34,6 @@ const APPEARANCE_OPTIONS: { key: ThemePreference; label: string }[] = [
 export default function SettingsScreen() {
   const { colors, preference, setPreference } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const [healthStatus, setHealthStatus] = useState('Not requested yet');
   const [ouraStatus, setOuraStatus] = useState('Not connected');
   const [fitbitStatus, setFitbitStatus] = useState('Not connected');
   const [invites, setInvites] = useState<InviteCode[]>([]);
@@ -170,11 +169,6 @@ export default function SettingsScreen() {
     }
   }
 
-  async function connectHealth() {
-    const result = await requestHealthPermissions();
-    setHealthStatus(result.granted ? 'Apple Health connected' : result.reason ?? 'Apple Health unavailable');
-  }
-
   async function handleConnectOura() {
     setOuraStatus('Connecting...');
     const result = await connectOura();
@@ -261,11 +255,7 @@ export default function SettingsScreen() {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Apple Health</Text>
-        <Text style={styles.cardText}>Reads: steps, active energy, weight, sleep, workouts. Optional writes: daily nutrition totals.</Text>
-        <Pressable style={[styles.button, Platform.OS !== 'ios' && styles.buttonDisabled]} onPress={connectHealth} disabled={Platform.OS !== 'ios'}>
-          <Text style={styles.buttonText}>{Platform.OS === 'ios' ? 'Connect Apple Health' : 'HealthKit is iOS-only'}</Text>
-        </Pressable>
-        <Text style={styles.status}>{healthStatus}</Text>
+        <HealthSyncControls />
       </View>
 
       <View style={styles.card}>
