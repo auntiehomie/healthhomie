@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Modal, Platform, RefreshControl, ScrollView, 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableFeedback as Pressable } from '@/components/ui/PressableFeedback';
 import { BarcodeScanner } from '@/components/health/BarcodeScanner';
+import { PhotoMealCapture } from '@/components/health/PhotoMealCapture';
 import { EditEntryModal } from '@/components/health/EditEntryModal';
 import { FoodRow } from '@/components/health/FoodRow';
 import { FoodRowSkeleton } from '@/components/ui/Skeleton';
@@ -27,7 +28,7 @@ import { useTheme } from '@/lib/theme/ThemeContext';
 import type { ThemeColors } from '@/lib/theme/tokens';
 import { typography } from '@/lib/theme/typography';
 import { cardShadow } from '@/lib/theme/shadow';
-import { ChevronLeft, ChevronRight, ScanBarcode, Search, Trash2, X } from 'lucide-react-native';
+import { Camera, ChevronLeft, ChevronRight, ScanBarcode, Search, Trash2, X } from 'lucide-react-native';
 import type { FoodItem, MealEntry } from '@/types/healthhomie';
 
 export default function JournalScreen() {
@@ -54,6 +55,7 @@ export default function JournalScreen() {
   const [aiMatching, setAiMatching] = useState(false);
   const [aiNote, setAiNote] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [historyEntries, setHistoryEntries] = useState<MealEntry[]>([]);
   const [calendarDays, setCalendarDays] = useState<DayCompliance[]>([]);
@@ -296,7 +298,7 @@ ${message}`)) void removeEntry(entry);
       ) : null}
 
       <Text style={styles.title}>Food journal</Text>
-      <Text style={styles.subtitle}>Search USDA foods or tap a saved food to log it.</Text>
+      <Text style={styles.subtitle}>Snap a meal photo, review the estimate, and confirm your portion. Prefer typing? Search below.</Text>
 
       <View style={styles.viewToggleRow}>
         <Pressable style={[styles.viewToggle, viewMode === 'day' && styles.viewToggleActive]} onPress={() => setViewMode('day')}>
@@ -369,6 +371,11 @@ ${message}`)) void removeEntry(entry);
         <Text style={styles.summaryText}>{Math.round(summary.proteinG)}g protein · {Math.round(summary.carbsG)}g carbs · {Math.round(summary.fatG)}g fat</Text>
       </View>
 
+      <Pressable accessibilityRole="button" accessibilityLabel="Add meal" style={styles.addMealButton} onPress={() => setPhotoOpen(true)}>
+        <Camera color={colors.onPrimary} size={24} />
+        <Text style={styles.addMealText}>Add meal · take a photo</Text>
+      </Pressable>
+
       <HourPicker selectedHour={selectedHour} onSelectHour={setSelectedHour} />
 
       {quickAddFoods.length > 0 && (
@@ -392,7 +399,7 @@ ${message}`)) void removeEntry(entry);
         </>
       )}
 
-      <Text style={styles.label}>Search foods</Text>
+      <Text style={styles.label}>Or enter manually · search foods</Text>
       <View style={styles.searchRow}>
         <TextInput
           value={query}
@@ -482,7 +489,7 @@ ${message}`)) void removeEntry(entry);
       {aiNote && <Text style={styles.aiNote}>{aiNote}</Text>}
 
       <Text style={styles.label}>{isToday ? 'Today’s entries' : `${formatDateLabel(selectedDate)}’s entries`}</Text>
-      {entries.length === 0 ? <Text style={styles.empty}>Nothing logged {isToday ? 'yet' : 'for this day'}. Search for a food above to start.</Text> : entries.map((entry) => {
+      {entries.length === 0 ? <Text style={styles.empty}>Nothing logged {isToday ? 'yet' : 'for this day'}. Tap Add meal to take a photo, or search above.</Text> : entries.map((entry) => {
         const food = foods.find((item) => item.id === entry.foodItemId);
         const foodName = food ? foodDisplayName(food) : 'Food';
         return (
@@ -514,6 +521,21 @@ ${message}`)) void removeEntry(entry);
         onClose={() => setEditingEntry(null)}
         onSave={saveEntryEdit}
       />
+
+      {photoOpen && <Modal visible={!activeFood} animationType="slide" onRequestClose={() => setPhotoOpen(false)}>
+        <ScrollView style={styles.fill} contentContainerStyle={[styles.scannerScreen, { paddingTop: insets.top + 20 }]}>
+          <View style={styles.scannerHeader}>
+            <Text style={styles.scannerTitle}>Add meal photo</Text>
+            <Pressable accessibilityLabel="Close meal camera" hitSlop={8} onPress={() => setPhotoOpen(false)}>
+              <X color={colors.text} size={24} />
+            </Pressable>
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Enter meal manually" onPress={() => setPhotoOpen(false)}>
+            <Text style={styles.seeMoreButtonText}>Enter manually instead · search foods below</Text>
+          </Pressable>
+          <PhotoMealCapture autoOpen onFound={setActiveFood} />
+        </ScrollView>
+      </Modal>}
 
       <Modal visible={scannerOpen} animationType="slide" onRequestClose={() => setScannerOpen(false)}>
         <View style={[styles.scannerScreen, { paddingTop: insets.top + 20 }]}>
@@ -548,6 +570,8 @@ const createStyles = (colors: ThemeColors) =>
     container: { padding: 20, gap: 14, backgroundColor: colors.background },
     title: { ...typography.display1, color: colors.text },
     subtitle: { ...typography.bodyMedium, color: colors.textMuted },
+    addMealButton: { backgroundColor: colors.primary, borderRadius: 18, padding: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+    addMealText: { color: colors.onPrimary, fontWeight: '800', fontSize: 18 },
     viewToggleRow: { flexDirection: 'row', gap: 8, backgroundColor: colors.chipBackground, borderRadius: 14, padding: 4 },
     viewToggle: { flex: 1, borderRadius: 10, paddingVertical: 8, alignItems: 'center' },
     viewToggleActive: { backgroundColor: colors.primary },
