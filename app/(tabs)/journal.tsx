@@ -523,7 +523,7 @@ ${message}`)) void removeEntry(entry);
       />
 
       {photoOpen && <Modal visible={!activeFood} animationType="slide" onRequestClose={() => setPhotoOpen(false)}>
-        <ScrollView style={styles.fill} contentContainerStyle={[styles.scannerScreen, { paddingTop: insets.top + 20 }]}>
+        <ScrollView style={styles.fill} contentContainerStyle={[styles.container, { paddingTop: insets.top + 20 }]}>
           <View style={styles.scannerHeader}>
             <Text style={styles.scannerTitle}>Add meal photo</Text>
             <Pressable accessibilityLabel="Close meal camera" hitSlop={8} onPress={() => setPhotoOpen(false)}>
