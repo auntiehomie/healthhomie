@@ -8,11 +8,14 @@ import { parsePhotoMeal } from '@/lib/domain/photoMeal';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import type { FoodItem } from '@/types/healthhomie';
 
-export function PhotoMealCapture({ onFound }: { onFound: (food: FoodItem) => void }) {
+export function PhotoMealCapture({ onFound, autoOpen = false }: { onFound: (food: FoodItem) => void; autoOpen?: boolean }) {
   const camera = useRef<CameraView>(null);
   const busyRef = useRef(false);
   const [permission, requestPermission] = useCameraPermissions();
-  const [opened, setOpened] = useState(false);
+  // null follows asynchronously loaded permission until the user opens/closes the camera.
+  // Opening the camera never sends an image; analysis still requires an explicit snap.
+  const [cameraOpen, setOpened] = useState<boolean | null>(autoOpen ? null : false);
+  const opened = cameraOpen ?? (Platform.OS === 'web' || !!permission?.granted);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
