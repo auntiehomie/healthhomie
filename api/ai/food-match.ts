@@ -37,6 +37,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(405).json({ error: 'POST only.' });
     }
 
+    const { description } = (req.body ?? {}) as { description?: unknown };
+    if (typeof description === 'string') {
+      const text = description.trim();
+      if (!text || text.length > 500) return res.status(400).json({ error: 'Enter a meal description of up to 500 characters.' });
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) return res.status(503).json({ error: 'Meal description assistance is unavailable. Search and add foods individually.' });
+      const client = new Anthropic({ apiKey });
+      const answer = await client.messages.create({
+        model: MODEL, max_tokens: 350,
+        system: 'Split the meal description into up to 8 food search phrases. Include foods and condiments explicitly mentioned; do not add ingredients. Use short food names and preparation but omit quantities from search phrases. Never estimate nutrition. Return only a JSON array of strings.',
+        messages: [{ role: 'user', content: text }],
+      });
+      const output = answer.content.filter((block): block is Anthropic.TextBlock => block.type === 'text').map((block) => block.text).join('').trim();
+      let parsed: unknown;
+      try { parsed = JSON.parse(output.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '')); }
+      catch { return res.status(502).json({ error: 'Could not interpret that meal. Try a shorter description.' }); }
+      if (!Array.isArray(parsed)) return res.status(502).json({ error: 'Could not interpret that meal. Try a shorter description.' });
+      const items = parsed.filter((item): item is string => typeof item === 'string').map((item) => item.trim().slice(0, 100)).filter(Boolean).slice(0, 8);
+      if (!items.length) return res.status(502).json({ error: 'No foods identified. Try a shorter description.' });
+      return res.status(200).json({ items });
+    }
+
     const { query, candidates } = (req.body ?? {}) as { query?: string; candidates?: Candidate[] };
     if (!query || !Array.isArray(candidates) || candidates.length === 0) {
       return res.status(400).json({ error: 'query and a non-empty candidates array are required.' });
